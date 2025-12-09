@@ -1,0 +1,93 @@
+# gqlgen configuration for Partner Service
+# https://gqlgen.com/config/
+
+schema:
+  - internal/interface/graphql/*.graphqls
+
+exec:
+  filename: internal/interface/graphql/generated/generated.go
+  package: generated
+
+federation:
+  filename: internal/interface/graphql/generated/federation.go
+  package: generated
+  version: 2
+
+model:
+  filename: internal/interface/graphql/generated/models_gen.go
+  package: generated
+
+resolver:
+  layout: follow-schema
+  dir: internal/interface/graphql/resolver
+  package: resolver
+  filename_template: "{name}.resolvers.go"
+
+# Map GraphQL types to Go types
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  DateTime:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time
+  
+  # Domain models mapping
+  Partner:
+    model: github.com/yousoon/services/partner/internal/domain.Partner
+  Establishment:
+    model: github.com/yousoon/services/partner/internal/domain.Establishment
+  TeamMember:
+    model: github.com/yousoon/services/partner/internal/domain.TeamMember
+  Company:
+    model: github.com/yousoon/services/partner/internal/domain.Company
+  Branding:
+    model: github.com/yousoon/services/partner/internal/domain.Branding
+  Contact:
+    model: github.com/yousoon/services/partner/internal/domain.Contact
+  Address:
+    model: github.com/yousoon/services/partner/internal/domain.Address
+  GeoLocation:
+    model: github.com/yousoon/services/partner/internal/domain.GeoLocation
+  OpeningHour:
+    model: github.com/yousoon/services/partner/internal/domain.OpeningHour
+  Closure:
+    model: github.com/yousoon/services/partner/internal/domain.Closure
+  Image:
+    model: github.com/yousoon/services/partner/internal/domain.Image
+  PartnerStats:
+    model: github.com/yousoon/services/partner/internal/domain.PartnerStats
+  EstablishmentContact:
+    model: github.com/yousoon/services/partner/internal/domain.EstablishmentContact
+  PartnerSummary:
+    model: github.com/yousoon/services/partner/internal/domain.PartnerSummary
+  EstablishmentSummary:
+    model: github.com/yousoon/services/partner/internal/domain.EstablishmentSummary
+
+# Autobind domain types automatically
+autobind:
+  - github.com/yousoon/services/partner/internal/domain
+
+# Skip generating certain resolver methods
+omit_slice_element_pointers: true
+omit_getters: true
+struct_fields_always_pointers: false
+resolvers_always_return_pointers: false
+return_pointers_in_unmarshal_input: false
+
+# Enable directives
+directives:
+  authenticated:
+    skip_runtime: true
+  hasRole:
+    skip_runtime: true
+  hasPermission:
+    skip_runtime: true

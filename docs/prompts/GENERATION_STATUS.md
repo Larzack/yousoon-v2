@@ -1,7 +1,7 @@
 # 📊 Statut de Génération - Yousoon Platform
 
-> **Dernière mise à jour** : 9 décembre 2025  
-> **Statut global** : 🔴 NON DÉMARRÉ
+> **Dernière mise à jour** : 10 décembre 2025  
+> **Statut global** : 🔄 EN COURS
 
 ---
 
@@ -22,92 +22,68 @@
 ### Étape 1.1 : Package Shared Domain
 | Fichier | Statut | Date | Notes |
 |---------|--------|------|-------|
-| `services/shared/domain/aggregate.go` | ⬜ | - | - |
-| `services/shared/domain/entity.go` | ⬜ | - | - |
-| `services/shared/domain/valueobject.go` | ⬜ | - | - |
-| `services/shared/domain/event.go` | ⬜ | - | - |
-| `services/shared/domain/errors.go` | ⬜ | - | - |
-| `services/shared/domain/id.go` | ⬜ | - | - |
+| `services/shared/domain/aggregate.go` | ✅ | 9 déc 2025 | Base aggregate root |
+| `services/shared/domain/entity.go` | ✅ | 9 déc 2025 | Entity base |
+| `services/shared/domain/valueobject.go` | ✅ | 9 déc 2025 | ValueObject interface |
+| `services/shared/domain/event.go` | ✅ | 9 déc 2025 | Domain event base |
+| `services/shared/domain/errors.go` | ✅ | 9 déc 2025 | Domain errors |
+| `services/shared/domain/id.go` | ✅ | 9 déc 2025 | ID types |
 
-**Statut Étape 1.1** : ⬜ `NOT_STARTED`
+**Statut Étape 1.1** : ✅ `COMPLETED`
 
 ### Étape 1.2 : Infrastructure MongoDB
 | Fichier | Statut | Date | Notes |
 |---------|--------|------|-------|
-| `services/shared/infrastructure/mongodb/client.go` | ⬜ | - | - |
-| `services/shared/infrastructure/mongodb/repository.go` | ⬜ | - | - |
-| `services/shared/infrastructure/mongodb/transaction.go` | ⬜ | - | - |
-| `services/shared/infrastructure/mongodb/mapper.go` | ⬜ | - | - |
+| `services/shared/infrastructure/mongodb/client.go` | ✅ | 9 déc 2025 | Connection manager |
+| `services/shared/infrastructure/mongodb/repository.go` | ✅ | 9 déc 2025 | Generic repository |
+| `services/shared/infrastructure/mongodb/transaction.go` | ✅ | 9 déc 2025 | Transaction support |
+| `services/shared/infrastructure/mongodb/mapper.go` | ✅ | 9 déc 2025 | BSON mappers |
 
-**Statut Étape 1.2** : ⬜ `NOT_STARTED`
+**Statut Étape 1.2** : ✅ `COMPLETED`
 
 ### Étape 1.3 : Infrastructure Redis
 | Fichier | Statut | Date | Notes |
 |---------|--------|------|-------|
-| `services/shared/infrastructure/redis/client.go` | ⬜ | - | - |
-| `services/shared/infrastructure/redis/cache.go` | ⬜ | - | - |
-| `services/shared/infrastructure/redis/distributed_lock.go` | ⬜ | - | - |
+| `services/shared/infrastructure/redis/client.go` | ✅ | 9 déc 2025 | Redis client |
+| `services/shared/infrastructure/redis/cache.go` | ✅ | 9 déc 2025 | Cache operations |
+| `services/shared/infrastructure/redis/distributed_lock.go` | ✅ | 9 déc 2025 | Distributed locking |
 
-**Statut Étape 1.3** : ⬜ `NOT_STARTED`
+**Statut Étape 1.3** : ✅ `COMPLETED`
 
 ### Étape 1.4 : Infrastructure NATS
 | Fichier | Statut | Date | Notes |
 |---------|--------|------|-------|
-| `services/shared/infrastructure/nats/client.go` | ⬜ | - | - |
-| `services/shared/infrastructure/nats/publisher.go` | ⬜ | - | - |
-| `services/shared/infrastructure/nats/subscriber.go` | ⬜ | - | - |
-| `services/shared/infrastructure/nats/serializer.go` | ⬜ | - | - |
+| `services/shared/infrastructure/nats/client.go` | ✅ | 9 déc 2025 | NATS JetStream client |
+| `services/shared/infrastructure/nats/publisher.go` | ✅ | 9 déc 2025 | Event publisher |
+| `services/shared/infrastructure/nats/subscriber.go` | ✅ | 9 déc 2025 | Event subscriber |
+| `services/shared/infrastructure/nats/serializer.go` | ✅ | 9 déc 2025 | JSON serializer |
 
-**Statut Étape 1.4** : ⬜ `NOT_STARTED`
+**Statut Étape 1.4** : ✅ `COMPLETED`
 
-### Étape 1.5 : GraphQL Federation Shared
+### Étape 1.5 : Infrastructure gRPC
 | Fichier | Statut | Date | Notes |
 |---------|--------|------|-------|
-| `services/shared/federation/registry/client.go` | ⬜ | - | - |
-| `services/shared/federation/registry/discovery.go` | ⬜ | - | - |
-| `services/shared/federation/registry/health.go` | ⬜ | - | - |
-| `services/shared/federation/directives/auth.go` | ⬜ | - | - |
-| `services/shared/federation/directives/validation.go` | ⬜ | - | - |
-| `services/shared/federation/directives/deprecated.go` | ⬜ | - | - |
-| `services/shared/federation/scalars/datetime.go` | ⬜ | - | - |
-| `services/shared/federation/scalars/money.go` | ⬜ | - | - |
-| `services/shared/federation/scalars/geolocation.go` | ⬜ | - | - |
-| `services/shared/federation/scalars/objectid.go` | ⬜ | - | - |
-| `services/shared/federation/middleware/context.go` | ⬜ | - | - |
-| `services/shared/federation/middleware/dataloader.go` | ⬜ | - | - |
+| `services/shared/infrastructure/grpc/server.go` | ✅ | 9 déc 2025 | gRPC server |
+| `services/shared/infrastructure/grpc/interceptors.go` | ✅ | 9 déc 2025 | Interceptors |
+| `services/shared/infrastructure/grpc/errors.go` | ✅ | 9 déc 2025 | Error handling |
 
-**Statut Étape 1.5** : ⬜ `NOT_STARTED`
+**Statut Étape 1.5** : ✅ `COMPLETED`
 
-### Étape 1.6 : Apollo Router
+### Étape 1.6 : Observability
 | Fichier | Statut | Date | Notes |
 |---------|--------|------|-------|
-| `services/router/config/router.yaml` | ⬜ | - | - |
-| `services/router/plugins/auth.rhai` | ⬜ | - | - |
-| `services/router/plugins/ratelimit.rhai` | ⬜ | - | - |
-| `services/router/plugins/logging.rhai` | ⬜ | - | - |
-| `services/router/scripts/compose.sh` | ⬜ | - | - |
-| `services/router/scripts/watch.sh` | ⬜ | - | - |
-| `services/router/Dockerfile` | ⬜ | - | - |
+| `services/shared/observability/logger/logger.go` | ✅ | 9 déc 2025 | Structured logging |
+| `services/shared/observability/metrics/metrics.go` | ✅ | 9 déc 2025 | Prometheus metrics |
+| `services/shared/observability/tracing/tracing.go` | ✅ | 9 déc 2025 | OpenTelemetry tracing |
 
-**Statut Étape 1.6** : ⬜ `NOT_STARTED`
+**Statut Étape 1.6** : ✅ `COMPLETED`
 
-### Étape 1.7 : Schema Registry
+### Étape 1.7 : Config
 | Fichier | Statut | Date | Notes |
 |---------|--------|------|-------|
-| `services/registry/cmd/main.go` | ⬜ | - | - |
-| `services/registry/config/config.go` | ⬜ | - | - |
-| `services/registry/internal/storage/store.go` | ⬜ | - | - |
-| `services/registry/internal/storage/memory.go` | ⬜ | - | - |
-| `services/registry/internal/storage/redis.go` | ⬜ | - | - |
-| `services/registry/internal/composer/composer.go` | ⬜ | - | - |
-| `services/registry/internal/composer/validator.go` | ⬜ | - | - |
-| `services/registry/internal/discovery/watcher.go` | ⬜ | - | - |
-| `services/registry/internal/discovery/k8s.go` | ⬜ | - | - |
-| `services/registry/internal/api/handler.go` | ⬜ | - | - |
-| `services/registry/internal/api/graphql.go` | ⬜ | - | - |
-| `services/registry/Dockerfile` | ⬜ | - | - |
+| `services/shared/config/config.go` | ✅ | 9 déc 2025 | Config management |
 
-**Statut Étape 1.7** : ⬜ `NOT_STARTED`
+**Statut Étape 1.7** : ✅ `COMPLETED`
 
 ---
 
@@ -116,44 +92,55 @@
 ### Étape 2.1 : Identity Service (Subgraph)
 | Composant | Statut | Date | Notes |
 |-----------|--------|------|-------|
-| `cmd/main.go` | ⬜ | - | - |
-| `config/config.go` | ⬜ | - | - |
-| `graph/` (gqlgen) | ⬜ | - | - |
-| `internal/domain/` | ⬜ | - | - |
-| `internal/application/` | ⬜ | - | - |
-| `internal/infrastructure/` | ⬜ | - | - |
-| `proto/identity.proto` | ⬜ | - | - |
-| `gqlgen.yml` | ⬜ | - | - |
-| `Dockerfile` | ⬜ | - | - |
+| `cmd/main.go` | ✅ | 9 déc 2025 | Entry point |
+| `gqlgen.yml` | ✅ | 9 déc 2025 | GraphQL config |
+| `internal/domain/user.go` | ✅ | 9 déc 2025 | User aggregate |
+| `internal/domain/subscription.go` | ✅ | 9 déc 2025 | Subscription entity |
+| `internal/domain/value_objects.go` | ✅ | 9 déc 2025 | Value objects |
+| `internal/domain/events.go` | ✅ | 9 déc 2025 | Domain events |
+| `internal/domain/errors.go` | ✅ | 9 déc 2025 | Domain errors |
+| `internal/domain/repository.go` | ✅ | 9 déc 2025 | Repository interface |
+| `internal/application/commands/` | ✅ | 9 déc 2025 | Command handlers |
+| `internal/application/queries/` | ✅ | 9 déc 2025 | Query handlers |
+| `internal/infrastructure/mongodb/` | ✅ | 9 déc 2025 | Repository impl |
+| `internal/interface/graphql/` | ✅ | 9 déc 2025 | GraphQL resolvers |
+| `Dockerfile` | ✅ | 9 déc 2025 | Docker image |
+| `deploy/kubernetes/` | ✅ | 9 déc 2025 | K8s manifests |
 
-**Statut Étape 2.1** : ⬜ `NOT_STARTED`
+**Statut Étape 2.1** : ✅ `COMPLETED`
 
 ### Étape 2.2 : Partner Service (Subgraph)
 | Composant | Statut | Date | Notes |
 |-----------|--------|------|-------|
-| `cmd/main.go` | ⬜ | - | - |
-| `config/config.go` | ⬜ | - | - |
-| `graph/` (gqlgen) | ⬜ | - | - |
-| `internal/domain/` | ⬜ | - | - |
-| `internal/application/` | ⬜ | - | - |
-| `internal/infrastructure/` | ⬜ | - | - |
-| `proto/partner.proto` | ⬜ | - | - |
-| `gqlgen.yml` | ⬜ | - | - |
-| `Dockerfile` | ⬜ | - | - |
+| `cmd/main.go` | ✅ | 10 déc 2025 | Entry point |
+| `gqlgen.yml` | ✅ | 10 déc 2025 | GraphQL config |
+| `internal/domain/partner.go` | ✅ | 10 déc 2025 | Partner aggregate |
+| `internal/domain/establishment.go` | ✅ | 10 déc 2025 | Establishment entity |
+| `internal/domain/team_member.go` | ✅ | 10 déc 2025 | TeamMember entity |
+| `internal/domain/value_objects.go` | ✅ | 10 déc 2025 | Value objects (GeoLocation, Address, etc.) |
+| `internal/domain/events.go` | ✅ | 10 déc 2025 | Domain events |
+| `internal/domain/errors.go` | ✅ | 10 déc 2025 | Domain errors |
+| `internal/domain/repository.go` | ✅ | 10 déc 2025 | Repository interfaces |
+| `internal/application/commands/` | ✅ | 10 déc 2025 | Command handlers (4 files) |
+| `internal/application/queries/` | ✅ | 10 déc 2025 | Query handlers |
+| `internal/infrastructure/mongodb/` | ✅ | 10 déc 2025 | Repository impl with geospatial |
+| `internal/interface/graphql/schema.graphqls` | ✅ | 10 déc 2025 | Federation 2 schema |
+| `internal/interface/graphql/resolver/` | ✅ | 10 déc 2025 | GraphQL resolvers |
+| `internal/config/config.go` | ✅ | 10 déc 2025 | Service config |
+| `Dockerfile` | ✅ | 10 déc 2025 | Docker image |
+| `deploy/kubernetes/deployment.yaml` | ✅ | 10 déc 2025 | K8s manifests + HPA + PDB + NetworkPolicy |
 
-**Statut Étape 2.2** : ⬜ `NOT_STARTED`
+**Statut Étape 2.2** : ✅ `COMPLETED`
 
 ### Étape 2.3 : Discovery Service (Subgraph)
 | Composant | Statut | Date | Notes |
 |-----------|--------|------|-------|
 | `cmd/main.go` | ⬜ | - | - |
-| `config/config.go` | ⬜ | - | - |
-| `graph/` (gqlgen) | ⬜ | - | - |
-| `internal/domain/` | ⬜ | - | - |
+| `gqlgen.yml` | ⬜ | - | - |
+| `internal/domain/` | ⬜ | - | Offer, Category |
 | `internal/application/` | ⬜ | - | - |
 | `internal/infrastructure/` | ⬜ | - | - |
-| `proto/discovery.proto` | ⬜ | - | - |
-| `gqlgen.yml` | ⬜ | - | - |
+| `internal/interface/graphql/` | ⬜ | - | - |
 | `Dockerfile` | ⬜ | - | - |
 
 **Statut Étape 2.3** : ⬜ `NOT_STARTED`

@@ -1,4 +1,4 @@
-module github.com/yousoon/services/partner
+module github.com/yousoon/services/discovery
 
 go 1.21
 

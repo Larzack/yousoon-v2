@@ -1,0 +1,333 @@
+# ==============================================================================
+# Partner Service - Kubernetes Deployment
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: partner-service
+  namespace: yousoon
+  labels:
+    app: partner-service
+    version: v1
+    graphql.federation/subgraph: "true"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: partner-service
+  template:
+    metadata:
+      labels:
+        app: partner-service
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: partner-service
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: partner-service
+          image: yousoon/partner-service:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: grpc
+              containerPort: 9090
+              protocol: TCP
+            - name: metrics
+              containerPort: 9091
+              protocol: TCP
+          env:
+            # Server configuration
+            - name: SERVER_HOST
+              value: "0.0.0.0"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: GRPC_PORT
+              value: "9090"
+            
+            # MongoDB configuration
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-credentials
+                  key: uri
+            - name: MONGODB_DATABASE
+              value: "partner_db"
+            
+            # NATS configuration
+            - name: NATS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nats-config
+                  key: url
+            - name: NATS_CLIENT_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            
+            # Redis configuration
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: redis-config
+                  key: host
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-credentials
+                  key: password
+                  optional: true
+            
+            # Observability
+            - name: LOG_LEVEL
+              value: "info"
+            - name: LOG_FORMAT
+              value: "json"
+            - name: TRACING_ENABLED
+              value: "true"
+            - name: JAEGER_ENDPOINT
+              value: "http://jaeger-collector.observability:14268/api/traces"
+            - name: METRICS_ENABLED
+              value: "true"
+            - name: METRICS_PORT
+              value: "9091"
+            
+            # Service Discovery
+            - name: SERVICE_NAME
+              value: "partner-service"
+            - name: SERVICE_URL
+              value: "http://partner-service.yousoon:8080"
+            - name: REGISTRY_URL
+              value: "http://schema-registry.yousoon:4000"
+            
+            # GraphQL
+            - name: GRAPHQL_PLAYGROUND_ENABLED
+              value: "false"
+            - name: GRAPHQL_INTROSPECTION_ENABLED
+              value: "true"
+          
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: partner-service
+                topologyKey: kubernetes.io/hostname
+
+---
+# ==============================================================================
+# Service
+# ==============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: partner-service
+  namespace: yousoon
+  labels:
+    app: partner-service
+    graphql.federation/subgraph: "true"
+  annotations:
+    graphql.federation/routing-url: "http://partner-service.yousoon:8080/graphql"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+      protocol: TCP
+    - name: metrics
+      port: 9091
+      targetPort: metrics
+      protocol: TCP
+  selector:
+    app: partner-service
+
+---
+# ==============================================================================
+# ServiceAccount
+# ==============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: partner-service
+  namespace: yousoon
+  labels:
+    app: partner-service
+
+---
+# ==============================================================================
+# HorizontalPodAutoscaler
+# ==============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: partner-service
+  namespace: yousoon
+  labels:
+    app: partner-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: partner-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# ==============================================================================
+# PodDisruptionBudget
+# ==============================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: partner-service
+  namespace: yousoon
+  labels:
+    app: partner-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: partner-service
+
+---
+# ==============================================================================
+# NetworkPolicy
+# ==============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: partner-service
+  namespace: yousoon
+  labels:
+    app: partner-service
+spec:
+  podSelector:
+    matchLabels:
+      app: partner-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from Apollo Router
+    - from:
+        - podSelector:
+            matchLabels:
+              app: apollo-router
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow traffic from other services (gRPC)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: yousoon
+      ports:
+        - protocol: TCP
+          port: 9090
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: observability
+      ports:
+        - protocol: TCP
+          port: 9091
+  egress:
+    # Allow MongoDB
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mongodb
+      ports:
+        - protocol: TCP
+          port: 27017
+    # Allow NATS
+    - to:
+        - podSelector:
+            matchLabels:
+              app: nats
+      ports:
+        - protocol: TCP
+          port: 4222
+    # Allow Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow other services
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: yousoon

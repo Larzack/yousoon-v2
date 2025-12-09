@@ -1,0 +1,497 @@
+# GraphQL Schema for Partner Service (Apollo Federation 2)
+# This schema defines the Partner subgraph for the Yousoon platform.
+
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@external", "@requires", "@provides"])
+
+# =============================================================================
+# Scalars
+# =============================================================================
+
+scalar DateTime
+scalar JSON
+
+# =============================================================================
+# Enums
+# =============================================================================
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum TeamRole {
+  ADMIN
+  MANAGER
+  STAFF
+  VIEWER
+}
+
+enum TeamMemberStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+# =============================================================================
+# Types - Partner Aggregate
+# =============================================================================
+
+type Partner @key(fields: "id") {
+  id: ID!
+  
+  # Owner (cross-context reference to Identity)
+  ownerUserId: ID!
+  
+  # Company Information
+  company: Company!
+  
+  # Branding
+  branding: Branding!
+  
+  # Primary Contact
+  contact: Contact!
+  
+  # Category
+  category: String!
+  subcategories: [String!]!
+  
+  # Establishments
+  establishments: [Establishment!]!
+  establishmentCount: Int!
+  
+  # Team
+  teamMembers: [TeamMember!]!
+  
+  # Statistics
+  stats: PartnerStats!
+  
+  # Status
+  status: PartnerStatus!
+  verifiedAt: DateTime
+  
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Company {
+  name: String!
+  tradeName: String
+  siret: String!
+  vatNumber: String
+  legalForm: String
+}
+
+type Branding {
+  logo: String
+  coverImage: String
+  primaryColor: String
+  description: String
+}
+
+type Contact {
+  firstName: String!
+  lastName: String!
+  fullName: String!
+  email: String!
+  phone: String
+  role: String
+}
+
+type PartnerStats {
+  totalEstablishments: Int!
+  totalOffers: Int!
+  activeOffers: Int!
+  totalBookings: Int!
+  totalCheckins: Int!
+  avgRating: Float!
+  reviewCount: Int!
+  lastUpdated: DateTime!
+}
+
+# =============================================================================
+# Types - Establishment Entity
+# =============================================================================
+
+type Establishment @key(fields: "id") {
+  id: ID!
+  partnerId: ID!
+  
+  # Basic Info
+  name: String!
+  description: String
+  
+  # Address
+  address: Address!
+  
+  # Location
+  location: GeoLocation!
+  
+  # Contact
+  contact: EstablishmentContact
+  
+  # Opening Hours
+  openingHours: [OpeningHour!]!
+  closures: [Closure!]!
+  
+  # Media
+  images: [Image!]!
+  primaryImage: String
+  
+  # Details
+  type: String
+  features: [String!]!
+  priceRange: Int!
+  
+  # Status
+  isActive: Boolean!
+  
+  # Computed
+  isOpenNow: Boolean!
+  
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Address {
+  street: String!
+  streetNumber: String
+  complement: String
+  postalCode: String!
+  city: String!
+  country: String!
+  formatted: String!
+}
+
+type GeoLocation {
+  type: String!
+  coordinates: [Float!]!
+  longitude: Float!
+  latitude: Float!
+}
+
+type EstablishmentContact {
+  phone: String
+  email: String
+  website: String
+}
+
+type OpeningHour {
+  dayOfWeek: Int!
+  open: String
+  close: String
+  isClosed: Boolean!
+}
+
+type Closure {
+  date: DateTime!
+  reason: String
+}
+
+type Image {
+  url: String!
+  alt: String
+  isPrimary: Boolean!
+  order: Int!
+}
+
+# =============================================================================
+# Types - TeamMember Entity
+# =============================================================================
+
+type TeamMember {
+  id: ID!
+  partnerId: ID!
+  
+  # User Link (optional until invitation accepted)
+  userId: ID
+  
+  # Info
+  email: String!
+  firstName: String!
+  lastName: String!
+  fullName: String!
+  
+  # Role & Status
+  role: TeamRole!
+  status: TeamMemberStatus!
+  
+  # Timestamps
+  invitedAt: DateTime!
+  joinedAt: DateTime
+}
+
+# =============================================================================
+# Summary Types (Read Models)
+# =============================================================================
+
+type PartnerSummary {
+  id: ID!
+  companyName: String!
+  tradeName: String
+  category: String!
+  logo: String
+  status: PartnerStatus!
+  establishmentCount: Int!
+  activeOfferCount: Int!
+  avgRating: Float!
+  reviewCount: Int!
+}
+
+type EstablishmentSummary {
+  id: ID!
+  partnerId: ID!
+  name: String!
+  type: String
+  address: String!
+  city: String!
+  location: GeoLocation!
+  primaryImage: String
+  distanceKm: Float
+}
+
+# =============================================================================
+# Pagination
+# =============================================================================
+
+type PartnerConnection {
+  edges: [PartnerEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PartnerEdge {
+  node: Partner!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# =============================================================================
+# Inputs
+# =============================================================================
+
+input RegisterPartnerInput {
+  ownerUserId: ID!
+  
+  # Company
+  companyName: String!
+  tradeName: String
+  siret: String!
+  vatNumber: String
+  legalForm: String
+  
+  # Contact
+  contactFirstName: String!
+  contactLastName: String!
+  contactEmail: String!
+  contactPhone: String
+  contactRole: String
+  
+  # Category
+  category: String!
+  subcategories: [String!]
+}
+
+input UpdatePartnerInput {
+  # Company
+  companyName: String
+  tradeName: String
+  vatNumber: String
+  legalForm: String
+  
+  # Branding
+  logo: String
+  coverImage: String
+  primaryColor: String
+  description: String
+  
+  # Contact
+  contactFirstName: String
+  contactLastName: String
+  contactEmail: String
+  contactPhone: String
+  contactRole: String
+  
+  # Category
+  category: String
+  subcategories: [String!]
+}
+
+input AddEstablishmentInput {
+  # Basic Info
+  name: String!
+  description: String
+  
+  # Address
+  street: String!
+  streetNumber: String
+  complement: String
+  postalCode: String!
+  city: String!
+  country: String!
+  
+  # Location
+  longitude: Float!
+  latitude: Float!
+  
+  # Contact
+  phone: String
+  email: String
+  website: String
+  
+  # Details
+  type: String
+  features: [String!]
+  priceRange: Int
+}
+
+input UpdateEstablishmentInput {
+  name: String
+  description: String
+  
+  # Address
+  street: String
+  streetNumber: String
+  complement: String
+  postalCode: String
+  city: String
+  country: String
+  
+  # Location
+  longitude: Float
+  latitude: Float
+  
+  # Contact
+  phone: String
+  email: String
+  website: String
+  
+  # Details
+  type: String
+  features: [String!]
+  priceRange: Int
+  
+  # Status
+  isActive: Boolean
+}
+
+input OpeningHourInput {
+  dayOfWeek: Int!
+  open: String
+  close: String
+  isClosed: Boolean
+}
+
+input InviteTeamMemberInput {
+  email: String!
+  firstName: String!
+  lastName: String!
+  role: TeamRole!
+}
+
+input PartnerFilterInput {
+  status: PartnerStatus
+  category: String
+  search: String
+}
+
+input NearbyEstablishmentsInput {
+  longitude: Float!
+  latitude: Float!
+  radiusKm: Float
+  limit: Int
+}
+
+# =============================================================================
+# Queries
+# =============================================================================
+
+type Query {
+  # Get partner by ID
+  partner(id: ID!): Partner
+  
+  # Get partner by owner user ID
+  partnerByOwner(ownerUserId: ID!): Partner
+  
+  # List partners with filters
+  partners(
+    filter: PartnerFilterInput
+    first: Int
+    after: String
+  ): PartnerConnection!
+  
+  # Get establishment by ID
+  establishment(id: ID!): Establishment
+  
+  # Get establishments near a location
+  establishmentsNearby(input: NearbyEstablishmentsInput!): [EstablishmentSummary!]!
+  
+  # Search partners
+  searchPartners(query: String!, limit: Int): [PartnerSummary!]!
+  
+  # Get partners for a team member (by email)
+  partnersForTeamMember(email: String!): [Partner!]!
+}
+
+# =============================================================================
+# Mutations
+# =============================================================================
+
+type Mutation {
+  # Partner Management
+  registerPartner(input: RegisterPartnerInput!): Partner!
+  updatePartner(id: ID!, input: UpdatePartnerInput!): Partner!
+  verifyPartner(id: ID!): Partner!
+  suspendPartner(id: ID!, reason: String!): Partner!
+  deletePartner(id: ID!): Boolean!
+  
+  # Establishment Management
+  addEstablishment(partnerId: ID!, input: AddEstablishmentInput!): Establishment!
+  updateEstablishment(partnerId: ID!, establishmentId: ID!, input: UpdateEstablishmentInput!): Establishment!
+  removeEstablishment(partnerId: ID!, establishmentId: ID!): Boolean!
+  setEstablishmentOpeningHours(partnerId: ID!, establishmentId: ID!, hours: [OpeningHourInput!]!): Establishment!
+  addEstablishmentImage(partnerId: ID!, establishmentId: ID!, url: String!, alt: String, isPrimary: Boolean): Establishment!
+  removeEstablishmentImage(partnerId: ID!, establishmentId: ID!, url: String!): Establishment!
+  
+  # Team Management
+  inviteTeamMember(partnerId: ID!, input: InviteTeamMemberInput!): TeamMember!
+  acceptTeamInvitation(partnerId: ID!, teamMemberId: ID!, userId: ID!): TeamMember!
+  updateTeamMemberRole(partnerId: ID!, teamMemberId: ID!, role: TeamRole!): TeamMember!
+  removeTeamMember(partnerId: ID!, teamMemberId: ID!): Boolean!
+}
+
+# =============================================================================
+# Subscriptions
+# =============================================================================
+
+type Subscription {
+  # Subscribe to partner updates
+  partnerUpdated(partnerId: ID!): Partner!
+  
+  # Subscribe to new bookings for a partner
+  newBookingForPartner(partnerId: ID!): JSON!
+}
+
+# =============================================================================
+# Federation Entity Resolvers
+# =============================================================================
+
+# The User type is defined in Identity service
+# We extend it here to add partner-related fields
+extend type User @key(fields: "id") {
+  id: ID! @external
+  
+  # Partner owned by this user
+  ownedPartner: Partner
+  
+  # Partners where user is a team member
+  partnerMemberships: [Partner!]!
+}
