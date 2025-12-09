@@ -166,7 +166,7 @@ func (r *CategoryRepository) FindByParentID(ctx context.Context, parentID *domai
 		filter["is_active"] = true
 	}
 
-	opts := options.Find().SetSort(bson.D{{Key: "position", Value: 1}})
+	opts := options.Find().SetSort(bson.D{bson.E{Key: "position", Value: 1}})
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
 	if err != nil {
@@ -238,41 +238,8 @@ func (r *CategoryRepository) GetCategoryTree(ctx context.Context, activeOnly boo
 		return nil, err
 	}
 
-	// Build the tree
-	return r.buildTree(categories, nil), nil
-}
-
-// buildTree recursively builds the category tree.
-func (r *CategoryRepository) buildTree(categories []*domain.Category, parentID *domain.CategoryID) []*domain.CategoryTree {
-	var result []*domain.CategoryTree
-
-	for _, cat := range categories {
-		// Check if this category's parent matches
-		catParentID := cat.ParentID()
-
-		matches := false
-		if parentID == nil && catParentID == nil {
-			matches = true
-		} else if parentID != nil && catParentID != nil && *parentID == *catParentID {
-			matches = true
-		}
-
-		if matches {
-			tree := &domain.CategoryTree{
-				ID:       cat.ID(),
-				Name:     cat.Name(),
-				Slug:     cat.Slug(),
-				Icon:     cat.Icon(),
-				Color:    cat.Color(),
-				Position: cat.Position(),
-				IsActive: cat.IsActive(),
-				Children: r.buildTree(categories, ptrCategoryID(cat.ID())),
-			}
-			result = append(result, tree)
-		}
-	}
-
-	return result
+	// Use the domain function to build the tree
+	return domain.BuildCategoryTree(categories), nil
 }
 
 func ptrCategoryID(id domain.CategoryID) *domain.CategoryID {
@@ -320,7 +287,7 @@ func (r *CategoryRepository) GetMaxPosition(ctx context.Context, parentID *domai
 		filter["parent_id"] = nil
 	}
 
-	opts := options.FindOne().SetSort(bson.D{{Key: "position", Value: -1}})
+	opts := options.FindOne().SetSort(bson.D{bson.E{Key: "position", Value: -1}})
 
 	var doc categoryDocument
 	err := r.collection.FindOne(ctx, filter, opts).Decode(&doc)

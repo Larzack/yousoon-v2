@@ -1,0 +1,69 @@
+# gqlgen configuration for Discovery Service
+# GraphQL Federation 2 with Apollo
+
+schema:
+  - internal/interface/graphql/*.graphqls
+
+exec:
+  filename: internal/interface/graphql/generated/generated.go
+  package: generated
+
+model:
+  filename: internal/interface/graphql/model/models_gen.go
+  package: model
+
+resolver:
+  layout: follow-schema
+  dir: internal/interface/graphql/resolver
+  package: resolver
+  filename_template: "{name}.resolvers.go"
+  omit_template_comment: false
+
+federation:
+  filename: internal/interface/graphql/generated/federation.go
+  package: generated
+  version: 2
+
+autobind:
+  - "github.com/yousoon/discovery-service/internal/interface/graphql/model"
+
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  DateTime:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time
+  JSON:
+    model:
+      - github.com/99designs/gqlgen/graphql.Map
+  
+  # Domain type mappings
+  Offer:
+    model: github.com/yousoon/discovery-service/internal/interface/graphql/model.Offer
+  Category:
+    model: github.com/yousoon/discovery-service/internal/interface/graphql/model.Category
+  OfferStatus:
+    model: github.com/yousoon/discovery-service/internal/interface/graphql/model.OfferStatus
+  ModerationStatus:
+    model: github.com/yousoon/discovery-service/internal/interface/graphql/model.ModerationStatus
+  DiscountType:
+    model: github.com/yousoon/discovery-service/internal/interface/graphql/model.DiscountType
+  ConditionType:
+    model: github.com/yousoon/discovery-service/internal/interface/graphql/model.ConditionType
+  OfferSortBy:
+    model: github.com/yousoon/discovery-service/internal/interface/graphql/model.OfferSortBy
+
+omit_slice_element_pointers: true
+omit_getters: true
+struct_fields_always_pointers: false
+omit_interface_checks: false
+omit_complexity: true

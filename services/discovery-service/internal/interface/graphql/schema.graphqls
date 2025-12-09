@@ -1,0 +1,512 @@
+# Discovery Service - GraphQL Federation 2 Schema
+# This service manages offers and categories for the Yousoon platform
+
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@external", "@requires", "@provides", "@extends"])
+
+# =============================================================================
+# Scalars
+# =============================================================================
+
+scalar DateTime
+scalar JSON
+
+# =============================================================================
+# Entity Types (Federated)
+# =============================================================================
+
+# Offer is the main aggregate - deals/discounts from partners
+type Offer @key(fields: "id") {
+  id: ID!
+  partnerId: ID!
+  establishmentId: ID!
+  
+  # Core information
+  title: String!
+  description: String!
+  shortDescription: String!
+  category: Category!
+  tags: [String!]!
+  
+  # Discount
+  discount: Discount!
+  
+  # Conditions
+  conditions: [Condition!]!
+  termsAndConditions: String
+  
+  # Validity & Schedule
+  validity: Validity!
+  schedule: Schedule!
+  
+  # Quota
+  quota: Quota
+  
+  # Media
+  images: [OfferImage!]!
+  
+  # Denormalized data (for performance)
+  partner: PartnerSnapshot!
+  establishment: EstablishmentSnapshot!
+  
+  # Statistics
+  stats: OfferStats!
+  
+  # Status & Moderation
+  status: OfferStatus!
+  moderation: Moderation!
+  
+  # Computed fields
+  isActive: Boolean!
+  isAvailableNow: Boolean!
+  remainingQuota: Int
+  
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  publishedAt: DateTime
+}
+
+# Category organizes offers into a hierarchy
+type Category @key(fields: "id") {
+  id: ID!
+  slug: String!
+  name: LocalizedString!
+  description: LocalizedString
+  icon: String
+  color: String
+  image: String
+  parentId: ID
+  parent: Category
+  children: [Category!]!
+  order: Int!
+  isActive: Boolean!
+  
+  # Computed
+  offerCount: Int!
+  
+  # Timestamps
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# External entities (defined in other services)
+type Partner @key(fields: "id", resolvable: false) @extends {
+  id: ID! @external
+}
+
+type Establishment @key(fields: "id", resolvable: false) @extends {
+  id: ID! @external
+}
+
+# =============================================================================
+# Value Objects
+# =============================================================================
+
+type Discount {
+  type: DiscountType!
+  value: Int!
+  originalPrice: Money
+  discountedPrice: Money
+  formula: String
+}
+
+type Money {
+  amount: Int!
+  currency: String!
+}
+
+type Condition {
+  type: ConditionType!
+  value: String!
+  label: String!
+}
+
+type Validity {
+  startDate: DateTime!
+  endDate: DateTime!
+  timezone: String!
+}
+
+type Schedule {
+  allDay: Boolean!
+  slots: [TimeSlot!]!
+}
+
+type TimeSlot {
+  dayOfWeek: Int!
+  startTime: String!
+  endTime: String!
+}
+
+type Quota {
+  total: Int
+  perUser: Int
+  perDay: Int
+  used: Int!
+  remaining: Int
+}
+
+type OfferImage {
+  url: String!
+  alt: String
+  isPrimary: Boolean!
+  order: Int!
+}
+
+type PartnerSnapshot {
+  id: ID!
+  name: String!
+  logo: String
+  category: String!
+}
+
+type EstablishmentSnapshot {
+  id: ID!
+  name: String!
+  address: String!
+  city: String!
+  location: GeoLocation!
+}
+
+type GeoLocation {
+  latitude: Float!
+  longitude: Float!
+}
+
+type OfferStats {
+  views: Int!
+  clicks: Int!
+  bookings: Int!
+  checkins: Int!
+  favorites: Int!
+  avgRating: Float!
+  reviewCount: Int!
+}
+
+type Moderation {
+  status: ModerationStatus!
+  reviewedBy: ID
+  reviewedAt: DateTime
+  comment: String
+}
+
+type LocalizedString {
+  fr: String!
+  en: String
+}
+
+type CategoryTree {
+  category: Category!
+  children: [CategoryTree!]!
+}
+
+type CategorySummary {
+  id: ID!
+  name: LocalizedString!
+  slug: String!
+  icon: String
+  offerCount: Int!
+}
+
+# =============================================================================
+# Enums
+# =============================================================================
+
+enum OfferStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  PAUSED
+  EXPIRED
+  ARCHIVED
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+  FORMULA
+}
+
+enum ConditionType {
+  MIN_PURCHASE
+  MIN_PEOPLE
+  FIRST_VISIT
+  SPECIFIC_DAYS
+  SPECIFIC_HOURS
+  OTHER
+}
+
+enum OfferSortBy {
+  RELEVANCE
+  NEWEST
+  POPULARITY
+  RATING
+  DISTANCE
+  DISCOUNT
+}
+
+# =============================================================================
+# Input Types
+# =============================================================================
+
+input CreateOfferInput {
+  partnerId: ID!
+  establishmentId: ID!
+  title: String!
+  description: String!
+  shortDescription: String
+  categoryId: ID!
+  tags: [String!]
+  discount: DiscountInput!
+  conditions: [ConditionInput!]
+  termsAndConditions: String
+  validity: ValidityInput!
+  schedule: ScheduleInput
+  quota: QuotaInput
+  images: [OfferImageInput!]
+}
+
+input UpdateOfferInput {
+  title: String
+  description: String
+  shortDescription: String
+  categoryId: ID
+  tags: [String!]
+  discount: DiscountInput
+  conditions: [ConditionInput!]
+  termsAndConditions: String
+  validity: ValidityInput
+  schedule: ScheduleInput
+  quota: QuotaInput
+  images: [OfferImageInput!]
+}
+
+input DiscountInput {
+  type: DiscountType!
+  value: Int!
+  originalPriceAmount: Int
+  originalPriceCurrency: String
+  formula: String
+}
+
+input ConditionInput {
+  type: ConditionType!
+  value: String!
+  label: String!
+}
+
+input ValidityInput {
+  startDate: DateTime!
+  endDate: DateTime!
+  timezone: String
+}
+
+input ScheduleInput {
+  allDay: Boolean!
+  slots: [TimeSlotInput!]
+}
+
+input TimeSlotInput {
+  dayOfWeek: Int!
+  startTime: String!
+  endTime: String!
+}
+
+input QuotaInput {
+  total: Int
+  perUser: Int
+  perDay: Int
+}
+
+input OfferImageInput {
+  url: String!
+  alt: String
+  isPrimary: Boolean
+  order: Int
+}
+
+input OfferFilterInput {
+  # Location
+  latitude: Float
+  longitude: Float
+  radiusKm: Float
+  
+  # Filters
+  partnerId: ID
+  establishmentId: ID
+  categoryId: ID
+  status: OfferStatus
+  tags: [String!]
+  
+  # Search
+  query: String
+  
+  # Availability
+  onlyActive: Boolean
+  onlyAvailableNow: Boolean
+  
+  # Rating
+  minRating: Float
+  
+  # Discount type
+  discountType: DiscountType
+  
+  # Sorting & Pagination
+  sortBy: OfferSortBy
+  offset: Int
+  limit: Int
+}
+
+input CreateCategoryInput {
+  slug: String!
+  nameFr: String!
+  nameEn: String
+  descriptionFr: String
+  descriptionEn: String
+  icon: String
+  color: String
+  image: String
+  parentId: ID
+  order: Int
+}
+
+input UpdateCategoryInput {
+  slug: String
+  nameFr: String
+  nameEn: String
+  descriptionFr: String
+  descriptionEn: String
+  icon: String
+  color: String
+  image: String
+  parentId: ID
+  order: Int
+  isActive: Boolean
+}
+
+input ReorderCategoriesInput {
+  categoryIds: [ID!]!
+}
+
+# =============================================================================
+# Response Types
+# =============================================================================
+
+type OfferListResult {
+  offers: [Offer!]!
+  total: Int!
+  hasMore: Boolean!
+}
+
+type OfferSearchResult {
+  offers: [OfferSummary!]!
+  total: Int!
+  hasMore: Boolean!
+}
+
+type OfferSummary {
+  id: ID!
+  partnerId: ID!
+  establishmentId: ID!
+  title: String!
+  shortDescription: String!
+  categoryId: ID!
+  discountType: DiscountType!
+  discountValue: Int!
+  status: OfferStatus!
+  partnerName: String!
+  establishmentName: String!
+  establishmentCity: String!
+  location: GeoLocation!
+  views: Int!
+  avgRating: Float!
+  reviewCount: Int!
+  publishedAt: DateTime
+  distance: Float
+}
+
+type AutocompleteResult {
+  suggestions: [String!]!
+}
+
+type TrendingOffer {
+  offer: Offer!
+  score: Float!
+  reason: String!
+}
+
+# =============================================================================
+# Queries
+# =============================================================================
+
+type Query {
+  # Offer queries
+  offer(id: ID!): Offer
+  offers(filter: OfferFilterInput): OfferListResult!
+  searchOffers(query: String!, filter: OfferFilterInput): OfferSearchResult!
+  offersByPartner(partnerId: ID!, offset: Int, limit: Int): OfferListResult!
+  offersByEstablishment(establishmentId: ID!, offset: Int, limit: Int): OfferListResult!
+  offersByCategory(categoryId: ID!, offset: Int, limit: Int): OfferListResult!
+  nearbyOffers(latitude: Float!, longitude: Float!, radiusKm: Float!, filter: OfferFilterInput): OfferSearchResult!
+  trendingOffers(limit: Int): [TrendingOffer!]!
+  recommendedOffers(userId: ID!, limit: Int): [Offer!]!
+  autocomplete(query: String!, limit: Int): AutocompleteResult!
+  
+  # Category queries
+  category(id: ID!): Category
+  categoryBySlug(slug: String!): Category
+  categories(activeOnly: Boolean): [Category!]!
+  categoryTree(activeOnly: Boolean): [CategoryTree!]!
+  categorySummaries: [CategorySummary!]!
+  rootCategories(activeOnly: Boolean): [Category!]!
+}
+
+# =============================================================================
+# Mutations
+# =============================================================================
+
+type Mutation {
+  # Offer mutations
+  createOffer(input: CreateOfferInput!): Offer!
+  updateOffer(id: ID!, input: UpdateOfferInput!): Offer!
+  publishOffer(id: ID!): Offer!
+  pauseOffer(id: ID!): Offer!
+  resumeOffer(id: ID!): Offer!
+  archiveOffer(id: ID!): Offer!
+  deleteOffer(id: ID!): Boolean!
+  extendOffer(id: ID!, newEndDate: DateTime!): Offer!
+  
+  # Offer moderation (admin only)
+  approveOffer(id: ID!): Offer!
+  rejectOffer(id: ID!, reason: String!): Offer!
+  
+  # Category mutations (admin only)
+  createCategory(input: CreateCategoryInput!): Category!
+  updateCategory(id: ID!, input: UpdateCategoryInput!): Category!
+  deleteCategory(id: ID!): Boolean!
+  reorderCategories(input: ReorderCategoriesInput!): [Category!]!
+  activateCategory(id: ID!): Category!
+  deactivateCategory(id: ID!): Category!
+}
+
+# =============================================================================
+# Subscriptions (Real-time)
+# =============================================================================
+
+type Subscription {
+  # New offer published (for feed updates)
+  offerPublished(categoryIds: [ID!], latitude: Float, longitude: Float, radiusKm: Float): Offer!
+  
+  # Offer updated (for detail page)
+  offerUpdated(id: ID!): Offer!
+  
+  # Offer expiring soon (user notification)
+  offerExpiringSoon(userId: ID!): Offer!
+}
