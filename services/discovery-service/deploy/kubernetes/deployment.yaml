@@ -1,0 +1,218 @@
+# Discovery Service Kubernetes Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery-service
+  namespace: yousoon
+  labels:
+    app: discovery-service
+    version: v1
+    graphql.federation/subgraph: "true"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: discovery-service
+  template:
+    metadata:
+      labels:
+        app: discovery-service
+        version: v1
+        graphql.federation/subgraph: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: discovery-service
+      containers:
+        - name: discovery-service
+          image: yousoon/discovery-service:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: grpc
+              containerPort: 9090
+              protocol: TCP
+            - name: metrics
+              containerPort: 9100
+              protocol: TCP
+          env:
+            - name: SERVICE_NAME
+              value: "discovery-service"
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: yousoon-config
+                  key: environment
+            - name: HTTP_PORT
+              value: "8080"
+            - name: GRPC_PORT
+              value: "9090"
+            - name: METRICS_PORT
+              value: "9100"
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-secret
+                  key: uri
+            - name: MONGO_DB
+              value: "discovery_db"
+            - name: ELASTICSEARCH_URLS
+              valueFrom:
+                configMapKeyRef:
+                  name: yousoon-config
+                  key: elasticsearch_urls
+            - name: ELASTICSEARCH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: username
+                  optional: true
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secret
+                  key: password
+                  optional: true
+            - name: REDIS_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: yousoon-config
+                  key: redis_addr
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: password
+                  optional: true
+            - name: NATS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: yousoon-config
+                  key: nats_url
+            - name: PARTNER_SERVICE_ADDR
+              value: "partner-service:9090"
+            - name: SCHEMA_REGISTRY_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: yousoon-config
+                  key: schema_registry_url
+            - name: JAEGER_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: yousoon-config
+                  key: jaeger_endpoint
+            - name: LOG_LEVEL
+              value: "info"
+            - name: LOG_FORMAT
+              value: "json"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - discovery-service
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discovery-service
+  namespace: yousoon
+  labels:
+    app: discovery-service
+    graphql.federation/subgraph: "true"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app: discovery-service
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: discovery-service
+  namespace: yousoon
+  labels:
+    app: discovery-service
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: discovery-service
+  namespace: yousoon
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: discovery-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: discovery-service
+  namespace: yousoon
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: discovery-service

@@ -1,15 +1,24 @@
-module github.com/yousoon/services/discovery
+module github.com/yousoon/discovery-service
 
 go 1.21
 
 require (
 	github.com/99designs/gqlgen v0.17.42
+	github.com/elastic/go-elasticsearch/v8 v8.11.1
+	github.com/go-chi/chi/v5 v5.0.11
 	github.com/google/uuid v1.5.0
 	github.com/gorilla/websocket v1.5.1
+	github.com/nats-io/nats.go v1.31.0
 	github.com/prometheus/client_golang v1.18.0
+	github.com/redis/go-redis/v9 v9.3.1
 	github.com/vektah/gqlparser/v2 v2.5.10
-	github.com/yousoon/services/shared v0.0.0
+	github.com/yousoon/shared v0.0.0
 	go.mongodb.org/mongo-driver v1.13.1
+	go.opentelemetry.io/otel v1.21.0
+	go.opentelemetry.io/otel/exporters/jaeger v1.17.0
+	go.opentelemetry.io/otel/sdk v1.21.0
+	go.opentelemetry.io/otel/trace v1.21.0
+	go.uber.org/zap v1.26.0
 )
 
 require (
@@ -34,6 +43,7 @@ require (
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
@@ -45,4 +55,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/yousoon/services/shared => ../shared
+replace github.com/yousoon/shared => ../shared

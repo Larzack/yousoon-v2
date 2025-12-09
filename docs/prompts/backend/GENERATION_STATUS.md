@@ -11,8 +11,8 @@
 |---------|--------|--------|-------------|----------------|---------|-------|
 | **Shared** | ✅ Complet | ✅ | N/A | ✅ | N/A | ⏳ |
 | **Identity** | ✅ Complet | ✅ | ✅ | ✅ | ✅ Schema | ⏳ |
-| **Partner** | ⏳ En cours | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ |
-| **Discovery** | 🔲 À faire | 🔲 | 🔲 | 🔲 | 🔲 | 🔲 |
+| **Partner** | ✅ Complet | ✅ | ✅ | ✅ | ✅ | ⏳ |
+| **Discovery** | ✅ Complet | ✅ | ✅ | ✅ | ✅ | ⏳ |
 | **Booking** | 🔲 À faire | 🔲 | 🔲 | 🔲 | 🔲 | 🔲 |
 | **Engagement** | 🔲 À faire | 🔲 | 🔲 | 🔲 | 🔲 | 🔲 |
 | **Notification** | 🔲 À faire | 🔲 | 🔲 | 🔲 | 🔲 | 🔲 |
@@ -98,30 +98,74 @@ identity-service/
                 └── resolver.go      ✅
 ```
 
-### ⏳ Partner Service (`services/partner-service/`)
+### ✅ Partner Service (`services/partner-service/`)
 
 ```
 partner-service/
-├── go.mod                           🔲
-├── gqlgen.yml                       🔲
-├── Dockerfile                       🔲
-├── cmd/main.go                      🔲
+├── go.mod                           ✅
+├── gqlgen.yml                       ✅
+├── Dockerfile                       ✅
+├── deploy/kubernetes/
+│   └── deployment.yaml              ✅
+├── cmd/main.go                      ✅
 └── internal/
+    ├── config/config.go             ✅
     ├── domain/
-    │   ├── partner.go               🔲 Aggregate Root Partner
-    │   ├── establishment.go         🔲 Entity Establishment
-    │   ├── team_member.go           🔲 Entity TeamMember
-    │   ├── value_objects.go         🔲
-    │   ├── events.go                🔲
-    │   └── repository.go            🔲
-    ├── application/                 🔲
-    ├── infrastructure/              🔲
-    └── interface/graphql/           🔲
+    │   ├── partner.go               ✅ Aggregate Root Partner
+    │   ├── establishment.go         ✅ Entity Establishment
+    │   ├── team_member.go           ✅ Entity TeamMember
+    │   ├── events.go                ✅
+    │   ├── errors.go                ✅
+    │   └── repository.go            ✅
+    ├── application/
+    │   ├── commands/
+    │   │   └── register_partner.go  ✅
+    │   └── queries/                 ✅
+    ├── infrastructure/
+    │   └── mongodb/
+    │       └── partner_repository.go ✅
+    └── interface/graphql/
+        ├── schema.graphqls          ✅
+        └── resolver/
+            └── resolver.go          ✅
 ```
 
-### 🔲 Discovery Service (`services/discovery-service/`)
+### ✅ Discovery Service (`services/discovery-service/`)
 
-À générer...
+```
+discovery-service/
+├── go.mod                           ✅
+├── gqlgen.yml                       ✅
+├── Dockerfile                       ✅
+├── deploy/kubernetes/
+│   └── deployment.yaml              ✅
+├── cmd/main.go                      ✅
+└── internal/
+    ├── config/config.go             ✅
+    ├── domain/
+    │   ├── offer.go                 ✅ Aggregate Root Offer
+    │   ├── category.go              ✅ Aggregate Root Category
+    │   ├── value_objects.go         ✅
+    │   ├── events.go                ✅
+    │   ├── errors.go                ✅
+    │   └── repository.go            ✅
+    ├── application/
+    │   ├── commands/
+    │   │   └── create_offer.go      ✅
+    │   └── queries/
+    │       └── offers.go            ✅
+    ├── infrastructure/
+    │   ├── mongodb/
+    │   │   ├── offer_repository.go  ✅
+    │   │   └── category_repository.go ✅
+    │   └── elasticsearch/
+    │       └── offer_search.go      ✅
+    └── interface/graphql/
+        ├── schema.graphqls          ✅
+        ├── model/models.go          ✅
+        └── resolver/
+            └── resolver.go          ✅
+```
 
 ### 🔲 Booking Service (`services/booking-service/`)
 
@@ -155,14 +199,15 @@ go test ./...
 
 ## 📋 Prochaines Étapes
 
-1. [⏳] **Partner Service** - Génération en cours
-2. [ ] **Discovery Service** - Offres et recherche
-3. [ ] **Booking Service** - Réservations et check-in
-4. [ ] **Engagement Service** - Favoris et avis
-5. [ ] **Notification Service** - Push, email, SMS
-6. [ ] **Apollo Router** - Fédération GraphQL
-7. [ ] **Tests unitaires** - Pour chaque service
-8. [ ] **CI/CD** - GitHub Actions
+1. [✅] **Identity Service** - Authentification et profils
+2. [✅] **Partner Service** - Partenaires et établissements
+3. [✅] **Discovery Service** - Offres et recherche
+4. [ ] **Booking Service** - Réservations et check-in
+5. [ ] **Engagement Service** - Favoris et avis
+6. [ ] **Notification Service** - Push, email, SMS
+7. [ ] **Apollo Router** - Fédération GraphQL
+8. [ ] **Tests unitaires** - Pour chaque service
+9. [ ] **CI/CD** - GitHub Actions
 
 ---
 
