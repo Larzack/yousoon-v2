@@ -56,9 +56,9 @@ const (
 // Discount represents a discount or reduction.
 type Discount struct {
 	Type          DiscountType `json:"type" bson:"type"`
-	Value         int          `json:"value" bson:"value"`                     // Percentage (0-100) or cents
-	OriginalPrice *int64       `json:"originalPrice" bson:"original_price"`    // Original price in cents
-	Formula       string       `json:"formula" bson:"formula"`                 // E.g., "1 acheté = 1 offert"
+	Value         int          `json:"value" bson:"value"`                  // Percentage (0-100) or cents
+	OriginalPrice *int64       `json:"originalPrice" bson:"original_price"` // Original price in cents
+	Formula       string       `json:"formula" bson:"formula"`              // E.g., "1 acheté = 1 offert"
 }
 
 // NewPercentageDiscount creates a percentage discount.
@@ -243,8 +243,8 @@ func (v Validity) DaysRemaining() int {
 
 // Schedule represents when the offer is available.
 type Schedule struct {
-	AllDay bool         `json:"allDay" bson:"all_day"`
-	Slots  []TimeSlot   `json:"slots" bson:"slots"`
+	AllDay bool       `json:"allDay" bson:"all_day"`
+	Slots  []TimeSlot `json:"slots" bson:"slots"`
 }
 
 // TimeSlot represents a time slot when the offer is available.
@@ -329,10 +329,10 @@ func (s Schedule) GetSlotsForDay(dayOfWeek int) []TimeSlot {
 
 // Quota represents usage limits for an offer.
 type Quota struct {
-	Total   *int `json:"total" bson:"total"`       // Total limit (nil = unlimited)
-	PerUser *int `json:"perUser" bson:"per_user"`  // Limit per user (nil = unlimited)
-	PerDay  *int `json:"perDay" bson:"per_day"`    // Limit per day (nil = unlimited)
-	Used    int  `json:"used" bson:"used"`         // Current usage count
+	Total   *int `json:"total" bson:"total"`      // Total limit (nil = unlimited)
+	PerUser *int `json:"perUser" bson:"per_user"` // Limit per user (nil = unlimited)
+	PerDay  *int `json:"perDay" bson:"per_day"`   // Limit per day (nil = unlimited)
+	Used    int  `json:"used" bson:"used"`        // Current usage count
 }
 
 // NewUnlimitedQuota creates an unlimited quota.
@@ -498,17 +498,17 @@ type OfferSnapshot struct {
 
 // OfferSummary represents a summary of an offer for lists.
 type OfferSummary struct {
-	ID               OfferID     `json:"id" bson:"_id"`
-	Title            string      `json:"title" bson:"title"`
-	ShortDescription string      `json:"shortDescription" bson:"short_description"`
-	Discount         Discount    `json:"discount" bson:"discount"`
-	PrimaryImage     string      `json:"primaryImage" bson:"primary_image"`
-	PartnerName      string      `json:"partnerName" bson:"partner_name"`
-	EstablishmentName string     `json:"establishmentName" bson:"establishment_name"`
-	City             string      `json:"city" bson:"city"`
-	Location         GeoLocation `json:"location" bson:"location"`
-	CategoryID       CategoryID  `json:"categoryId" bson:"category_id"`
-	Distance         *float64    `json:"distance,omitempty" bson:"distance,omitempty"` // km from user
+	ID                OfferID     `json:"id" bson:"_id"`
+	Title             string      `json:"title" bson:"title"`
+	ShortDescription  string      `json:"shortDescription" bson:"short_description"`
+	Discount          Discount    `json:"discount" bson:"discount"`
+	PrimaryImage      string      `json:"primaryImage" bson:"primary_image"`
+	PartnerName       string      `json:"partnerName" bson:"partner_name"`
+	EstablishmentName string      `json:"establishmentName" bson:"establishment_name"`
+	City              string      `json:"city" bson:"city"`
+	Location          GeoLocation `json:"location" bson:"location"`
+	CategoryID        CategoryID  `json:"categoryId" bson:"category_id"`
+	Distance          *float64    `json:"distance,omitempty" bson:"distance,omitempty"` // km from user
 }
 
 // CategorySummary represents a summary of a category.
