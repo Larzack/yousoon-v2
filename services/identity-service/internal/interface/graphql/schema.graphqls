@@ -1,0 +1,369 @@
+# Identity Service GraphQL Schema (Subgraph)
+# Apollo Federation 2.0
+
+extend schema
+  @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key", "@shareable", "@external", "@requires", "@provides"])
+
+# =============================================================================
+# User Type (Federation Entity)
+# =============================================================================
+
+"""
+User represents a registered user in the Yousoon platform.
+This is a federation entity that can be extended by other subgraphs.
+"""
+type User @key(fields: "id") {
+  id: ID!
+  email: String!
+  phone: String
+  profile: Profile!
+  preferences: Preferences!
+  identity: IdentityVerification
+  status: UserStatus!
+  grade: UserGrade!
+  emailVerified: Boolean!
+  phoneVerified: Boolean!
+  identityVerified: Boolean!
+  hasActiveSubscription: Boolean!
+  createdAt: DateTime!
+  lastLoginAt: DateTime
+}
+
+"""
+Profile contains user profile information.
+"""
+type Profile {
+  firstName: String!
+  lastName: String!
+  displayName: String!
+  avatar: String
+  birthDate: DateTime
+  gender: Gender
+}
+
+"""
+Preferences contains user preferences.
+"""
+type Preferences {
+  language: String!
+  notifications: NotificationSettings!
+  maxDistance: Int!
+}
+
+"""
+NotificationSettings contains notification preferences.
+"""
+type NotificationSettings {
+  push: Boolean!
+  email: Boolean!
+  sms: Boolean!
+  marketing: Boolean!
+}
+
+"""
+IdentityVerification represents the identity verification state.
+"""
+type IdentityVerification {
+  id: ID!
+  status: VerificationStatus!
+  documentType: DocumentType!
+  method: VerificationMethod!
+  attemptCount: Int!
+  submittedAt: DateTime!
+  verifiedAt: DateTime
+  rejectedAt: DateTime
+  rejectionReason: String
+}
+
+# =============================================================================
+# Enums
+# =============================================================================
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum UserGrade {
+  EXPLORATEUR
+  AVENTURIER
+  GRAND_VOYAGEUR
+  CONQUERANT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum VerificationStatus {
+  NOT_SUBMITTED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum DocumentType {
+  CNI
+  PASSPORT
+  DRIVING_LICENSE
+}
+
+enum VerificationMethod {
+  INTERNAL_OCR
+  EXTERNAL
+}
+
+enum Platform {
+  IOS
+  ANDROID
+  WEB
+}
+
+# =============================================================================
+# Auth Types
+# =============================================================================
+
+"""
+Authentication tokens returned after login.
+"""
+type AuthPayload {
+  accessToken: String!
+  refreshToken: String!
+  expiresIn: Int!
+  user: User!
+}
+
+"""
+Registration result.
+"""
+type RegisterPayload {
+  user: User!
+  accessToken: String!
+  refreshToken: String!
+}
+
+# =============================================================================
+# Queries
+# =============================================================================
+
+type Query {
+  """
+  Get the currently authenticated user.
+  """
+  me: User
+
+  """
+  Get a user by ID (admin only).
+  """
+  user(id: ID!): User
+
+  """
+  Check if an email is available for registration.
+  """
+  emailAvailable(email: String!): Boolean!
+}
+
+# =============================================================================
+# Mutations
+# =============================================================================
+
+type Mutation {
+  # Auth
+  """
+  Register a new user.
+  """
+  register(input: RegisterInput!): RegisterPayload!
+
+  """
+  Login with email and password.
+  """
+  login(input: LoginInput!): AuthPayload!
+
+  """
+  Logout the current user.
+  """
+  logout: Boolean!
+
+  """
+  Refresh the access token.
+  """
+  refreshToken(refreshToken: String!): AuthPayload!
+
+  # Profile
+  """
+  Update the current user's profile.
+  """
+  updateProfile(input: UpdateProfileInput!): User!
+
+  """
+  Update the current user's preferences.
+  """
+  updatePreferences(input: UpdatePreferencesInput!): User!
+
+  """
+  Update the current user's location.
+  """
+  updateLocation(input: LocationInput!): User!
+
+  # Password
+  """
+  Request a password reset.
+  """
+  requestPasswordReset(email: String!): Boolean!
+
+  """
+  Reset password with token.
+  """
+  resetPassword(input: ResetPasswordInput!): Boolean!
+
+  """
+  Change password (authenticated).
+  """
+  changePassword(input: ChangePasswordInput!): Boolean!
+
+  # Email/Phone Verification
+  """
+  Verify email with token.
+  """
+  verifyEmail(token: String!): User!
+
+  """
+  Request email verification.
+  """
+  requestEmailVerification: Boolean!
+
+  """
+  Verify phone with OTP.
+  """
+  verifyPhone(otp: String!): User!
+
+  """
+  Request phone verification OTP.
+  """
+  requestPhoneVerification(phone: String!): Boolean!
+
+  # Identity Verification
+  """
+  Submit identity verification.
+  """
+  submitIdentityVerification(input: IdentityVerificationInput!): IdentityVerification!
+
+  # Social Auth
+  """
+  Login or register with social provider.
+  """
+  socialAuth(input: SocialAuthInput!): AuthPayload!
+
+  """
+  Link a social account.
+  """
+  linkSocialAccount(input: SocialAuthInput!): User!
+
+  """
+  Unlink a social account.
+  """
+  unlinkSocialAccount(provider: SocialProvider!): User!
+
+  # FCM Tokens
+  """
+  Register FCM token for push notifications.
+  """
+  registerFCMToken(token: String!, platform: Platform!): Boolean!
+
+  """
+  Unregister FCM token.
+  """
+  unregisterFCMToken(token: String!): Boolean!
+
+  # Account
+  """
+  Delete account (RGPD).
+  """
+  deleteAccount(reason: String): Boolean!
+
+  """
+  Cancel account deletion (during grace period).
+  """
+  cancelAccountDeletion: User!
+}
+
+# =============================================================================
+# Inputs
+# =============================================================================
+
+input RegisterInput {
+  email: String!
+  password: String!
+  firstName: String!
+  lastName: String!
+  platform: Platform!
+}
+
+input LoginInput {
+  email: String!
+  password: String!
+  platform: Platform
+}
+
+input UpdateProfileInput {
+  firstName: String
+  lastName: String
+  displayName: String
+  avatar: String
+  birthDate: DateTime
+  gender: Gender
+}
+
+input UpdatePreferencesInput {
+  language: String
+  notifications: NotificationSettingsInput
+  maxDistance: Int
+}
+
+input NotificationSettingsInput {
+  push: Boolean
+  email: Boolean
+  sms: Boolean
+  marketing: Boolean
+}
+
+input LocationInput {
+  longitude: Float!
+  latitude: Float!
+}
+
+input ResetPasswordInput {
+  token: String!
+  newPassword: String!
+}
+
+input ChangePasswordInput {
+  oldPassword: String!
+  newPassword: String!
+}
+
+input IdentityVerificationInput {
+  documentType: DocumentType!
+  method: VerificationMethod
+}
+
+input SocialAuthInput {
+  provider: SocialProvider!
+  token: String!
+  platform: Platform
+}
+
+enum SocialProvider {
+  GOOGLE
+  APPLE
+  FACEBOOK
+}
+
+# =============================================================================
+# Scalars
+# =============================================================================
+
+scalar DateTime
