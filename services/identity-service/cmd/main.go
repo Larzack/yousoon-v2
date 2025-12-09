@@ -2,18 +2,12 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/extension"
-	"github.com/99designs/gqlgen/graphql/handler/lru"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/gorilla/websocket"
 
 	mongodb "github.com/yousoon/services/identity/internal/infrastructure/mongodb"
 	"github.com/yousoon/services/identity/internal/interface/graphql/resolver"
@@ -28,16 +22,21 @@ const (
 )
 
 func main() {
-	// Initialize logger
-	logger := observability.NewLogger(serviceName, os.Getenv("LOG_LEVEL"))
-	logger.Info("Starting identity service...")
+	// Initialize structured logger
+	logLevel := slog.LevelInfo
+	if os.Getenv("LOG_LEVEL") == "debug" {
+		logLevel = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	slog.SetDefault(logger)
+
+	slog.Info("Starting identity service...")
 
 	// Get configuration from environment
 	port := config.GetEnv("PORT", defaultPort)
 	mongoURI := config.GetEnv("MONGODB_URI", "mongodb://localhost:27017")
 	mongoDatabase := config.GetEnv("MONGODB_DATABASE", "identity_db")
 	natsURL := config.GetEnv("NATS_URL", "nats://localhost:4222")
-	enablePlayground := config.GetEnvBool("ENABLE_PLAYGROUND", true)
 
 	// Initialize MongoDB client
 	mongoClient, err := sharedmongo.NewClient(context.Background(), sharedmongo.Config{
@@ -47,60 +46,53 @@ func main() {
 		MaxPoolSize:    100,
 	})
 	if err != nil {
-		logger.Error("Failed to connect to MongoDB", "error", err)
+		slog.Error("Failed to connect to MongoDB", "error", err)
 		os.Exit(1)
 	}
-	defer mongoClient.Disconnect(context.Background())
+	defer mongoClient.Close(context.Background())
 
-	logger.Info("Connected to MongoDB", "database", mongoDatabase)
+	slog.Info("Connected to MongoDB", "database", mongoDatabase)
 
 	// Initialize NATS client
-	natsClient, err := nats.NewClient(nats.Config{
-		URL:       natsURL,
-		Name:      serviceName,
-		Reconnect: true,
+	natsClient, err := nats.NewClient(context.Background(), nats.Config{
+		URL:  natsURL,
+		Name: serviceName,
 	})
 	if err != nil {
-		logger.Error("Failed to connect to NATS", "error", err)
+		slog.Error("Failed to connect to NATS", "error", err)
 		os.Exit(1)
 	}
 	defer natsClient.Close()
 
-	logger.Info("Connected to NATS")
+	slog.Info("Connected to NATS")
 
 	// Initialize event publisher
-	eventPublisher, err := nats.NewEventPublisher(natsClient, "identity")
-	if err != nil {
-		logger.Error("Failed to create event publisher", "error", err)
-		os.Exit(1)
-	}
+	eventPublisher := nats.NewEventPublisher(natsClient)
 
 	// Initialize repositories
 	userRepo := mongodb.NewUserRepository(mongoClient.Database())
 
 	// Ensure indexes
 	if err := userRepo.EnsureIndexes(context.Background()); err != nil {
-		logger.Warn("Failed to ensure indexes", "error", err)
+		slog.Warn("Failed to ensure indexes", "error", err)
 	}
 
 	// Initialize GraphQL resolver
 	graphqlResolver := resolver.NewResolver(userRepo, eventPublisher)
-
-	// Note: In a real setup, you would generate the schema first using:
-	// go run github.com/99designs/gqlgen generate
-	// For now, we'll create a placeholder server
 
 	// Create HTTP server
 	mux := http.NewServeMux()
 
 	// Health check endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy"}`))
 	})
 
 	// Ready check endpoint
 	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		// Check MongoDB connection
 		if err := mongoClient.Ping(r.Context()); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -112,18 +104,36 @@ func main() {
 	})
 
 	// GraphQL endpoint placeholder
-	// After running gqlgen generate, replace this with:
-	// srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver}))
+	// After running gqlgen generate, this will be replaced with the actual handler
 	mux.HandleFunc("/query", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"message":"GraphQL endpoint - run 'go generate ./...' to generate schema"}`))
+		w.Write([]byte(`{"message":"GraphQL endpoint ready. Run 'go generate ./...' to generate schema."}`))
 	})
 
-	// Playground endpoint (development only)
-	if enablePlayground {
-		mux.Handle("/", playground.Handler("Identity Service", "/query"))
-		logger.Info("GraphQL Playground enabled at /")
-	}
+	// GraphQL Playground (development only)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Identity Service - GraphQL Playground</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/css/index.css" />
+    <script src="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/js/middleware.js"></script>
+</head>
+<body>
+    <div id="root">
+        <style>
+            body { margin: 0; }
+        </style>
+        <script>
+            window.addEventListener('load', function (event) {
+                GraphQLPlayground.init(document.getElementById('root'), { endpoint: '/query' })
+            })
+        </script>
+    </div>
+</body>
+</html>`))
+	})
 
 	// Create HTTP server with timeouts
 	server := &http.Server{
@@ -136,9 +146,9 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		logger.Info("Server starting", "port", port)
+		slog.Info("Server starting", "port", port, "playground", "/")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("Server failed", "error", err)
+			slog.Error("Server failed", "error", err)
 			os.Exit(1)
 		}
 	}()
@@ -148,24 +158,19 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info("Shutting down server...")
+	slog.Info("Shutting down server...")
 
 	// Graceful shutdown with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		logger.Error("Server shutdown failed", "error", err)
+		slog.Error("Server shutdown failed", "error", err)
 		os.Exit(1)
 	}
 
-	logger.Info("Server stopped")
+	slog.Info("Server stopped")
 
-	// Suppress unused variable warnings
+	// Suppress unused variable warning
 	_ = graphqlResolver
-	_ = handler.New(nil)
-	_ = extension.Introspection{}
-	_ = lru.New(0)
-	_ = transport.Options{}
-	_ = websocket.Upgrader{}
 }
