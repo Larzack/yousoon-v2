@@ -195,8 +195,8 @@ func DefaultClientConfig(address string) ClientConfig {
 func NewClientConn(ctx context.Context, cfg ClientConfig, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	defaultOpts := []grpc.DialOption{
 		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(4 * 1024 * 1024),
-			grpc.MaxCallSendMsgSize(4 * 1024 * 1024),
+			grpc.MaxCallRecvMsgSize(4*1024*1024),
+			grpc.MaxCallSendMsgSize(4*1024*1024),
 		),
 	}
 

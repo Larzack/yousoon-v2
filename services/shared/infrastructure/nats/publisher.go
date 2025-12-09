@@ -26,7 +26,7 @@ func NewEventPublisher(client *Client) *EventPublisher {
 // Publish publishes a single domain event.
 func (p *EventPublisher) Publish(ctx context.Context, event domain.DomainEvent) error {
 	subject := p.buildSubject(event)
-	
+
 	envelope := EventEnvelope{
 		EventID:     event.EventID(),
 		EventType:   event.EventName(),
@@ -65,7 +65,7 @@ func (p *EventPublisher) PublishAll(ctx context.Context, events []domain.DomainE
 // PublishAsync publishes an event asynchronously.
 func (p *EventPublisher) PublishAsync(event domain.DomainEvent) (nats.PubAckFuture, error) {
 	subject := p.buildSubject(event)
-	
+
 	envelope := EventEnvelope{
 		EventID:     event.EventID(),
 		EventType:   event.EventName(),
@@ -89,11 +89,11 @@ func (p *EventPublisher) buildSubject(event domain.DomainEvent) string {
 
 // EventEnvelope wraps a domain event for transport.
 type EventEnvelope struct {
-	EventID     string              `json:"event_id"`
-	EventType   string              `json:"event_type"`
-	AggregateID string              `json:"aggregate_id"`
-	OccurredAt  time.Time           `json:"occurred_at"`
-	Payload     domain.DomainEvent  `json:"payload"`
+	EventID     string             `json:"event_id"`
+	EventType   string             `json:"event_type"`
+	AggregateID string             `json:"aggregate_id"`
+	OccurredAt  time.Time          `json:"occurred_at"`
+	Payload     domain.DomainEvent `json:"payload"`
 }
 
 // PublishNotification publishes a notification message.
@@ -116,8 +116,8 @@ func (p *EventPublisher) PublishNotification(ctx context.Context, notif Notifica
 // NotificationMessage represents a notification to be sent.
 type NotificationMessage struct {
 	ID          string                 `json:"id"`
-	Type        string                 `json:"type"`        // booking_confirmed, offer_nearby, etc.
-	Channel     string                 `json:"channel"`     // push, email, sms
+	Type        string                 `json:"type"`    // booking_confirmed, offer_nearby, etc.
+	Channel     string                 `json:"channel"` // push, email, sms
 	RecipientID string                 `json:"recipient_id"`
 	Title       string                 `json:"title"`
 	Body        string                 `json:"body"`

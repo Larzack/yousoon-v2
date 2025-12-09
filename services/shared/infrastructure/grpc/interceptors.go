@@ -24,7 +24,7 @@ func LoggingInterceptor(logger Logger) grpc.UnaryServerInterceptor {
 
 		// Extract metadata
 		md, _ := metadata.FromIncomingContext(ctx)
-		
+
 		// Call handler
 		resp, err := handler(ctx, req)
 

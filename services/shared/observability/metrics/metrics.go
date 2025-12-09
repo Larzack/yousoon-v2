@@ -34,9 +34,9 @@ type Metrics struct {
 	EventsFailed    *prometheus.CounterVec
 
 	// Business metrics
-	UsersActive     prometheus.Gauge
-	BookingsTotal   prometheus.Counter
-	OffersActive    prometheus.Gauge
+	UsersActive   prometheus.Gauge
+	BookingsTotal prometheus.Counter
+	OffersActive  prometheus.Gauge
 }
 
 // NewMetrics creates a new metrics instance for a service.

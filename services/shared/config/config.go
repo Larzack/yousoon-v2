@@ -174,11 +174,11 @@ func NewNATSConfig(serviceName string) NATSConfig {
 
 // JWTConfig holds JWT configuration.
 type JWTConfig struct {
-	Secret           string
-	AccessTokenTTL   time.Duration
-	RefreshTokenTTL  time.Duration
-	Issuer           string
-	Audience         string
+	Secret          string
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
+	Issuer          string
+	Audience        string
 }
 
 // NewJWTConfig creates a JWT config from environment variables.

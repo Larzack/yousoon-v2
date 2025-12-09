@@ -243,7 +243,7 @@ func (wp *WorkerPool) Start(ctx context.Context, stream, consumer, subject strin
 		go func(workerID int) {
 			defer wp.wg.Done()
 			workerConsumer := fmt.Sprintf("%s-worker-%d", consumer, workerID)
-			
+
 			if err := wp.subscriber.SubscribeEvents(ctx, stream, workerConsumer, subject, handler); err != nil {
 				log.Printf("Worker %d failed to subscribe: %v", workerID, err)
 			}
