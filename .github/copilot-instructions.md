@@ -257,20 +257,21 @@ yousoon-client/
 │       │   └── PROMPT.md           # Specs Admin
 │       └── backend/
 │           └── ARCHITECTURE.md     # Architecture DDD détaillée
-├── apps/
-│   ├── mobile/                     # Flutter App
-│   ├── partner-portal/             # React Partner Site
-│   ├── vitrine/                    # Next.js Landing
-│   └── admin/                      # React Admin
-└── services/
-    ├── router/                     # Apollo Router (Federation Gateway)
-    ├── registry/                   # Schema Registry (Service Discovery)
-    ├── identity-service/           # Auth, Users, Subscriptions (Subgraph)
-    ├── partner-service/            # Partners, Establishments (Subgraph)
-    ├── discovery-service/          # Offers, Search (Subgraph)
-    ├── booking-service/            # Outings, Check-in (Subgraph)
-    ├── engagement-service/         # Favorites, Reviews (Subgraph)
-    └── notification-service/       # Push, Email, SMS (Subgraph)
+└── apps/
+    ├── mobile/                     # Flutter App
+    ├── partners/                   # React Partner Site (business.yousoon.com)
+    ├── siteweb/                    # Next.js Landing (www.yousoon.com)
+    ├── admin/                      # React Admin (accès interne)
+    └── services/                   # Backend Microservices
+        ├── router/                 # Apollo Router (Federation Gateway)
+        ├── registry/               # Schema Registry (Service Discovery)
+        ├── shared/                 # Shared Go modules
+        ├── identity-service/       # Auth, Users, Subscriptions (Subgraph)
+        ├── partner-service/        # Partners, Establishments (Subgraph)
+        ├── discovery-service/      # Offers, Search (Subgraph)
+        ├── booking-service/        # Outings, Check-in (Subgraph)
+        ├── engagement-service/     # Favorites, Reviews (Subgraph)
+        └── notification-service/   # Push, Email, SMS (Subgraph)
 ```
 
 ---
