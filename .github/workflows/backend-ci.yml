@@ -23,10 +23,10 @@ env:
 
 jobs:
   # ============================================
-  # LINT & TEST
+  # LINT
   # ============================================
-  lint-test:
-    name: Lint & Test
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -60,6 +60,36 @@ jobs:
           args: --timeout=5m --config=${{ github.workspace }}/.golangci.yml
         continue-on-error: true
 
+  # ============================================
+  # TEST
+  # ============================================
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - identity-service
+          - partner-service
+          - discovery-service
+          - booking-service
+          - engagement-service
+          - notification-service
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: apps/services/${{ matrix.service }}/go.sum
+
+      - name: Install dependencies
+        working-directory: apps/services/${{ matrix.service }}
+        run: go mod download
+
       - name: Run tests
         working-directory: apps/services/${{ matrix.service }}
         run: |
@@ -69,6 +99,7 @@ jobs:
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
+        if: false  # Enable when tests are active
         with:
           file: apps/services/${{ matrix.service }}/coverage.out
           flags: ${{ matrix.service }}
@@ -76,13 +107,12 @@ jobs:
 
   # ============================================
   # BUILD DOCKER IMAGES & PUSH TO ECR
-  # Skipped: AWS secrets not configured
   # ============================================
   build:
     name: Build Images
-    needs: lint-test
+    needs: [lint, test]
     runs-on: ubuntu-latest
-    if: false  # Skipped: Configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets first
+    if: github.event_name == 'push'
     strategy:
       matrix:
         service:
@@ -121,7 +151,6 @@ jobs:
       - name: Generate version
         id: version
         run: |
-          # Count commits for patch version
           PATCH=$(git rev-list --count HEAD)
           VERSION="${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}"
           SHORT_SHA=$(git rev-parse --short HEAD)
@@ -155,13 +184,12 @@ jobs:
 
   # ============================================
   # DEPLOY TO STAGING
-  # Skipped: AWS/K8s secrets not configured
   # ============================================
   deploy-staging:
     name: Deploy to Staging
     needs: build
     runs-on: ubuntu-latest
-    if: false  # Skipped: Configure secrets first
+    if: github.ref == 'refs/heads/develop'
     environment: staging
     
     steps:
@@ -208,13 +236,12 @@ jobs:
 
   # ============================================
   # DEPLOY TO PRODUCTION
-  # Skipped: AWS/K8s secrets not configured
   # ============================================
   deploy-production:
     name: Deploy to Production
     needs: build
     runs-on: ubuntu-latest
-    if: false  # Skipped: Configure secrets first
+    if: github.ref == 'refs/heads/main'
     environment: production
     
     steps:

@@ -26,10 +26,10 @@ env:
 
 jobs:
   # ============================================
-  # LINT & TEST - Partners
+  # LINT - Partners
   # ============================================
-  lint-test-partners:
-    name: Lint & Test Partners
+  lint-partners:
+    name: Lint Partners
     runs-on: ubuntu-latest
     
     steps:
@@ -55,15 +55,38 @@ jobs:
         working-directory: apps/partners
         run: npm run type-check || true
 
+  # ============================================
+  # TEST - Partners
+  # ============================================
+  test-partners:
+    name: Test Partners
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/partners/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/partners
+        run: npm install
+
       - name: Run tests
         working-directory: apps/partners
         run: echo "Tests skipped for CI validation"
+        # run: npm test -- --coverage
 
   # ============================================
-  # LINT & TEST - Admin
+  # LINT - Admin
   # ============================================
-  lint-test-admin:
-    name: Lint & Test Admin
+  lint-admin:
+    name: Lint Admin
     runs-on: ubuntu-latest
     
     steps:
@@ -89,15 +112,38 @@ jobs:
         working-directory: apps/admin
         run: npm run type-check || true
 
+  # ============================================
+  # TEST - Admin
+  # ============================================
+  test-admin:
+    name: Test Admin
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/admin/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/admin
+        run: npm install
+
       - name: Run tests
         working-directory: apps/admin
         run: echo "Tests skipped for CI validation"
+        # run: npm test -- --coverage
 
   # ============================================
-  # LINT & TEST - Siteweb
+  # LINT - Siteweb
   # ============================================
-  lint-test-siteweb:
-    name: Lint & Test Siteweb
+  lint-siteweb:
+    name: Lint Siteweb
     runs-on: ubuntu-latest
     
     steps:
@@ -123,19 +169,41 @@ jobs:
         working-directory: apps/siteweb
         run: npm run type-check || true
 
+  # ============================================
+  # TEST - Siteweb
+  # ============================================
+  test-siteweb:
+    name: Test Siteweb
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/siteweb/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/siteweb
+        run: npm install
+
       - name: Run tests
         working-directory: apps/siteweb
         run: echo "Tests skipped for CI validation"
+        # run: npm test -- --coverage
 
   # ============================================
   # BUILD & DEPLOY - Partners (ECR)
-  # Skipped: AWS secrets not configured
   # ============================================
   build-deploy-partners:
     name: Build & Deploy Partners
-    needs: lint-test-partners
+    needs: [lint-partners, test-partners]
     runs-on: ubuntu-latest
-    if: false  # Skipped: Configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets first
+    if: github.event_name == 'push'
     
     permissions:
       contents: read
@@ -193,13 +261,12 @@ jobs:
 
   # ============================================
   # BUILD & DEPLOY - Admin (ECR)
-  # Skipped: AWS secrets not configured
   # ============================================
   build-deploy-admin:
     name: Build & Deploy Admin
-    needs: lint-test-admin
+    needs: [lint-admin, test-admin]
     runs-on: ubuntu-latest
-    if: false  # Skipped: Configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets first
+    if: github.event_name == 'push'
     
     permissions:
       contents: read
@@ -261,7 +328,7 @@ jobs:
   # ============================================
   deploy-siteweb:
     name: Deploy Siteweb to Vercel
-    needs: lint-test-siteweb
+    needs: [lint-siteweb, test-siteweb]
     runs-on: ubuntu-latest
     if: false  # Skipped: Configure VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets first
     
@@ -290,13 +357,12 @@ jobs:
 
   # ============================================
   # DEPLOY K8s - Partners & Admin
-  # Skipped: AWS/K8s secrets not configured
   # ============================================
   deploy-k8s:
     name: Deploy to Kubernetes
     needs: [build-deploy-partners, build-deploy-admin]
     runs-on: ubuntu-latest
-    if: false  # Skipped: Configure AWS and K8s secrets first
+    if: github.ref == 'refs/heads/main'
     environment: production
     
     steps:

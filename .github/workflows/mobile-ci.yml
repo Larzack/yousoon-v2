@@ -19,10 +19,10 @@ env:
 
 jobs:
   # ============================================
-  # ANALYZE & TEST
+  # LINT (Analyze)
   # ============================================
-  analyze-test:
-    name: Analyze & Test
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     
     steps:
@@ -44,12 +44,36 @@ jobs:
         working-directory: apps/mobile
         run: flutter analyze --no-fatal-infos || true
 
+  # ============================================
+  # TEST
+  # ============================================
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+
       - name: Run tests
         working-directory: apps/mobile
         run: echo "Tests skipped for CI validation"
+        # run: flutter test --coverage
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
+        if: false  # Enable when tests are active
         with:
           file: apps/mobile/coverage/lcov.info
           flags: mobile
@@ -61,7 +85,7 @@ jobs:
   # ============================================
   build-android:
     name: Build Android
-    needs: analyze-test
+    needs: [lint, test]
     runs-on: ubuntu-latest
     if: false  # Skipped: Configure ANDROID_KEYSTORE and related secrets first
     
@@ -124,7 +148,7 @@ jobs:
   # ============================================
   build-ios:
     name: Build iOS
-    needs: analyze-test
+    needs: [lint, test]
     runs-on: macos-latest
     if: false  # Skipped: Configure IOS_DISTRIBUTION_CERTIFICATE and related secrets first
     
@@ -154,25 +178,20 @@ jobs:
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          # Create variables
           CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
           PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-          # Import certificate and provisioning profile
           echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
           echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
-          # Create temporary keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-          # Import certificate to keychain
           security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-          # Apply provisioning profile
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
