@@ -81,12 +81,7 @@ func NewFavorite(userID, offerID, offerTitle, offerImageURL, partnerName string)
 		createdAt:     now,
 	}
 
-	favorite.AddDomainEvent(FavoriteAdded{
-		FavoriteID: id,
-		UserID:     userID,
-		OfferID:    offerID,
-		Timestamp:  now,
-	})
+	favorite.AddDomainEvent(NewFavoriteAddedEvent(id, userID, offerID))
 
 	return favorite, nil
 }
@@ -210,14 +205,7 @@ func NewReview(
 		updatedAt:          now,
 	}
 
-	review.AddDomainEvent(ReviewSubmitted{
-		ReviewID:  id,
-		UserID:    userID,
-		OfferID:   offerID,
-		PartnerID: partnerID,
-		Rating:    rating,
-		Timestamp: now,
-	})
+	review.AddDomainEvent(NewReviewSubmittedEvent(id, userID, offerID, partnerID, rating))
 
 	return review, nil
 }
@@ -299,11 +287,7 @@ func (r *Review) Approve(moderatorID string) error {
 	r.moderatedAt = &now
 	r.updatedAt = now
 
-	r.AddDomainEvent(ReviewApproved{
-		ReviewID:    r.id,
-		ModeratorID: moderatorID,
-		Timestamp:   now,
-	})
+	r.AddDomainEvent(NewReviewApprovedEvent(r.id, moderatorID))
 
 	return nil
 }
@@ -316,12 +300,7 @@ func (r *Review) Reject(moderatorID, reason string) error {
 	r.rejectReason = &reason
 	r.updatedAt = now
 
-	r.AddDomainEvent(ReviewRejected{
-		ReviewID:    r.id,
-		ModeratorID: moderatorID,
-		Reason:      reason,
-		Timestamp:   now,
-	})
+	r.AddDomainEvent(NewReviewRejectedEvent(r.id, moderatorID, reason))
 
 	return nil
 }
@@ -347,12 +326,7 @@ func (r *Review) Report(userID, reason string) error {
 
 	r.updatedAt = time.Now()
 
-	r.AddDomainEvent(ReviewReported{
-		ReviewID:   r.id,
-		ReporterID: userID,
-		Reason:     reason,
-		Timestamp:  time.Now(),
-	})
+	r.AddDomainEvent(NewReviewReportedEvent(r.id, userID, reason))
 
 	return nil
 }
