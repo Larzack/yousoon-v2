@@ -120,8 +120,18 @@ func (r *CategoryRepository) FindBySlug(ctx context.Context, slug string) (*doma
 	return r.toDomain(&doc)
 }
 
-// FindAll retrieves all categories, optionally filtered by active status.
-func (r *CategoryRepository) FindAll(ctx context.Context, activeOnly bool) ([]*domain.Category, error) {
+// FindAll retrieves all categories (implements domain.CategoryRepository).
+func (r *CategoryRepository) FindAll(ctx context.Context) ([]*domain.Category, error) {
+	return r.findAllWithFilter(ctx, false)
+}
+
+// FindActive retrieves all active categories (implements domain.CategoryRepository).
+func (r *CategoryRepository) FindActive(ctx context.Context) ([]*domain.Category, error) {
+	return r.findAllWithFilter(ctx, true)
+}
+
+// findAllWithFilter retrieves all categories, optionally filtered by active status.
+func (r *CategoryRepository) findAllWithFilter(ctx context.Context, activeOnly bool) ([]*domain.Category, error) {
 	filter := bson.M{}
 	if activeOnly {
 		filter["is_active"] = true
@@ -152,8 +162,8 @@ func (r *CategoryRepository) FindAll(ctx context.Context, activeOnly bool) ([]*d
 	return categories, nil
 }
 
-// FindByParentID retrieves all child categories of a parent.
-func (r *CategoryRepository) FindByParentID(ctx context.Context, parentID *domain.CategoryID, activeOnly bool) ([]*domain.Category, error) {
+// FindByParentID retrieves all child categories of a parent (implements domain.CategoryRepository).
+func (r *CategoryRepository) FindByParentID(ctx context.Context, parentID *domain.CategoryID) ([]*domain.Category, error) {
 	filter := bson.M{}
 
 	if parentID != nil {
@@ -162,10 +172,6 @@ func (r *CategoryRepository) FindByParentID(ctx context.Context, parentID *domai
 		filter["parent_id"] = nil
 	}
 
-	if activeOnly {
-		filter["is_active"] = true
-	}
-
 	opts := options.Find().SetSort(bson.D{bson.E{Key: "position", Value: 1}})
 
 	cursor, err := r.collection.Find(ctx, filter, opts)
@@ -191,9 +197,9 @@ func (r *CategoryRepository) FindByParentID(ctx context.Context, parentID *domai
 	return categories, nil
 }
 
-// FindRootCategories retrieves all root categories (no parent).
-func (r *CategoryRepository) FindRootCategories(ctx context.Context, activeOnly bool) ([]*domain.Category, error) {
-	return r.FindByParentID(ctx, nil, activeOnly)
+// FindRootCategories retrieves all root categories (no parent) (implements domain.CategoryRepository).
+func (r *CategoryRepository) FindRootCategories(ctx context.Context) ([]*domain.Category, error) {
+	return r.FindByParentID(ctx, nil)
 }
 
 // Delete removes a category from the database.
@@ -231,9 +237,9 @@ func (r *CategoryRepository) CountOffers(ctx context.Context, id domain.Category
 	return 0, nil
 }
 
-// GetCategoryTree retrieves the full category tree.
-func (r *CategoryRepository) GetCategoryTree(ctx context.Context, activeOnly bool) ([]*domain.CategoryTree, error) {
-	categories, err := r.FindAll(ctx, activeOnly)
+// GetCategoryTree retrieves the full category tree (implements domain.CategoryRepository).
+func (r *CategoryRepository) GetCategoryTree(ctx context.Context) ([]*domain.CategoryTree, error) {
+	categories, err := r.FindAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -299,6 +305,29 @@ func (r *CategoryRepository) GetMaxPosition(ctx context.Context, parentID *domai
 	}
 
 	return doc.Position, nil
+}
+
+// GetCategorySummaries returns category summaries with offer counts (implements domain.CategoryRepository).
+// Note: Offer counts would ideally come from the offers collection via aggregation,
+// but for simplicity we return 0 here. In production, this could use a cross-collection aggregation.
+func (r *CategoryRepository) GetCategorySummaries(ctx context.Context) ([]domain.CategorySummary, error) {
+	categories, err := r.FindActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]domain.CategorySummary, len(categories))
+	for i, cat := range categories {
+		summaries[i] = domain.CategorySummary{
+			ID:         cat.ID(),
+			Slug:       cat.Slug(),
+			Name:       cat.Name().FR, // Default to French
+			Icon:       cat.Icon(),
+			OfferCount: 0, // Would require cross-collection query
+		}
+	}
+
+	return summaries, nil
 }
 
 // toDocument converts a domain category to a MongoDB document.

@@ -123,6 +123,12 @@ services:
       - REDIS_URL=redis://redis:6379
       - NATS_URL=nats://nats:4222
       - ENV=development
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
       mongodb:
         condition: service_healthy

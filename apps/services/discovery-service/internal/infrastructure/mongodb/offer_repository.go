@@ -137,6 +137,49 @@ func NewOfferRepository(db *mongo.Database) *OfferRepository {
 	}
 }
 
+// EnsureIndexes creates necessary indexes for the offer collection.
+func (r *OfferRepository) EnsureIndexes(ctx context.Context) error {
+	indexes := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "partner_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "establishment_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{{Key: "category_id", Value: 1}},
+		},
+		{
+			Keys: bson.D{
+				{Key: "status", Value: 1},
+				{Key: "is_active", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{{Key: "_establishment.location", Value: "2dsphere"}},
+		},
+		{
+			Keys:    bson.D{{Key: "title", Value: "text"}, {Key: "description", Value: "text"}},
+			Options: options.Index().SetDefaultLanguage("french"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "validity.start_date", Value: 1},
+				{Key: "validity.end_date", Value: 1},
+			},
+		},
+		{
+			Keys: bson.D{{Key: "created_at", Value: -1}},
+		},
+		{
+			Keys: bson.D{{Key: "deleted_at", Value: 1}},
+		},
+	}
+
+	_, err := r.collection.Indexes().CreateMany(ctx, indexes)
+	return err
+}
+
 // Save persists an offer (create or update).
 func (r *OfferRepository) Save(ctx context.Context, offer *domain.Offer) error {
 	doc := r.toDocument(offer)
@@ -624,4 +667,314 @@ func (r *OfferRepository) toDomain(doc *OfferDocument) *domain.Offer {
 		doc.PublishedAt,
 		doc.DeletedAt,
 	)
+}
+
+// =============================================================================
+// OfferReadRepository Implementation
+// =============================================================================
+
+// GetOfferSummaries returns offer summaries for lists.
+func (r *OfferRepository) GetOfferSummaries(ctx context.Context, filter domain.OfferFilter) ([]domain.OfferSummary, int64, error) {
+	result, err := r.List(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	summaries := make([]domain.OfferSummary, len(result.Offers))
+	for i, offer := range result.Offers {
+		summaries[i] = r.toSummary(offer)
+	}
+
+	return summaries, result.TotalCount, nil
+}
+
+// GetOffersNearLocation returns offers near a location.
+func (r *OfferRepository) GetOffersNearLocation(ctx context.Context, location domain.GeoLocation, radiusKm float64, limit int) ([]domain.OfferSummary, error) {
+	filter := domain.OfferFilter{
+		Location:   &location,
+		RadiusKm:   radiusKm,
+		Limit:      limit,
+		OnlyActive: true,
+	}
+
+	result, err := r.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]domain.OfferSummary, len(result.Offers))
+	for i, offer := range result.Offers {
+		summaries[i] = r.toSummary(offer)
+	}
+
+	return summaries, nil
+}
+
+// GetOffersByIDs returns offers by IDs.
+func (r *OfferRepository) GetOffersByIDs(ctx context.Context, ids []domain.OfferID) ([]*domain.Offer, error) {
+	objectIDs := make([]primitive.ObjectID, 0, len(ids))
+	for _, id := range ids {
+		oid, err := primitive.ObjectIDFromHex(string(id))
+		if err != nil {
+			continue
+		}
+		objectIDs = append(objectIDs, oid)
+	}
+
+	filter := bson.M{
+		"_id":        bson.M{"$in": objectIDs},
+		"deleted_at": nil,
+	}
+
+	cursor, err := r.collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	return r.cursorToOffers(ctx, cursor)
+}
+
+// SearchOffers performs a full-text search on offers.
+func (r *OfferRepository) SearchOffers(ctx context.Context, query string, location *domain.GeoLocation, limit int) ([]domain.OfferSummary, error) {
+	filter := domain.OfferFilter{
+		SearchQuery: query,
+		Location:    location,
+		Limit:       limit,
+		OnlyActive:  true,
+	}
+
+	result, err := r.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]domain.OfferSummary, len(result.Offers))
+	for i, offer := range result.Offers {
+		summaries[i] = r.toSummary(offer)
+	}
+
+	return summaries, nil
+}
+
+// GetRecommendedOffers returns personalized offers for a user.
+func (r *OfferRepository) GetRecommendedOffers(ctx context.Context, userID domain.UserID, userCategories []domain.CategoryID, location domain.GeoLocation, limit int) ([]domain.OfferSummary, error) {
+	// Simple implementation: get offers in user's preferred categories near their location
+	filter := domain.OfferFilter{
+		Location:   &location,
+		RadiusKm:   10, // Default 10km
+		Limit:      limit,
+		OnlyActive: true,
+	}
+
+	// If user has category preferences, filter by first one (simplified)
+	if len(userCategories) > 0 {
+		filter.CategoryID = &userCategories[0]
+	}
+
+	result, err := r.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]domain.OfferSummary, len(result.Offers))
+	for i, offer := range result.Offers {
+		summaries[i] = r.toSummary(offer)
+	}
+
+	return summaries, nil
+}
+
+// GetTrendingOffers returns trending offers (most booked).
+func (r *OfferRepository) GetTrendingOffers(ctx context.Context, location *domain.GeoLocation, limit int) ([]domain.OfferSummary, error) {
+	filter := domain.OfferFilter{
+		Location:   location,
+		RadiusKm:   50, // Wider radius for trending
+		Limit:      limit,
+		OnlyActive: true,
+		SortBy:     "popularity",
+		SortOrder:  "desc",
+	}
+
+	result, err := r.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]domain.OfferSummary, len(result.Offers))
+	for i, offer := range result.Offers {
+		summaries[i] = r.toSummary(offer)
+	}
+
+	return summaries, nil
+}
+
+// GetNewOffers returns recently published offers.
+func (r *OfferRepository) GetNewOffers(ctx context.Context, location *domain.GeoLocation, limit int) ([]domain.OfferSummary, error) {
+	filter := domain.OfferFilter{
+		Location:   location,
+		RadiusKm:   50,
+		Limit:      limit,
+		OnlyActive: true,
+		SortBy:     "created_at",
+		SortOrder:  "desc",
+	}
+
+	result, err := r.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]domain.OfferSummary, len(result.Offers))
+	for i, offer := range result.Offers {
+		summaries[i] = r.toSummary(offer)
+	}
+
+	return summaries, nil
+}
+
+// GetExpiringOffers returns offers expiring soon.
+func (r *OfferRepository) GetExpiringOffers(ctx context.Context, withinDays int, limit int) ([]domain.OfferSummary, error) {
+	now := time.Now()
+	expiryDate := now.AddDate(0, 0, withinDays)
+
+	mongoFilter := bson.M{
+		"status":     "active",
+		"is_active":  true,
+		"deleted_at": nil,
+		"validity.end_date": bson.M{
+			"$gte": now,
+			"$lte": expiryDate,
+		},
+	}
+
+	opts := options.Find().
+		SetLimit(int64(limit)).
+		SetSort(bson.D{{Key: "validity.end_date", Value: 1}})
+
+	cursor, err := r.collection.Find(ctx, mongoFilter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	offers, err := r.cursorToOffers(ctx, cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]domain.OfferSummary, len(offers))
+	for i, offer := range offers {
+		summaries[i] = r.toSummary(offer)
+	}
+
+	return summaries, nil
+}
+
+// GetOfferCountByCategory returns offer counts per category.
+func (r *OfferRepository) GetOfferCountByCategory(ctx context.Context) (map[domain.CategoryID]int, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{
+			"status":     "active",
+			"is_active":  true,
+			"deleted_at": nil,
+		}}},
+		{{Key: "$group", Value: bson.M{
+			"_id":   "$category_id",
+			"count": bson.M{"$sum": 1},
+		}}},
+	}
+
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	result := make(map[domain.CategoryID]int)
+	for cursor.Next(ctx) {
+		var doc struct {
+			ID    string `bson:"_id"`
+			Count int    `bson:"count"`
+		}
+		if err := cursor.Decode(&doc); err != nil {
+			continue
+		}
+		result[domain.CategoryID(doc.ID)] = doc.Count
+	}
+
+	return result, cursor.Err()
+}
+
+// GetPartnerOfferStats returns statistics for a partner's offers.
+func (r *OfferRepository) GetPartnerOfferStats(ctx context.Context, partnerID domain.PartnerID) (*domain.PartnerOfferStats, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{
+			"partner_id": string(partnerID),
+			"deleted_at": nil,
+		}}},
+		{{Key: "$group", Value: bson.M{
+			"_id":            nil,
+			"total_offers":   bson.M{"$sum": 1},
+			"active_offers":  bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$status", "active"}}, 1, 0}}},
+			"total_views":    bson.M{"$sum": "$stats.views"},
+			"total_bookings": bson.M{"$sum": "$stats.bookings"},
+			"total_checkins": bson.M{"$sum": "$stats.checkins"},
+		}}},
+	}
+
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var result struct {
+		TotalOffers   int `bson:"total_offers"`
+		ActiveOffers  int `bson:"active_offers"`
+		TotalViews    int `bson:"total_views"`
+		TotalBookings int `bson:"total_bookings"`
+		TotalCheckins int `bson:"total_checkins"`
+	}
+
+	if cursor.Next(ctx) {
+		if err := cursor.Decode(&result); err != nil {
+			return nil, err
+		}
+	}
+
+	return &domain.PartnerOfferStats{
+		TotalOffers:   result.TotalOffers,
+		ActiveOffers:  result.ActiveOffers,
+		TotalViews:    result.TotalViews,
+		TotalBookings: result.TotalBookings,
+		TotalCheckins: result.TotalCheckins,
+	}, nil
+}
+
+// toSummary converts an Offer to an OfferSummary.
+func (r *OfferRepository) toSummary(offer *domain.Offer) domain.OfferSummary {
+	var primaryImage string
+	for _, img := range offer.Images() {
+		if img.IsPrimary {
+			primaryImage = img.URL
+			break
+		}
+	}
+	if primaryImage == "" && len(offer.Images()) > 0 {
+		primaryImage = offer.Images()[0].URL
+	}
+
+	return domain.OfferSummary{
+		ID:                offer.ID(),
+		Title:             offer.Title(),
+		ShortDescription:  offer.ShortDescription(),
+		PrimaryImage:      primaryImage,
+		Discount:          offer.Discount(),
+		PartnerName:       offer.PartnerSnapshot().Name,
+		EstablishmentName: offer.EstablishmentSnapshot().Name,
+		City:              offer.EstablishmentSnapshot().City,
+		Location:          offer.EstablishmentSnapshot().Location,
+		CategoryID:        offer.CategoryID(),
+	}
 }
