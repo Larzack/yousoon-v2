@@ -22,6 +22,7 @@ env:
   AWS_REGION: eu-west-1
   ECR_REGISTRY: 499771322424.dkr.ecr.eu-west-1.amazonaws.com
   EKS_CLUSTER_NAME: jemoco2
+  K8S_NAMESPACE_PROD: yousoon-production
   IMAGE_VERSION_MAJOR: 2
   IMAGE_VERSION_MINOR: 0
 
@@ -397,12 +398,12 @@ jobs:
         run: |
           kubectl set image deployment/web-partners \
             web-partners=${{ env.ECR_REGISTRY }}/yousoon/web-partners:${{ steps.version.outputs.version }} \
-            -n yousoon || true
+            -n ${{ env.K8S_NAMESPACE_PROD }} || true
           kubectl set image deployment/web-admin \
             web-admin=${{ env.ECR_REGISTRY }}/yousoon/web-admin:${{ steps.version.outputs.version }} \
-            -n yousoon || true
+            -n ${{ env.K8S_NAMESPACE_PROD }} || true
 
       - name: Wait for rollout
         run: |
-          kubectl rollout status deployment/web-partners -n yousoon --timeout=5m || true
-          kubectl rollout status deployment/web-admin -n yousoon --timeout=5m || true
+          kubectl rollout status deployment/web-partners -n ${{ env.K8S_NAMESPACE_PROD }} --timeout=5m || true
+          kubectl rollout status deployment/web-admin -n ${{ env.K8S_NAMESPACE_PROD }} --timeout=5m || true

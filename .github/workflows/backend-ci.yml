@@ -19,6 +19,8 @@ env:
   AWS_REGION: eu-west-1
   ECR_REGISTRY: 499771322424.dkr.ecr.eu-west-1.amazonaws.com
   EKS_CLUSTER_NAME: jemoco2
+  K8S_NAMESPACE_PROD: yousoon-production
+  K8S_NAMESPACE_STAGING: yousoon-staging
   IMAGE_VERSION_MAJOR: 2
   IMAGE_VERSION_MINOR: 0
 
@@ -244,14 +246,14 @@ jobs:
           for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
             kubectl set image deployment/${service} \
               ${service}=${{ env.ECR_REGISTRY }}/yousoon/${service}:${{ steps.version.outputs.version }} \
-              -n yousoon-staging || true
+              -n ${{ env.K8S_NAMESPACE_STAGING }} || true
           done
 
       - name: Wait for rollout
         run: |
           for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
             kubectl rollout status deployment/${service} \
-              -n yousoon-staging --timeout=5m || true
+              -n ${{ env.K8S_NAMESPACE_STAGING }} --timeout=5m || true
           done
 
   # ============================================
@@ -297,32 +299,33 @@ jobs:
           for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
             kubectl set image deployment/${service} \
               ${service}=${{ env.ECR_REGISTRY }}/yousoon/${service}:${{ steps.version.outputs.version }} \
-              -n yousoon || true
+              -n ${{ env.K8S_NAMESPACE_PROD }} || true
           done
 
       - name: Wait for rollout
         run: |
           for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
             kubectl rollout status deployment/${service} \
-              -n yousoon --timeout=5m || true
+              -n ${{ env.K8S_NAMESPACE_PROD }} --timeout=5m || true
           done
 
-      - name: Notify deployment
-        uses: slackapi/slack-github-action@v1
-        if: always()
-        with:
-          payload: |
-            {
-              "text": "Backend deployment to production: ${{ job.status }}",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Backend Deployment*\nStatus: ${{ job.status }}\nVersion: ${{ steps.version.outputs.version }}\nCommit: ${{ github.sha }}"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      # Slack notification disabled - configure SLACK_WEBHOOK_URL secret first
+      # - name: Notify deployment
+      #   uses: slackapi/slack-github-action@v1
+      #   if: always()
+      #   with:
+      #     payload: |
+      #       {
+      #         "text": "Backend deployment to production: ${{ job.status }}",
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*Backend Deployment*\nStatus: ${{ job.status }}\nVersion: ${{ steps.version.outputs.version }}\nCommit: ${{ github.sha }}"
+      #             }
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
