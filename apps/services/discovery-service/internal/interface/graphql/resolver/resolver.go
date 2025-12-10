@@ -4,13 +4,11 @@ package resolver
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/yousoon/discovery-service/internal/application/commands"
 	"github.com/yousoon/discovery-service/internal/application/queries"
 	"github.com/yousoon/discovery-service/internal/domain"
 	"github.com/yousoon/discovery-service/internal/interface/graphql/model"
-	"github.com/yousoon/shared/infrastructure/nats"
 )
 
 // Resolver is the root resolver.
@@ -18,66 +16,57 @@ type Resolver struct {
 	// Repositories
 	offerRepo    domain.OfferRepository
 	categoryRepo domain.CategoryRepository
-	searchRepo   domain.OfferSearchService
+	readRepo     domain.OfferReadRepository
 
 	// Command handlers
 	createOfferHandler    *commands.CreateOfferHandler
 	publishOfferHandler   *commands.PublishOfferHandler
-	expireOfferHandler    *commands.ExpireOfferHandler
 	archiveOfferHandler   *commands.ArchiveOfferHandler
-	extendOfferHandler    *commands.ExtendOfferHandler
 	createCategoryHandler *commands.CreateCategoryHandler
 	updateCategoryHandler *commands.UpdateCategoryHandler
 	deleteCategoryHandler *commands.DeleteCategoryHandler
 
 	// Query handlers
-	getOfferHandler           *queries.GetOfferHandler
-	listOffersHandler         *queries.ListOffersHandler
-	searchOffersHandler       *queries.SearchOffersHandler
-	getOffersByPartnerHandler *queries.GetOffersByPartnerHandler
-	getNearbyOffersHandler    *queries.GetNearbyOffersHandler
-	getTrendingOffersHandler  *queries.GetTrendingOffersHandler
-	getCategoryHandler        *queries.GetCategoryHandler
-	listCategoriesHandler     *queries.ListCategoriesHandler
-	getCategoriesTreeHandler  *queries.GetCategoriesTreeHandler
-
-	// Event publisher
-	eventPublisher *nats.Publisher
+	getOfferHandler          *queries.GetOfferHandler
+	listOffersHandler        *queries.ListOffersHandler
+	searchOffersHandler      *queries.SearchOffersHandler
+	getPartnerOffersHandler  *queries.GetPartnerOffersHandler
+	getNearbyOffersHandler   *queries.GetNearbyOffersHandler
+	getTrendingOffersHandler *queries.GetTrendingOffersHandler
+	getCategoryHandler       *queries.GetCategoryHandler
+	listCategoriesHandler    *queries.ListCategoriesHandler
+	getCategoryTreeHandler   *queries.GetCategoryTreeHandler
 }
 
 // NewResolver creates a new resolver with all dependencies.
 func NewResolver(
 	offerRepo domain.OfferRepository,
 	categoryRepo domain.CategoryRepository,
-	searchRepo domain.OfferSearchService,
-	eventPublisher *nats.Publisher,
+	readRepo domain.OfferReadRepository,
 ) *Resolver {
 	return &Resolver{
-		offerRepo:      offerRepo,
-		categoryRepo:   categoryRepo,
-		searchRepo:     searchRepo,
-		eventPublisher: eventPublisher,
+		offerRepo:    offerRepo,
+		categoryRepo: categoryRepo,
+		readRepo:     readRepo,
 
 		// Initialize command handlers
-		createOfferHandler:    commands.NewCreateOfferHandler(offerRepo, categoryRepo, eventPublisher),
-		publishOfferHandler:   commands.NewPublishOfferHandler(offerRepo, searchRepo, eventPublisher),
-		expireOfferHandler:    commands.NewExpireOfferHandler(offerRepo, searchRepo, eventPublisher),
-		archiveOfferHandler:   commands.NewArchiveOfferHandler(offerRepo, searchRepo, eventPublisher),
-		extendOfferHandler:    commands.NewExtendOfferHandler(offerRepo, searchRepo, eventPublisher),
-		createCategoryHandler: commands.NewCreateCategoryHandler(categoryRepo, eventPublisher),
-		updateCategoryHandler: commands.NewUpdateCategoryHandler(categoryRepo, eventPublisher),
-		deleteCategoryHandler: commands.NewDeleteCategoryHandler(categoryRepo, offerRepo, eventPublisher),
+		createOfferHandler:    commands.NewCreateOfferHandler(offerRepo),
+		publishOfferHandler:   commands.NewPublishOfferHandler(offerRepo),
+		archiveOfferHandler:   commands.NewArchiveOfferHandler(offerRepo),
+		createCategoryHandler: commands.NewCreateCategoryHandler(categoryRepo),
+		updateCategoryHandler: commands.NewUpdateCategoryHandler(categoryRepo),
+		deleteCategoryHandler: commands.NewDeleteCategoryHandler(categoryRepo, offerRepo),
 
 		// Initialize query handlers
-		getOfferHandler:           queries.NewGetOfferHandler(offerRepo),
-		listOffersHandler:         queries.NewListOffersHandler(offerRepo),
-		searchOffersHandler:       queries.NewSearchOffersHandler(searchRepo),
-		getOffersByPartnerHandler: queries.NewGetOffersByPartnerHandler(offerRepo),
-		getNearbyOffersHandler:    queries.NewGetNearbyOffersHandler(searchRepo),
-		getTrendingOffersHandler:  queries.NewGetTrendingOffersHandler(offerRepo),
-		getCategoryHandler:        queries.NewGetCategoryHandler(categoryRepo),
-		listCategoriesHandler:     queries.NewListCategoriesHandler(categoryRepo),
-		getCategoriesTreeHandler:  queries.NewGetCategoriesTreeHandler(categoryRepo),
+		getOfferHandler:          queries.NewGetOfferHandler(offerRepo),
+		listOffersHandler:        queries.NewListOffersHandler(offerRepo),
+		searchOffersHandler:      queries.NewSearchOffersHandler(readRepo),
+		getPartnerOffersHandler:  queries.NewGetPartnerOffersHandler(offerRepo),
+		getNearbyOffersHandler:   queries.NewGetNearbyOffersHandler(readRepo),
+		getTrendingOffersHandler: queries.NewGetTrendingOffersHandler(readRepo),
+		getCategoryHandler:       queries.NewGetCategoryHandler(categoryRepo),
+		listCategoriesHandler:    queries.NewListCategoriesHandler(categoryRepo),
+		getCategoryTreeHandler:   queries.NewGetCategoryTreeHandler(categoryRepo),
 	}
 }
 
@@ -87,16 +76,10 @@ func NewResolver(
 
 // Offer returns an offer by ID.
 func (r *Resolver) Offer(ctx context.Context, id string) (*model.Offer, error) {
-	offerID, err := domain.ParseOfferID(id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid offer ID: %w", err)
-	}
-
-	result, err := r.getOfferHandler.Handle(ctx, queries.GetOfferQuery{ID: offerID})
+	result, err := r.getOfferHandler.Handle(ctx, queries.GetOfferQuery{OfferID: id})
 	if err != nil {
 		return nil, err
 	}
-
 	return mapOfferToModel(result), nil
 }
 
@@ -115,15 +98,13 @@ func (r *Resolver) Offers(ctx context.Context, filter *model.OfferFilterInput) (
 			query.Limit = *filter.Limit
 		}
 		if filter.PartnerID != nil {
-			partnerID, _ := domain.ParsePartnerID(*filter.PartnerID)
-			query.PartnerID = &partnerID
+			query.PartnerID = filter.PartnerID
 		}
 		if filter.CategoryID != nil {
-			categoryID, _ := domain.ParseCategoryID(*filter.CategoryID)
-			query.CategoryID = &categoryID
+			query.CategoryID = filter.CategoryID
 		}
 		if filter.Status != nil {
-			status := mapOfferStatusToDomain(*filter.Status)
+			status := string(*filter.Status)
 			query.Status = &status
 		}
 		if filter.OnlyActive != nil {
@@ -143,7 +124,7 @@ func (r *Resolver) Offers(ctx context.Context, filter *model.OfferFilterInput) (
 
 	return &model.OfferListResult{
 		Offers:  offers,
-		Total:   int(result.Total),
+		Total:   int(result.TotalCount),
 		HasMore: result.HasMore,
 	}, nil
 }
@@ -151,28 +132,17 @@ func (r *Resolver) Offers(ctx context.Context, filter *model.OfferFilterInput) (
 // SearchOffers performs a full-text search on offers.
 func (r *Resolver) SearchOffers(ctx context.Context, query string, filter *model.OfferFilterInput) (*model.OfferSearchResult, error) {
 	searchQuery := queries.SearchOffersQuery{
-		Query:  query,
-		Offset: 0,
-		Limit:  20,
+		Query: query,
+		Limit: 20,
 	}
 
 	if filter != nil {
-		if filter.Offset != nil {
-			searchQuery.Offset = *filter.Offset
-		}
 		if filter.Limit != nil {
 			searchQuery.Limit = *filter.Limit
-		}
-		if filter.CategoryID != nil {
-			categoryID, _ := domain.ParseCategoryID(*filter.CategoryID)
-			searchQuery.CategoryID = &categoryID
 		}
 		if filter.Latitude != nil && filter.Longitude != nil {
 			searchQuery.Latitude = filter.Latitude
 			searchQuery.Longitude = filter.Longitude
-		}
-		if filter.RadiusKm != nil {
-			searchQuery.RadiusKm = filter.RadiusKm
 		}
 	}
 
@@ -181,15 +151,15 @@ func (r *Resolver) SearchOffers(ctx context.Context, query string, filter *model
 		return nil, err
 	}
 
-	summaries := make([]*model.OfferSummary, len(result.Offers))
-	for i, summary := range result.Offers {
-		summaries[i] = mapOfferSummaryToModel(summary)
+	summaries := make([]*model.OfferSummary, len(result))
+	for i, summary := range result {
+		summaries[i] = mapOfferSummaryToModel(&summary)
 	}
 
 	return &model.OfferSearchResult{
 		Offers:  summaries,
-		Total:   int(result.Total),
-		HasMore: result.HasMore,
+		Total:   len(summaries),
+		HasMore: false,
 	}, nil
 }
 
@@ -199,20 +169,12 @@ func (r *Resolver) NearbyOffers(ctx context.Context, latitude, longitude, radius
 		Latitude:  latitude,
 		Longitude: longitude,
 		RadiusKm:  radiusKm,
-		Offset:    0,
 		Limit:     20,
 	}
 
 	if filter != nil {
-		if filter.Offset != nil {
-			query.Offset = *filter.Offset
-		}
 		if filter.Limit != nil {
 			query.Limit = *filter.Limit
-		}
-		if filter.CategoryID != nil {
-			categoryID, _ := domain.ParseCategoryID(*filter.CategoryID)
-			query.CategoryID = &categoryID
 		}
 	}
 
@@ -221,54 +183,45 @@ func (r *Resolver) NearbyOffers(ctx context.Context, latitude, longitude, radius
 		return nil, err
 	}
 
-	summaries := make([]*model.OfferSummary, len(result.Offers))
-	for i, summary := range result.Offers {
-		summaries[i] = mapOfferSummaryToModel(summary)
+	summaries := make([]*model.OfferSummary, len(result))
+	for i, summary := range result {
+		summaries[i] = mapOfferSummaryToModel(&summary)
 	}
 
 	return &model.OfferSearchResult{
 		Offers:  summaries,
-		Total:   int(result.Total),
-		HasMore: result.HasMore,
+		Total:   len(summaries),
+		HasMore: false,
 	}, nil
 }
 
 // TrendingOffers returns trending offers.
-func (r *Resolver) TrendingOffers(ctx context.Context, limit *int) ([]*model.TrendingOffer, error) {
+func (r *Resolver) TrendingOffers(ctx context.Context, limit *int) ([]*model.OfferSummary, error) {
 	l := 10
 	if limit != nil {
 		l = *limit
 	}
 
-	result, err := r.getTrendingOffersHandler.Handle(ctx, queries.GetTrendingOffersQuery{Limit: l})
+	query := queries.GetTrendingOffersQuery{Limit: l}
+	result, err := r.getTrendingOffersHandler.Handle(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 
-	trending := make([]*model.TrendingOffer, len(result))
-	for i, t := range result {
-		trending[i] = &model.TrendingOffer{
-			Offer:  mapOfferToModel(t.Offer),
-			Score:  t.Score,
-			Reason: t.Reason,
-		}
+	summaries := make([]*model.OfferSummary, len(result))
+	for i, summary := range result {
+		summaries[i] = mapOfferSummaryToModel(&summary)
 	}
 
-	return trending, nil
+	return summaries, nil
 }
 
 // Category returns a category by ID.
 func (r *Resolver) Category(ctx context.Context, id string) (*model.Category, error) {
-	categoryID, err := domain.ParseCategoryID(id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid category ID: %w", err)
-	}
-
-	result, err := r.getCategoryHandler.Handle(ctx, queries.GetCategoryQuery{ID: categoryID})
+	result, err := r.getCategoryHandler.Handle(ctx, queries.GetCategoryQuery{CategoryID: id})
 	if err != nil {
 		return nil, err
 	}
-
 	return mapCategoryToModel(result), nil
 }
 
@@ -279,7 +232,7 @@ func (r *Resolver) Categories(ctx context.Context, activeOnly *bool) ([]*model.C
 		active = *activeOnly
 	}
 
-	result, err := r.listCategoriesHandler.Handle(ctx, queries.ListCategoriesQuery{ActiveOnly: active})
+	result, err := r.listCategoriesHandler.Handle(ctx, queries.ListCategoriesQuery{OnlyActive: active})
 	if err != nil {
 		return nil, err
 	}
@@ -294,12 +247,12 @@ func (r *Resolver) Categories(ctx context.Context, activeOnly *bool) ([]*model.C
 
 // CategoryTree returns the category tree.
 func (r *Resolver) CategoryTree(ctx context.Context, activeOnly *bool) ([]*model.CategoryTree, error) {
-	active := true
+	query := queries.GetCategoryTreeQuery{}
 	if activeOnly != nil {
-		active = *activeOnly
+		query.OnlyActive = *activeOnly
 	}
 
-	result, err := r.getCategoriesTreeHandler.Handle(ctx, queries.GetCategoriesTreeQuery{ActiveOnly: active})
+	result, err := r.getCategoryTreeHandler.Handle(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -313,32 +266,21 @@ func (r *Resolver) CategoryTree(ctx context.Context, activeOnly *bool) ([]*model
 
 // CreateOffer creates a new offer.
 func (r *Resolver) CreateOffer(ctx context.Context, input model.CreateOfferInput) (*model.Offer, error) {
-	partnerID, err := domain.ParsePartnerID(input.PartnerID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid partner ID: %w", err)
-	}
-
-	establishmentID, err := domain.ParseEstablishmentID(input.EstablishmentID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid establishment ID: %w", err)
-	}
-
-	categoryID, err := domain.ParseCategoryID(input.CategoryID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid category ID: %w", err)
-	}
-
 	cmd := commands.CreateOfferCommand{
-		PartnerID:       partnerID,
-		EstablishmentID: establishmentID,
+		PartnerID:       input.PartnerID,
+		EstablishmentID: input.EstablishmentID,
 		Title:           input.Title,
 		Description:     input.Description,
-		CategoryID:      categoryID,
+		CategoryID:      input.CategoryID,
 		Tags:            input.Tags,
-		DiscountType:    mapDiscountTypeToDomain(input.Discount.Type),
-		DiscountValue:   input.Discount.Value,
-		ValidityStart:   input.Validity.StartDate,
-		ValidityEnd:     input.Validity.EndDate,
+		Discount: commands.DiscountInput{
+			Type:  string(input.Discount.Type),
+			Value: input.Discount.Value,
+		},
+		Validity: commands.ValidityInput{
+			StartDate: input.Validity.StartDate,
+			EndDate:   input.Validity.EndDate,
+		},
 	}
 
 	if input.ShortDescription != nil {
@@ -348,10 +290,10 @@ func (r *Resolver) CreateOffer(ctx context.Context, input model.CreateOfferInput
 		cmd.TermsAndConditions = *input.TermsAndConditions
 	}
 	if input.Discount.Formula != nil {
-		cmd.DiscountFormula = *input.Discount.Formula
+		cmd.Discount.Formula = *input.Discount.Formula
 	}
 	if input.Validity.Timezone != nil {
-		cmd.Timezone = *input.Validity.Timezone
+		cmd.Validity.Timezone = *input.Validity.Timezone
 	}
 
 	offer, err := r.createOfferHandler.Handle(ctx, cmd)
@@ -364,49 +306,19 @@ func (r *Resolver) CreateOffer(ctx context.Context, input model.CreateOfferInput
 
 // PublishOffer publishes an offer.
 func (r *Resolver) PublishOffer(ctx context.Context, id string) (*model.Offer, error) {
-	offerID, err := domain.ParseOfferID(id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid offer ID: %w", err)
-	}
-
-	offer, err := r.publishOfferHandler.Handle(ctx, commands.PublishOfferCommand{OfferID: offerID})
+	offer, err := r.publishOfferHandler.Handle(ctx, commands.PublishOfferCommand{OfferID: id})
 	if err != nil {
 		return nil, err
 	}
-
 	return mapOfferToModel(offer), nil
 }
 
 // ArchiveOffer archives an offer.
 func (r *Resolver) ArchiveOffer(ctx context.Context, id string) (*model.Offer, error) {
-	offerID, err := domain.ParseOfferID(id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid offer ID: %w", err)
-	}
-
-	offer, err := r.archiveOfferHandler.Handle(ctx, commands.ArchiveOfferCommand{OfferID: offerID})
+	offer, err := r.archiveOfferHandler.Handle(ctx, commands.ArchiveOfferCommand{OfferID: id})
 	if err != nil {
 		return nil, err
 	}
-
-	return mapOfferToModel(offer), nil
-}
-
-// ExtendOffer extends an offer's validity.
-func (r *Resolver) ExtendOffer(ctx context.Context, id string, newEndDate time.Time) (*model.Offer, error) {
-	offerID, err := domain.ParseOfferID(id)
-	if err != nil {
-		return nil, fmt.Errorf("invalid offer ID: %w", err)
-	}
-
-	offer, err := r.extendOfferHandler.Handle(ctx, commands.ExtendOfferCommand{
-		OfferID:    offerID,
-		NewEndDate: newEndDate,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	return mapOfferToModel(offer), nil
 }
 
@@ -437,10 +349,7 @@ func (r *Resolver) CreateCategory(ctx context.Context, input model.CreateCategor
 		cmd.Image = *input.Image
 	}
 	if input.ParentID != nil {
-		parentID, err := domain.ParseCategoryID(*input.ParentID)
-		if err == nil {
-			cmd.ParentID = &parentID
-		}
+		cmd.ParentID = input.ParentID
 	}
 
 	category, err := r.createCategoryHandler.Handle(ctx, cmd)
@@ -453,16 +362,10 @@ func (r *Resolver) CreateCategory(ctx context.Context, input model.CreateCategor
 
 // DeleteCategory deletes a category.
 func (r *Resolver) DeleteCategory(ctx context.Context, id string) (bool, error) {
-	categoryID, err := domain.ParseCategoryID(id)
-	if err != nil {
-		return false, fmt.Errorf("invalid category ID: %w", err)
-	}
-
-	err = r.deleteCategoryHandler.Handle(ctx, commands.DeleteCategoryCommand{CategoryID: categoryID})
+	err := r.deleteCategoryHandler.Handle(ctx, commands.DeleteCategoryCommand{CategoryID: id})
 	if err != nil {
 		return false, err
 	}
-
 	return true, nil
 }
 
@@ -489,6 +392,10 @@ func mapOfferToModel(offer *domain.Offer) *model.Offer {
 		return nil
 	}
 
+	// Check if offer is available now via schedule
+	schedule := offer.Schedule()
+	isAvailableNow := offer.IsActive() && schedule.IsAvailableNow()
+
 	m := &model.Offer{
 		ID:               offer.ID().String(),
 		PartnerID:        offer.PartnerID().String(),
@@ -500,7 +407,7 @@ func mapOfferToModel(offer *domain.Offer) *model.Offer {
 		Tags:             offer.Tags(),
 		Status:           mapOfferStatusToModel(offer.Status()),
 		IsActive:         offer.IsActive(),
-		IsAvailableNow:   offer.IsAvailableNow(),
+		IsAvailableNow:   isAvailableNow,
 		CreatedAt:        offer.CreatedAt(),
 		UpdatedAt:        offer.UpdatedAt(),
 		PublishedAt:      offer.PublishedAt(),
@@ -514,14 +421,8 @@ func mapOfferToModel(offer *domain.Offer) *model.Offer {
 	}
 	if discount.OriginalPrice != nil {
 		m.Discount.OriginalPrice = &model.Money{
-			Amount:   int(discount.OriginalPrice.Amount),
-			Currency: discount.OriginalPrice.Currency,
-		}
-	}
-	if discount.DiscountedPrice != nil {
-		m.Discount.DiscountedPrice = &model.Money{
-			Amount:   int(discount.DiscountedPrice.Amount),
-			Currency: discount.DiscountedPrice.Currency,
+			Amount:   int(*discount.OriginalPrice / 100),
+			Currency: "EUR",
 		}
 	}
 	if discount.Formula != "" {
@@ -537,7 +438,6 @@ func mapOfferToModel(offer *domain.Offer) *model.Offer {
 	}
 
 	// Map schedule
-	schedule := offer.Schedule()
 	m.Schedule = &model.Schedule{
 		AllDay: schedule.AllDay,
 		Slots:  make([]*model.TimeSlot, len(schedule.Slots)),
@@ -555,17 +455,17 @@ func mapOfferToModel(offer *domain.Offer) *model.Offer {
 	m.Quota = &model.Quota{
 		Used: quota.Used,
 	}
-	if quota.Total > 0 {
-		m.Quota.Total = &quota.Total
-		remaining := quota.Total - quota.Used
+	if quota.Total != nil {
+		m.Quota.Total = quota.Total
+		remaining := *quota.Total - quota.Used
 		m.Quota.Remaining = &remaining
 		m.RemainingQuota = &remaining
 	}
-	if quota.PerUser > 0 {
-		m.Quota.PerUser = &quota.PerUser
+	if quota.PerUser != nil {
+		m.Quota.PerUser = quota.PerUser
 	}
-	if quota.PerDay > 0 {
-		m.Quota.PerDay = &quota.PerDay
+	if quota.PerDay != nil {
+		m.Quota.PerDay = quota.PerDay
 	}
 
 	// Map images
@@ -585,7 +485,7 @@ func mapOfferToModel(offer *domain.Offer) *model.Offer {
 	// Map partner snapshot
 	partner := offer.PartnerSnapshot()
 	m.Partner = &model.PartnerSnapshot{
-		ID:       partner.ID.String(),
+		ID:       offer.PartnerID().String(),
 		Name:     partner.Name,
 		Category: partner.Category,
 	}
@@ -596,13 +496,13 @@ func mapOfferToModel(offer *domain.Offer) *model.Offer {
 	// Map establishment snapshot
 	establishment := offer.EstablishmentSnapshot()
 	m.Establishment = &model.EstablishmentSnapshot{
-		ID:      establishment.ID.String(),
+		ID:      offer.EstablishmentID().String(),
 		Name:    establishment.Name,
 		Address: establishment.Address,
 		City:    establishment.City,
 		Location: &model.GeoLocation{
-			Latitude:  establishment.Location.Latitude,
-			Longitude: establishment.Location.Longitude,
+			Latitude:  establishment.Location.Latitude(),
+			Longitude: establishment.Location.Longitude(),
 		},
 	}
 
@@ -623,23 +523,27 @@ func mapOfferToModel(offer *domain.Offer) *model.Offer {
 	m.Moderation = &model.Moderation{
 		Status: mapModerationStatusToModel(moderation.Status),
 	}
-	if moderation.ReviewedBy != "" {
-		m.Moderation.ReviewedBy = &moderation.ReviewedBy
+	if moderation.ReviewerID != nil {
+		m.Moderation.ReviewedBy = moderation.ReviewerID
 	}
 	if moderation.ReviewedAt != nil {
 		m.Moderation.ReviewedAt = moderation.ReviewedAt
 	}
-	if moderation.Comment != "" {
-		m.Moderation.Comment = &moderation.Comment
+	if moderation.Comment != nil {
+		m.Moderation.Comment = moderation.Comment
 	}
 
 	// Map conditions
 	conditions := offer.Conditions()
 	m.Conditions = make([]*model.Condition, len(conditions))
 	for i, cond := range conditions {
+		valueStr := ""
+		if cond.Value != nil {
+			valueStr = fmt.Sprintf("%v", cond.Value)
+		}
 		m.Conditions[i] = &model.Condition{
 			Type:  mapConditionTypeToModel(cond.Type),
-			Value: cond.Value,
+			Value: valueStr,
 			Label: cond.Label,
 		}
 	}
@@ -725,25 +629,19 @@ func mapOfferSummaryToModel(summary *domain.OfferSummary) *model.OfferSummary {
 
 	return &model.OfferSummary{
 		ID:                summary.ID.String(),
-		PartnerID:         summary.PartnerID.String(),
-		EstablishmentID:   summary.EstablishmentID.String(),
 		Title:             summary.Title,
 		ShortDescription:  summary.ShortDescription,
 		CategoryID:        summary.CategoryID.String(),
-		DiscountType:      mapDiscountTypeToModel(summary.DiscountType),
-		DiscountValue:     summary.DiscountValue,
-		Status:            mapOfferStatusToModel(summary.Status),
+		DiscountType:      mapDiscountTypeToModel(summary.Discount.Type),
+		DiscountValue:     summary.Discount.Value,
 		PartnerName:       summary.PartnerName,
 		EstablishmentName: summary.EstablishmentName,
-		EstablishmentCity: summary.EstablishmentCity,
+		EstablishmentCity: summary.City,
 		Location: &model.GeoLocation{
-			Latitude:  summary.Location.Latitude,
-			Longitude: summary.Location.Longitude,
+			Latitude:  summary.Location.Latitude(),
+			Longitude: summary.Location.Longitude(),
 		},
-		Views:       int(summary.Views),
-		AvgRating:   summary.AvgRating,
-		ReviewCount: summary.ReviewCount,
-		PublishedAt: summary.PublishedAt,
+		Distance: summary.Distance,
 	}
 }
 
@@ -766,25 +664,6 @@ func mapOfferStatusToModel(status domain.OfferStatus) model.OfferStatus {
 	}
 }
 
-func mapOfferStatusToDomain(status model.OfferStatus) domain.OfferStatus {
-	switch status {
-	case model.OfferStatusDraft:
-		return domain.OfferStatusDraft
-	case model.OfferStatusPending:
-		return domain.OfferStatusPending
-	case model.OfferStatusActive:
-		return domain.OfferStatusActive
-	case model.OfferStatusPaused:
-		return domain.OfferStatusPaused
-	case model.OfferStatusExpired:
-		return domain.OfferStatusExpired
-	case model.OfferStatusArchived:
-		return domain.OfferStatusArchived
-	default:
-		return domain.OfferStatusDraft
-	}
-}
-
 func mapDiscountTypeToModel(dt domain.DiscountType) model.DiscountType {
 	switch dt {
 	case domain.DiscountTypePercentage:
@@ -795,19 +674,6 @@ func mapDiscountTypeToModel(dt domain.DiscountType) model.DiscountType {
 		return model.DiscountTypeFormula
 	default:
 		return model.DiscountTypePercentage
-	}
-}
-
-func mapDiscountTypeToDomain(dt model.DiscountType) domain.DiscountType {
-	switch dt {
-	case model.DiscountTypePercentage:
-		return domain.DiscountTypePercentage
-	case model.DiscountTypeFixed:
-		return domain.DiscountTypeFixed
-	case model.DiscountTypeFormula:
-		return domain.DiscountTypeFormula
-	default:
-		return domain.DiscountTypePercentage
 	}
 }
 
@@ -832,10 +698,6 @@ func mapConditionTypeToModel(ct domain.ConditionType) model.ConditionType {
 		return model.ConditionTypeMinPeople
 	case domain.ConditionTypeFirstVisit:
 		return model.ConditionTypeFirstVisit
-	case domain.ConditionTypeSpecificDays:
-		return model.ConditionTypeSpecificDays
-	case domain.ConditionTypeSpecificHours:
-		return model.ConditionTypeSpecificHours
 	default:
 		return model.ConditionTypeOther
 	}

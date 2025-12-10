@@ -110,29 +110,28 @@ services:
     networks:
       - yousoon-network
 
-  # TODO: discovery-service - requires completion of resolver types
-  # discovery-service:
-  #   build:
-  #     context: ./services
-  #     dockerfile: discovery-service/Dockerfile
-  #   container_name: yousoon-discovery
-  #   ports:
-  #     - "4003:4000"
-  #   environment:
-  #     - PORT=4000
-  #     - MONGODB_URI=mongodb://yousoon:yousoon_dev_password@mongodb:27017/discovery?authSource=admin
-  #     - REDIS_URL=redis://redis:6379
-  #     - NATS_URL=nats://nats:4222
-  #     - ENV=development
-  #   depends_on:
-  #     mongodb:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #     nats:
-  #       condition: service_healthy
-  #   networks:
-  #     - yousoon-network
+  discovery-service:
+    build:
+      context: ./services
+      dockerfile: discovery-service/Dockerfile
+    container_name: yousoon-discovery
+    ports:
+      - "4003:4000"
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://yousoon:yousoon_dev_password@mongodb:27017/discovery?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - ENV=development
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - yousoon-network
 
   booking-service:
     build:
@@ -219,14 +218,14 @@ services:
       - APOLLO_ROUTER_CONFIG_PATH=/dist/config/router.yaml
       - IDENTITY_SERVICE_URL=http://identity-service:4000/graphql
       - PARTNER_SERVICE_URL=http://partner-service:4000/graphql
-      # - DISCOVERY_SERVICE_URL=http://discovery-service:4000/graphql
+      - DISCOVERY_SERVICE_URL=http://discovery-service:4000/graphql
       - BOOKING_SERVICE_URL=http://booking-service:4000/graphql
       - ENGAGEMENT_SERVICE_URL=http://engagement-service:4000/graphql
       - NOTIFICATION_SERVICE_URL=http://notification-service:4000/graphql
     depends_on:
       - identity-service
       - partner-service
-      # - discovery-service
+      - discovery-service
       - booking-service
       - engagement-service
       - notification-service

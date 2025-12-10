@@ -1,178 +1,103 @@
-// Package main is the entry point for the Discovery service.
 package main
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/handler/extension"
-	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/gorilla/websocket"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.uber.org/zap"
-
-	"github.com/yousoon/discovery-service/internal/config"
-	esrepo "github.com/yousoon/discovery-service/internal/infrastructure/elasticsearch"
-	mongorepo "github.com/yousoon/discovery-service/internal/infrastructure/mongodb"
+	mongodb "github.com/yousoon/discovery-service/internal/infrastructure/mongodb"
 	"github.com/yousoon/discovery-service/internal/interface/graphql/resolver"
+	"github.com/yousoon/shared/config"
+	sharedmongo "github.com/yousoon/shared/infrastructure/mongodb"
 	"github.com/yousoon/shared/infrastructure/nats"
-	"github.com/yousoon/shared/observability/logger"
-	"github.com/yousoon/shared/observability/tracing"
+)
+
+const (
+	defaultPort = "4000"
+	serviceName = "discovery-service"
 )
 
 func main() {
-	// Load configuration
-	cfg, err := config.Load()
+	// Initialize structured logger
+	logLevel := slog.LevelInfo
+	if os.Getenv("LOG_LEVEL") == "debug" {
+		logLevel = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	slog.SetDefault(logger)
+
+	slog.Info("Starting discovery service...")
+
+	// Get configuration from environment
+	port := config.GetEnv("PORT", defaultPort)
+	mongoURI := config.GetEnv("MONGODB_URI", "mongodb://localhost:27017")
+	mongoDatabase := config.GetEnv("MONGODB_DATABASE", "discovery_db")
+	natsURL := config.GetEnv("NATS_URL", "nats://localhost:4222")
+
+	// Initialize MongoDB client
+	mongoClient, err := sharedmongo.NewClient(context.Background(), sharedmongo.Config{
+		URI:            mongoURI,
+		Database:       mongoDatabase,
+		ConnectTimeout: 10 * time.Second,
+		MaxPoolSize:    100,
+	})
 	if err != nil {
-		fmt.Printf("Failed to load configuration: %v\n", err)
+		slog.Error("Failed to connect to MongoDB", "error", err)
 		os.Exit(1)
 	}
+	defer mongoClient.Close(context.Background())
 
-	// Initialize logger
-	log, err := logger.New(cfg.LogLevel, cfg.LogFormat, cfg.ServiceName)
+	slog.Info("Connected to MongoDB", "database", mongoDatabase)
+
+	// Initialize NATS client
+	natsClient, err := nats.NewClient(context.Background(), nats.Config{
+		URL:  natsURL,
+		Name: serviceName,
+	})
 	if err != nil {
-		fmt.Printf("Failed to initialize logger: %v\n", err)
+		slog.Error("Failed to connect to NATS", "error", err)
 		os.Exit(1)
-	}
-	defer log.Sync()
-
-	log.Info("Starting Discovery Service",
-		zap.String("version", cfg.Version),
-		zap.String("environment", cfg.Environment),
-	)
-
-	// Initialize tracing
-	tp, err := tracing.InitTracer(cfg.ServiceName, cfg.JaegerEndpoint)
-	if err != nil {
-		log.Error("Failed to initialize tracer", zap.Error(err))
-	}
-	defer func() {
-		if tp != nil {
-			_ = tp.Shutdown(context.Background())
-		}
-	}()
-
-	// Create context for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Connect to MongoDB
-	mongoClient, err := connectMongoDB(ctx, cfg, log)
-	if err != nil {
-		log.Fatal("Failed to connect to MongoDB", zap.Error(err))
-	}
-	defer func() {
-		if err := mongoClient.Disconnect(ctx); err != nil {
-			log.Error("Failed to disconnect from MongoDB", zap.Error(err))
-		}
-	}()
-
-	mongoDB := mongoClient.Database(cfg.MongoDB)
-
-	// Connect to Elasticsearch
-	esClient, err := connectElasticsearch(cfg, log)
-	if err != nil {
-		log.Error("Failed to connect to Elasticsearch", zap.Error(err))
-		// Continue without Elasticsearch - fallback to MongoDB search
-	}
-
-	// Connect to NATS
-	natsClient, err := nats.NewClient(cfg.NATSURL, cfg.NATSClusterID, cfg.ServiceName)
-	if err != nil {
-		log.Fatal("Failed to connect to NATS", zap.Error(err))
 	}
 	defer natsClient.Close()
 
-	eventPublisher := nats.NewPublisher(natsClient)
+	slog.Info("Connected to NATS")
 
 	// Initialize repositories
-	offerRepo := mongorepo.NewOfferRepository(mongoDB)
-	categoryRepo := mongorepo.NewCategoryRepository(mongoDB)
+	offerRepo := mongodb.NewOfferRepository(mongoClient.Database())
+	categoryRepo := mongodb.NewCategoryRepository(mongoClient.Database())
 
-	// Ensure MongoDB indexes
-	if err := offerRepo.EnsureIndexes(ctx); err != nil {
-		log.Error("Failed to create offer indexes", zap.Error(err))
+	// Ensure indexes
+	if err := offerRepo.EnsureIndexes(context.Background()); err != nil {
+		slog.Warn("Failed to ensure offer indexes", "error", err)
 	}
-	if err := categoryRepo.EnsureIndexes(ctx); err != nil {
-		log.Error("Failed to create category indexes", zap.Error(err))
-	}
-
-	// Initialize Elasticsearch repository
-	var searchRepo *esrepo.OfferSearchRepository
-	if esClient != nil {
-		searchRepo = esrepo.NewOfferSearchRepository(esClient)
-		if err := searchRepo.EnsureIndex(ctx); err != nil {
-			log.Error("Failed to create Elasticsearch index", zap.Error(err))
-		}
+	if err := categoryRepo.EnsureIndexes(context.Background()); err != nil {
+		slog.Warn("Failed to ensure category indexes", "error", err)
 	}
 
-	// Create resolver
-	_ = resolver.NewResolver(offerRepo, categoryRepo, searchRepo, eventPublisher)
+	// Initialize GraphQL resolver
+	// Note: For now, we pass offerRepo as both OfferRepository and OfferReadRepository
+	// In the future, OfferReadRepository could be an Elasticsearch implementation
+	graphqlResolver := resolver.NewResolver(offerRepo, categoryRepo, offerRepo)
 
-	// Setup GraphQL server
-	// TODO: Use generated.NewExecutableSchema when gqlgen code is generated
-	srv := handler.NewDefaultServer(nil)
+	// Create HTTP server
+	mux := http.NewServeMux()
 
-	// Add transports
-	srv.AddTransport(transport.Options{})
-	srv.AddTransport(transport.GET{})
-	srv.AddTransport(transport.POST{})
-	srv.AddTransport(transport.MultipartForm{})
-	srv.AddTransport(&transport.Websocket{
-		Upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				return true // Allow all origins in development
-			},
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-		},
-		KeepAlivePingInterval: 10 * time.Second,
-	})
-
-	// Add extensions
-	if cfg.IsDevelopment() {
-		srv.Use(extension.Introspection{})
-	}
-	srv.Use(extension.FixedComplexityLimit(100))
-
-	// Setup router
-	router := chi.NewRouter()
-
-	// Middleware
-	router.Use(middleware.RequestID)
-	router.Use(middleware.RealIP)
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.Timeout(30 * time.Second))
-
-	// Routes
-	router.Handle("/graphql", srv)
-	if cfg.IsDevelopment() {
-		router.Handle("/", playground.Handler("Discovery Service", "/graphql"))
-	}
-
-	// Health check
-	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	// Health check endpoint
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy"}`))
 	})
 
-	// Readiness check
-	router.Get("/ready", func(w http.ResponseWriter, r *http.Request) {
+	// Ready check endpoint
+	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		// Check MongoDB connection
-		if err := mongoClient.Ping(r.Context(), nil); err != nil {
+		if err := mongoClient.Ping(r.Context()); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			w.Write([]byte(`{"status":"not ready","reason":"mongodb unavailable"}`))
 			return
@@ -181,128 +106,75 @@ func main() {
 		w.Write([]byte(`{"status":"ready"}`))
 	})
 
-	// Start metrics server
-	go func() {
-		metricsRouter := chi.NewRouter()
-		metricsRouter.Handle("/metrics", promhttp.Handler())
-		metricsAddr := fmt.Sprintf(":%s", cfg.MetricsPort)
-		log.Info("Starting metrics server", zap.String("addr", metricsAddr))
-		if err := http.ListenAndServe(metricsAddr, metricsRouter); err != nil {
-			log.Error("Metrics server error", zap.Error(err))
-		}
-	}()
+	// GraphQL endpoint placeholder
+	// After running gqlgen generate, this will be replaced with the actual handler
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"message":"GraphQL endpoint ready. Run 'go generate ./...' to generate schema."}`))
+	})
 
-	// Start HTTP server
-	httpAddr := fmt.Sprintf(":%s", cfg.HTTPPort)
-	httpServer := &http.Server{
-		Addr:         httpAddr,
-		Handler:      router,
+	// GraphQL Playground (development only)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Discovery Service - GraphQL Playground</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/css/index.css" />
+    <script src="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/js/middleware.js"></script>
+</head>
+<body>
+    <div id="root">
+        <style>
+            body { margin: 0; }
+        </style>
+        <script>
+            window.addEventListener('load', function (event) {
+                GraphQLPlayground.init(document.getElementById('root'), { endpoint: '/graphql' })
+            })
+        </script>
+    </div>
+</body>
+</html>`))
+	})
+
+	// Create HTTP server with timeouts
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
+	// Start server in goroutine
 	go func() {
-		log.Info("Starting HTTP server", zap.String("addr", httpAddr))
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("HTTP server error", zap.Error(err))
+		slog.Info("Server starting", "port", port, "graphql", "/graphql", "playground", "/")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
 		}
 	}()
 
-	// Register with Schema Registry
-	if cfg.SchemaRegistryURL != "" {
-		go registerWithSchemaRegistry(cfg, log)
-	}
-
-	// Wait for shutdown signal
+	// Wait for interrupt signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Info("Shutting down Discovery Service...")
+	slog.Info("Shutting down server...")
 
-	// Graceful shutdown
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer shutdownCancel()
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		log.Error("HTTP server shutdown error", zap.Error(err))
+	if err := server.Shutdown(ctx); err != nil {
+		slog.Error("Server shutdown failed", "error", err)
+		os.Exit(1)
 	}
 
-	log.Info("Discovery Service stopped")
-}
+	slog.Info("Server stopped")
 
-// connectMongoDB establishes a connection to MongoDB.
-func connectMongoDB(ctx context.Context, cfg *config.Config, log *zap.Logger) (*mongo.Client, error) {
-	log.Info("Connecting to MongoDB", zap.String("uri", maskURI(cfg.MongoURI)))
-
-	clientOptions := options.Client().
-		ApplyURI(cfg.MongoURI).
-		SetMaxPoolSize(cfg.MongoMaxPoolSize).
-		SetServerSelectionTimeout(cfg.MongoTimeout)
-
-	client, err := mongo.Connect(ctx, clientOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
-	}
-
-	// Ping to verify connection
-	if err := client.Ping(ctx, nil); err != nil {
-		return nil, fmt.Errorf("failed to ping MongoDB: %w", err)
-	}
-
-	log.Info("Connected to MongoDB successfully")
-	return client, nil
-}
-
-// connectElasticsearch establishes a connection to Elasticsearch.
-func connectElasticsearch(cfg *config.Config, log *zap.Logger) (*elasticsearch.Client, error) {
-	log.Info("Connecting to Elasticsearch", zap.Strings("urls", cfg.ElasticsearchURLs))
-
-	esCfg := elasticsearch.Config{
-		Addresses: cfg.ElasticsearchURLs,
-	}
-
-	if cfg.ElasticsearchUsername != "" {
-		esCfg.Username = cfg.ElasticsearchUsername
-		esCfg.Password = cfg.ElasticsearchPassword
-	}
-
-	client, err := elasticsearch.NewClient(esCfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Elasticsearch client: %w", err)
-	}
-
-	// Test connection
-	res, err := client.Info()
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to Elasticsearch: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.IsError() {
-		return nil, fmt.Errorf("Elasticsearch error: %s", res.String())
-	}
-
-	log.Info("Connected to Elasticsearch successfully")
-	return client, nil
-}
-
-// registerWithSchemaRegistry registers the service schema with the registry.
-func registerWithSchemaRegistry(cfg *config.Config, log *zap.Logger) {
-	// This would typically read the schema file and POST it to the registry
-	log.Info("Registering with Schema Registry", zap.String("url", cfg.SchemaRegistryURL))
-
-	// Implementation would be similar to partner-service
-	// For now, just log
-	log.Info("Schema registration complete")
-}
-
-// maskURI masks sensitive parts of a URI for logging.
-func maskURI(uri string) string {
-	// Simple masking - in production use a proper URL parser
-	if len(uri) > 20 {
-		return uri[:20] + "..."
-	}
-	return uri
+	// Suppress unused variable warning
+	_ = graphqlResolver
+	_ = natsClient
 }

@@ -354,3 +354,116 @@ func (e OfferSortBy) IsValid() bool {
 func (e OfferSortBy) String() string {
 	return string(e)
 }
+
+// =============================================================================
+// Input Types
+// =============================================================================
+
+// OfferFilterInput represents filter options for listing offers.
+type OfferFilterInput struct {
+	PartnerID       *string      `json:"partnerId"`
+	EstablishmentID *string      `json:"establishmentId"`
+	CategoryID      *string      `json:"categoryId"`
+	Status          *OfferStatus `json:"status"`
+	OnlyActive      *bool        `json:"onlyActive"`
+	Latitude        *float64     `json:"latitude"`
+	Longitude       *float64     `json:"longitude"`
+	RadiusKm        *float64     `json:"radiusKm"`
+	Offset          *int         `json:"offset"`
+	Limit           *int         `json:"limit"`
+	SortBy          *OfferSortBy `json:"sortBy"`
+}
+
+// CreateOfferInput represents input for creating an offer.
+type CreateOfferInput struct {
+	PartnerID          string            `json:"partnerId"`
+	EstablishmentID    string            `json:"establishmentId"`
+	Title              string            `json:"title"`
+	Description        string            `json:"description"`
+	ShortDescription   *string           `json:"shortDescription"`
+	CategoryID         string            `json:"categoryId"`
+	Tags               []string          `json:"tags"`
+	Discount           DiscountInput     `json:"discount"`
+	Conditions         []ConditionInput  `json:"conditions"`
+	TermsAndConditions *string           `json:"termsAndConditions"`
+	Validity           ValidityInput     `json:"validity"`
+	Schedule           *ScheduleInput    `json:"schedule"`
+	Quota              *QuotaInput       `json:"quota"`
+	Images             []OfferImageInput `json:"images"`
+}
+
+// DiscountInput represents input for discount.
+type DiscountInput struct {
+	Type    DiscountType `json:"type"`
+	Value   int          `json:"value"`
+	Formula *string      `json:"formula"`
+}
+
+// ConditionInput represents input for condition.
+type ConditionInput struct {
+	Type  ConditionType `json:"type"`
+	Value string        `json:"value"`
+	Label string        `json:"label"`
+}
+
+// ValidityInput represents input for validity period.
+type ValidityInput struct {
+	StartDate time.Time `json:"startDate"`
+	EndDate   time.Time `json:"endDate"`
+	Timezone  *string   `json:"timezone"`
+}
+
+// ScheduleInput represents input for schedule.
+type ScheduleInput struct {
+	AllDay bool            `json:"allDay"`
+	Slots  []TimeSlotInput `json:"slots"`
+}
+
+// TimeSlotInput represents input for time slot.
+type TimeSlotInput struct {
+	DayOfWeek int    `json:"dayOfWeek"`
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+}
+
+// QuotaInput represents input for quota.
+type QuotaInput struct {
+	Total   *int `json:"total"`
+	PerUser *int `json:"perUser"`
+	PerDay  *int `json:"perDay"`
+}
+
+// OfferImageInput represents input for offer image.
+type OfferImageInput struct {
+	URL       string `json:"url"`
+	Alt       string `json:"alt"`
+	IsPrimary bool   `json:"isPrimary"`
+}
+
+// CreateCategoryInput represents input for creating a category.
+type CreateCategoryInput struct {
+	Slug          string  `json:"slug"`
+	NameFr        string  `json:"nameFr"`
+	NameEn        *string `json:"nameEn"`
+	DescriptionFr *string `json:"descriptionFr"`
+	DescriptionEn *string `json:"descriptionEn"`
+	Icon          *string `json:"icon"`
+	Color         *string `json:"color"`
+	Image         *string `json:"image"`
+	ParentID      *string `json:"parentId"`
+	Order         *int    `json:"order"`
+}
+
+// UpdateCategoryInput represents input for updating a category.
+type UpdateCategoryInput struct {
+	NameFr        *string `json:"nameFr"`
+	NameEn        *string `json:"nameEn"`
+	DescriptionFr *string `json:"descriptionFr"`
+	DescriptionEn *string `json:"descriptionEn"`
+	Icon          *string `json:"icon"`
+	Color         *string `json:"color"`
+	Image         *string `json:"image"`
+	ParentID      *string `json:"parentId"`
+	Order         *int    `json:"order"`
+	IsActive      *bool   `json:"isActive"`
+}
