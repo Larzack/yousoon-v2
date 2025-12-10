@@ -1,0 +1,112 @@
+schema:
+  - internal/interface/graphql/*.graphqls
+
+exec:
+  filename: internal/interface/graphql/generated/generated.go
+  package: generated
+
+federation:
+  filename: internal/interface/graphql/generated/federation.go
+  package: generated
+
+model:
+  filename: internal/interface/graphql/model/models_gen.go
+  package: model
+
+resolver:
+  layout: follow-schema
+  dir: internal/interface/graphql/resolver
+  package: resolver
+  filename_template: "{name}.resolvers.go"
+
+autobind:
+  - "github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model"
+
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+  DateTime:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time
+  JSON:
+    model:
+      - github.com/99designs/gqlgen/graphql.Map
+  
+  # Federation types
+  User:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.User
+  Offer:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.Offer
+  Partner:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.Partner
+  Establishment:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.Establishment
+  
+  # Local types
+  Outing:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.Outing
+  OfferSnapshot:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.OfferSnapshot
+  QRCodeInfo:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.QRCodeInfo
+  TimelineEntry:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.TimelineEntry
+  CheckInInfo:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CheckInInfo
+  CancellationInfo:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CancellationInfo
+  BookingStats:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.BookingStats
+  
+  # Connection types
+  OutingConnection:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.OutingConnection
+  OutingEdge:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.OutingEdge
+  PageInfo:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.PageInfo
+  
+  # Input types
+  BookOfferInput:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.BookOfferInput
+  CheckInInput:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CheckInInput
+  ManualCheckInInput:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.ManualCheckInInput
+  CancelOutingInput:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CancelOutingInput
+  OutingFilterInput:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.OutingFilterInput
+  PaginationInput:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.PaginationInput
+  
+  # Payload types
+  BookOfferPayload:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.BookOfferPayload
+  CheckInPayload:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CheckInPayload
+  CancelOutingPayload:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CancelOutingPayload
+  
+  # Error types
+  BookingError:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.BookingError
+  CheckInError:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CheckInError
+  CancellationError:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CancellationError
+  
+  # Enums
+  OutingStatus:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.OutingStatus
+  CheckInMethod:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CheckInMethod
+  CancellationActor:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CancellationActor
+  BookingErrorCode:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.BookingErrorCode
+  CheckInErrorCode:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CheckInErrorCode
+  CancellationErrorCode:
+    model: github.com/yousoon/apps/services/booking-service/internal/interface/graphql/model.CancellationErrorCode

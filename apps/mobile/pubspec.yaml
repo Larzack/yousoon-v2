@@ -1,0 +1,119 @@
+name: yousoon
+description: Yousoon - Plateforme de sorties avec réductions
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+
+  # GraphQL
+  ferry: ^0.15.0
+  ferry_flutter: ^0.9.0
+  gql_http_link: ^1.0.0
+  gql_websocket_link: ^1.0.0
+  
+  # Navigation
+  go_router: ^13.0.0
+  
+  # Local Storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  flutter_secure_storage: ^9.0.0
+  
+  # Network
+  dio: ^5.4.0
+  connectivity_plus: ^5.0.2
+  
+  # UI Components
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  flutter_animate: ^4.3.0
+  flutter_svg: ^2.0.9
+  
+  # Maps & Location
+  google_maps_flutter: ^2.5.3
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+  
+  # Authentication
+  local_auth: ^2.1.8
+  
+  # QR Code
+  mobile_scanner: ^4.0.0
+  qr_flutter: ^4.1.0
+  
+  # In-App Purchase
+  in_app_purchase: ^3.1.13
+  
+  # Push Notifications
+  onesignal_flutter: ^5.1.2
+  
+  # Analytics & Monitoring
+  amplitude_flutter: ^3.16.1
+  sentry_flutter: ^7.14.0
+  
+  # Utilities
+  intl: ^0.18.1
+  json_annotation: ^4.8.1
+  equatable: ^2.0.5
+  freezed_annotation: ^2.4.1
+  uuid: ^4.2.2
+  share_plus: ^7.2.1
+  url_launcher: ^6.2.2
+  package_info_plus: ^5.0.1
+  device_info_plus: ^9.1.1
+  permission_handler: ^11.1.0
+  image_picker: ^1.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  
+  # Code Generation
+  build_runner: ^2.4.7
+  riverpod_generator: ^2.3.9
+  freezed: ^2.4.6
+  json_serializable: ^6.7.1
+  ferry_generator: ^0.9.0
+  hive_generator: ^2.0.1
+  go_router_builder: ^2.4.1
+  
+  # Testing
+  mockito: ^5.4.4
+  mocktail: ^1.0.2
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/fonts/
+    - assets/animations/
+
+  fonts:
+    - family: Futura
+      fonts:
+        - asset: assets/fonts/Futura-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Futura-Bold.ttf
+          weight: 700
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600

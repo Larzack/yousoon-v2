@@ -1,0 +1,147 @@
+# Notification Service
+
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.0", import: ["@key", "@shareable", "@external", "@requires", "@provides"])
+
+# ============================================
+# TYPES
+# ============================================
+
+type Notification @key(fields: "id") {
+  id: ID!
+  userId: ID!
+  type: NotificationType!
+  channel: NotificationChannel!
+  title: String!
+  body: String!
+  image: String
+  data: String
+  relatedType: String
+  relatedId: ID
+  status: NotificationStatus!
+  sentAt: DateTime
+  readAt: DateTime
+  createdAt: DateTime!
+}
+
+type NotificationsConnection {
+  edges: [NotificationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+  unreadCount: Int!
+}
+
+type NotificationEdge {
+  node: Notification!
+  cursor: String!
+}
+
+type DeviceToken {
+  id: ID!
+  token: String!
+  platform: Platform!
+  createdAt: DateTime!
+}
+
+type NotificationSettings {
+  push: Boolean!
+  email: Boolean!
+  sms: Boolean!
+  marketing: Boolean!
+  offerNearby: Boolean!
+  bookingReminder: Boolean!
+}
+
+# ============================================
+# ENUMS
+# ============================================
+
+enum NotificationType {
+  OFFER_NEARBY
+  BOOKING_CONFIRMED
+  BOOKING_REMINDER
+  BOOKING_CANCELLED
+  CHECK_IN_SUCCESS
+  NEW_OFFER
+  MARKETING
+  SYSTEM
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  SMS
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum Platform {
+  IOS
+  ANDROID
+  WEB
+}
+
+# ============================================
+# QUERIES
+# ============================================
+
+type Query {
+  myNotifications(first: Int, after: String, unreadOnly: Boolean): NotificationsConnection!
+  notificationSettings: NotificationSettings!
+}
+
+# ============================================
+# MUTATIONS
+# ============================================
+
+type Mutation {
+  registerDevice(input: RegisterDeviceInput!): DeviceToken!
+  unregisterDevice(token: String!): Boolean!
+  updateNotificationSettings(input: UpdateNotificationSettingsInput!): NotificationSettings!
+  markNotificationRead(id: ID!): Notification!
+  markAllNotificationsRead: Boolean!
+}
+
+# ============================================
+# SUBSCRIPTIONS
+# ============================================
+
+type Subscription {
+  notificationReceived: Notification!
+}
+
+# ============================================
+# INPUTS
+# ============================================
+
+input RegisterDeviceInput {
+  token: String!
+  platform: Platform!
+}
+
+input UpdateNotificationSettingsInput {
+  push: Boolean
+  email: Boolean
+  sms: Boolean
+  marketing: Boolean
+  offerNearby: Boolean
+  bookingReminder: Boolean
+}
+
+# ============================================
+# SHARED TYPES
+# ============================================
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+scalar DateTime

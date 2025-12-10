@@ -1,0 +1,343 @@
+# Extends the base Query type from the supergraph
+extend type Query {
+  # Get user's favorites
+  myFavorites(pagination: PaginationInput): FavoriteConnection!
+  
+  # Check if an offer is in favorites
+  isFavorite(offerId: ID!): Boolean!
+  
+  # Get reviews for an offer
+  offerReviews(offerId: ID!, filter: ReviewFilterInput, pagination: PaginationInput): ReviewConnection!
+  
+  # Get reviews for a partner
+  partnerReviews(partnerId: ID!, filter: ReviewFilterInput, pagination: PaginationInput): ReviewConnection!
+  
+  # Get my reviews
+  myReviews(pagination: PaginationInput): ReviewConnection!
+  
+  # Get a single review
+  review(id: ID!): Review
+  
+  # Get average rating for an offer
+  offerRating(offerId: ID!): RatingStats!
+  
+  # Get average rating for a partner
+  partnerRating(partnerId: ID!): RatingStats!
+  
+  # Admin: Get pending reviews
+  pendingReviews(pagination: PaginationInput): ReviewConnection!
+  
+  # Admin: Get reported reviews
+  reportedReviews(pagination: PaginationInput): ReviewConnection!
+}
+
+# Extends the base Mutation type from the supergraph
+extend type Mutation {
+  # Add offer to favorites
+  addToFavorites(offerId: ID!): AddToFavoritesPayload!
+  
+  # Remove offer from favorites
+  removeFromFavorites(offerId: ID!): RemoveFromFavoritesPayload!
+  
+  # Toggle favorite (add if not exists, remove if exists)
+  toggleFavorite(offerId: ID!): ToggleFavoritePayload!
+  
+  # Submit a review
+  submitReview(input: SubmitReviewInput!): SubmitReviewPayload!
+  
+  # Update a review
+  updateReview(input: UpdateReviewInput!): UpdateReviewPayload!
+  
+  # Delete a review
+  deleteReview(reviewId: ID!): DeleteReviewPayload!
+  
+  # Report a review
+  reportReview(input: ReportReviewInput!): ReportReviewPayload!
+  
+  # Mark review as helpful
+  markReviewHelpful(reviewId: ID!): MarkReviewHelpfulPayload!
+  
+  # Admin: Approve a review
+  approveReview(reviewId: ID!): ApproveReviewPayload!
+  
+  # Admin: Reject a review
+  rejectReview(input: RejectReviewInput!): RejectReviewPayload!
+}
+
+# Federation: Extend User type from Identity service
+extend type User @key(fields: "id") {
+  id: ID! @external
+  favorites: FavoriteConnection!
+  reviews: ReviewConnection!
+}
+
+# Federation: Extend Offer type from Discovery service
+extend type Offer @key(fields: "id") {
+  id: ID! @external
+  isFavorite: Boolean!
+  favoritesCount: Int!
+  reviews(filter: ReviewFilterInput, pagination: PaginationInput): ReviewConnection!
+  rating: RatingStats!
+}
+
+# Federation: Extend Partner type from Partner service
+extend type Partner @key(fields: "id") {
+  id: ID! @external
+  reviews(filter: ReviewFilterInput, pagination: PaginationInput): ReviewConnection!
+  rating: RatingStats!
+}
+
+# =============================================================================
+# TYPES
+# =============================================================================
+
+type Favorite @key(fields: "id") {
+  id: ID!
+  userId: ID!
+  offerId: ID!
+  offer: Offer!
+  
+  # Denormalized data
+  offerTitle: String!
+  offerImageUrl: String
+  partnerName: String!
+  
+  createdAt: DateTime!
+}
+
+type Review @key(fields: "id") {
+  id: ID!
+  userId: ID!
+  user: User!
+  offerId: ID!
+  offer: Offer!
+  partnerId: ID!
+  partner: Partner!
+  establishmentId: ID!
+  bookingId: ID
+  
+  # Content
+  rating: Int!
+  title: String
+  content: String!
+  images: [String!]
+  
+  # User info (denormalized)
+  userFirstName: String!
+  userAvatar: String
+  
+  # Offer info (denormalized)
+  offerTitle: String!
+  
+  # Partner info (denormalized)
+  partnerName: String!
+  
+  # Moderation
+  status: ReviewStatus!
+  reportsCount: Int!
+  
+  # Stats
+  helpfulCount: Int!
+  
+  # Flags
+  isVerifiedPurchase: Boolean!
+  
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type RatingStats {
+  average: Float!
+  count: Int!
+  distribution: RatingDistribution!
+}
+
+type RatingDistribution {
+  one: Int!
+  two: Int!
+  three: Int!
+  four: Int!
+  five: Int!
+}
+
+# Connection types
+type FavoriteConnection {
+  edges: [FavoriteEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type FavoriteEdge {
+  node: Favorite!
+  cursor: String!
+}
+
+type ReviewConnection {
+  edges: [ReviewEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ReviewEdge {
+  node: Review!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# =============================================================================
+# ENUMS
+# =============================================================================
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REPORTED
+}
+
+# =============================================================================
+# INPUTS
+# =============================================================================
+
+input SubmitReviewInput {
+  offerId: ID!
+  rating: Int!
+  title: String
+  content: String!
+  images: [String!]
+}
+
+input UpdateReviewInput {
+  reviewId: ID!
+  rating: Int!
+  title: String
+  content: String!
+  images: [String!]
+}
+
+input ReportReviewInput {
+  reviewId: ID!
+  reason: String!
+}
+
+input RejectReviewInput {
+  reviewId: ID!
+  reason: String!
+}
+
+input ReviewFilterInput {
+  status: [ReviewStatus!]
+  rating: Int
+}
+
+input PaginationInput {
+  first: Int
+  after: String
+  last: Int
+  before: String
+}
+
+# =============================================================================
+# PAYLOADS
+# =============================================================================
+
+type AddToFavoritesPayload {
+  success: Boolean!
+  favorite: Favorite
+  error: FavoriteError
+}
+
+type RemoveFromFavoritesPayload {
+  success: Boolean!
+  error: FavoriteError
+}
+
+type ToggleFavoritePayload {
+  success: Boolean!
+  isFavorite: Boolean!
+  favorite: Favorite
+  error: FavoriteError
+}
+
+type SubmitReviewPayload {
+  success: Boolean!
+  review: Review
+  error: ReviewError
+}
+
+type UpdateReviewPayload {
+  success: Boolean!
+  review: Review
+  error: ReviewError
+}
+
+type DeleteReviewPayload {
+  success: Boolean!
+  error: ReviewError
+}
+
+type ReportReviewPayload {
+  success: Boolean!
+  error: ReviewError
+}
+
+type MarkReviewHelpfulPayload {
+  success: Boolean!
+  review: Review
+  error: ReviewError
+}
+
+type ApproveReviewPayload {
+  success: Boolean!
+  review: Review
+  error: ReviewError
+}
+
+type RejectReviewPayload {
+  success: Boolean!
+  review: Review
+  error: ReviewError
+}
+
+# Error types
+type FavoriteError {
+  code: FavoriteErrorCode!
+  message: String!
+}
+
+enum FavoriteErrorCode {
+  OFFER_NOT_FOUND
+  ALREADY_IN_FAVORITES
+  NOT_IN_FAVORITES
+  INTERNAL_ERROR
+}
+
+type ReviewError {
+  code: ReviewErrorCode!
+  message: String!
+}
+
+enum ReviewErrorCode {
+  OFFER_NOT_FOUND
+  REVIEW_NOT_FOUND
+  ALREADY_REVIEWED
+  INVALID_RATING
+  EMPTY_CONTENT
+  MUST_HAVE_BOOKING
+  CANNOT_REVIEW_OWN
+  ALREADY_REPORTED
+  NOT_AUTHORIZED
+  INTERNAL_ERROR
+}
+
+# =============================================================================
+# SCALARS
+# =============================================================================
+
+scalar DateTime
