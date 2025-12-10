@@ -1,6 +1,6 @@
 # 📊 Statut des Générations Backend - Yousoon
 
-> **Dernière mise à jour** : 10 décembre 2025  
+> **Dernière mise à jour** : 10 décembre 2025 (18h30)  
 > **Architecture** : DDD + Hexagonale + GraphQL Federation 2
 
 ---
@@ -10,13 +10,13 @@
 | Service | Statut | Domain | Application | Infrastructure | GraphQL | Tests |
 |---------|--------|--------|-------------|----------------|---------|-------|
 | **Shared** | ✅ Complet | ✅ | N/A | ✅ | N/A | ⏳ |
-| **Identity** | ✅ Complet | ✅ | ✅ | ✅ | ✅ Schema | ⏳ |
+| **Identity** | ✅ Complet | ✅ | ✅ | ✅ | ✅ | ⏳ |
 | **Partner** | ✅ Complet | ✅ | ✅ | ✅ | ✅ | ⏳ |
 | **Discovery** | ✅ Complet | ✅ | ✅ | ✅ | ✅ | ⏳ |
-| **Booking** | 🔲 À faire | 🔲 | 🔲 | 🔲 | 🔲 | 🔲 |
-| **Engagement** | 🔲 À faire | 🔲 | 🔲 | 🔲 | 🔲 | 🔲 |
-| **Notification** | 🔲 À faire | 🔲 | 🔲 | 🔲 | 🔲 | 🔲 |
-| **Router (Apollo)** | 🔲 À faire | N/A | N/A | N/A | 🔲 | 🔲 |
+| **Booking** | ✅ Complet | ✅ | ✅ | ✅ | ✅ | ⏳ |
+| **Engagement** | ✅ Complet | ✅ | ✅ | ✅ | ✅ | ⏳ |
+| **Notification** | ✅ Complet | ✅ | ✅ | ✅ | ✅ | ⏳ |
+| **Router (Apollo)** | ✅ Complet | N/A | N/A | N/A | ✅ | ⏳ |
 
 **Légende** : ✅ Complet | ⏳ En cours | 🔲 À faire
 
@@ -167,17 +167,108 @@ discovery-service/
             └── resolver.go          ✅
 ```
 
-### 🔲 Booking Service (`services/booking-service/`)
+### ✅ Booking Service (`services/booking-service/`)
 
-À générer...
+```
+booking-service/
+├── go.mod                           ✅
+├── gqlgen.yml                       ✅
+├── Dockerfile                       ✅
+├── deploy/kubernetes/
+│   └── deployment.yaml              ✅
+├── cmd/main.go                      ✅
+├── config/config.go                 ✅
+└── internal/
+    ├── domain/
+    │   ├── outing.go                ✅ Aggregate Root (648 lignes)
+    │   ├── events.go                ✅
+    │   └── repository.go            ✅
+    ├── application/
+    │   ├── commands/
+    │   │   └── handlers.go          ✅
+    │   └── queries/
+    │       └── handlers.go          ✅
+    ├── infrastructure/
+    │   └── mongodb/
+    │       └── outing_repository.go ✅
+    └── interface/graphql/
+        ├── schema.graphqls          ✅
+        ├── model/models.go          ✅
+        └── resolver/
+            └── resolver.go          ✅
+```
 
-### 🔲 Engagement Service (`services/engagement-service/`)
+### ✅ Engagement Service (`services/engagement-service/`)
 
-À générer...
+```
+engagement-service/
+├── go.mod                           ✅
+├── Dockerfile                       ✅
+├── deploy/kubernetes/
+│   └── deployment.yaml              ✅
+├── cmd/main.go                      ✅
+├── config/config.go                 ✅
+└── internal/
+    ├── domain/
+    │   ├── entities.go              ✅ Favorite, Review (382 lignes)
+    │   ├── events.go                ✅
+    │   └── repository.go            ✅
+    ├── application/
+    │   ├── commands/                ✅
+    │   └── queries/                 ✅
+    ├── infrastructure/
+    │   └── mongodb/                 ✅
+    └── interface/graphql/
+        ├── schema.graphqls          ✅
+        ├── model/                   ✅
+        └── resolver/                ✅
+```
 
-### 🔲 Notification Service (`services/notification-service/`)
+### ✅ Notification Service (`services/notification-service/`)
 
-À générer...
+```
+notification-service/
+├── go.mod                           ✅
+├── gqlgen.yml                       ✅
+├── Dockerfile                       ✅
+├── deploy/kubernetes/
+│   └── deployment.yaml              ✅
+├── cmd/main.go                      ✅
+├── config/config.go                 ✅
+└── internal/
+    ├── domain/
+    │   ├── entities.go              ✅ Notification, Template, PushToken
+    │   └── repository.go            ✅
+    ├── application/
+    │   ├── commands/                ✅
+    │   └── queries/                 ✅
+    ├── infrastructure/
+    │   ├── mongodb/                 ✅
+    │   ├── onesignal/               ✅ Push notifications
+    │   ├── aws/                     ✅ SES/SNS Email/SMS
+    │   └── nats/                    ✅ Event subscriber
+    └── interface/graphql/
+        ├── schema.graphqls          ✅
+        ├── model/                   ✅
+        └── resolver/                ✅
+```
+
+### ✅ Apollo Router (`services/router/`)
+
+```
+router/
+├── Dockerfile                       ✅
+├── supergraph.graphql               ✅ Federation 2 (1096 lignes)
+├── config/
+│   └── router.yaml                  ✅ Configuration
+├── plugins/
+│   ├── main.rhai                    ✅
+│   ├── auth.rhai                    ✅ JWT validation
+│   ├── rate_limit.rhai              ✅ Rate limiting
+│   └── logging.rhai                 ✅ Request logging
+└── deploy/kubernetes/
+    └── deployment.yaml              ✅
+```
 
 ---
 
@@ -202,12 +293,13 @@ go test ./...
 1. [✅] **Identity Service** - Authentification et profils
 2. [✅] **Partner Service** - Partenaires et établissements
 3. [✅] **Discovery Service** - Offres et recherche
-4. [ ] **Booking Service** - Réservations et check-in
-5. [ ] **Engagement Service** - Favoris et avis
-6. [ ] **Notification Service** - Push, email, SMS
-7. [ ] **Apollo Router** - Fédération GraphQL
+4. [✅] **Booking Service** - Réservations et check-in
+5. [✅] **Engagement Service** - Favoris et avis
+6. [✅] **Notification Service** - Push, email, SMS
+7. [✅] **Apollo Router** - Fédération GraphQL
 8. [ ] **Tests unitaires** - Pour chaque service
 9. [ ] **CI/CD** - GitHub Actions
+10. [ ] **App Mobile Flutter** - Prochaine phase majeure
 
 ---
 

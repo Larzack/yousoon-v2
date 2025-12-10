@@ -1,0 +1,322 @@
+---
+# =============================================================================
+# ENGAGEMENT SERVICE - Kubernetes Deployment
+# Yousoon Platform - Engagement Subgraph
+# =============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: yousoon
+  labels:
+    app.kubernetes.io/part-of: yousoon
+
+---
+# ConfigMap for service configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: engagement-service-config
+  namespace: yousoon
+  labels:
+    app: engagement-service
+    app.kubernetes.io/name: engagement-service
+    app.kubernetes.io/component: subgraph
+data:
+  APP_NAME: "engagement-service"
+  APP_ENV: "production"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  GRAPHQL_PORT: "4000"
+  GRAPHQL_PATH: "/graphql"
+  GRAPHQL_PLAYGROUND: "false"
+  GRAPHQL_INTROSPECTION: "false"
+  FEDERATION_ENABLED: "true"
+  MONGODB_DATABASE: "engagement_db"
+  NATS_STREAM_NAME: "YOUSOON_EVENTS"
+  OTEL_SERVICE_NAME: "engagement-service"
+
+---
+# Secret for sensitive configuration (use external secrets in production)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: engagement-service-secrets
+  namespace: yousoon
+  labels:
+    app: engagement-service
+type: Opaque
+stringData:
+  MONGODB_URI: "mongodb://mongodb.yousoon.svc.cluster.local:27017"
+  REDIS_URL: "redis://redis.yousoon.svc.cluster.local:6379"
+  NATS_URL: "nats://nats.yousoon.svc.cluster.local:4222"
+  JWT_SECRET: "your-jwt-secret-change-in-production"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4317"
+
+---
+# Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: engagement-service
+  namespace: yousoon
+  labels:
+    app: engagement-service
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: engagement-service
+  namespace: yousoon
+  labels:
+    app: engagement-service
+    app.kubernetes.io/name: engagement-service
+    app.kubernetes.io/component: subgraph
+    app.kubernetes.io/part-of: yousoon
+    graphql.federation/subgraph: "true"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: engagement-service
+  template:
+    metadata:
+      labels:
+        app: engagement-service
+        app.kubernetes.io/name: engagement-service
+        graphql.federation/subgraph: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "4000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: engagement-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: engagement-service
+          image: yousoon/engagement-service:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 4000
+              protocol: TCP
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: engagement-service-config
+            - secretRef:
+                name: engagement-service-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: engagement-service
+                topologyKey: kubernetes.io/hostname
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: engagement-service
+  namespace: yousoon
+  labels:
+    app: engagement-service
+    app.kubernetes.io/name: engagement-service
+    graphql.federation/subgraph: "true"
+  annotations:
+    # For Apollo Router service discovery
+    graphql.apollo.dev/subgraph-name: "engagement"
+    graphql.apollo.dev/subgraph-url: "http://engagement-service.yousoon.svc.cluster.local:4000/graphql"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: 50051
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app: engagement-service
+
+---
+# HorizontalPodAutoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: engagement-service-hpa
+  namespace: yousoon
+  labels:
+    app: engagement-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: engagement-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# PodDisruptionBudget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: engagement-service-pdb
+  namespace: yousoon
+  labels:
+    app: engagement-service
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: engagement-service
+
+---
+# NetworkPolicy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: engagement-service-network-policy
+  namespace: yousoon
+  labels:
+    app: engagement-service
+spec:
+  podSelector:
+    matchLabels:
+      app: engagement-service
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from Apollo Router
+    - from:
+        - podSelector:
+            matchLabels:
+              app: apollo-router
+      ports:
+        - port: 4000
+          protocol: TCP
+    # Allow traffic from other services via gRPC
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: yousoon
+      ports:
+        - port: 50051
+          protocol: TCP
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: observability
+      ports:
+        - port: 4000
+          protocol: TCP
+  egress:
+    # Allow MongoDB
+    - to:
+        - podSelector:
+            matchLabels:
+              app: mongodb
+      ports:
+        - port: 27017
+          protocol: TCP
+    # Allow Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - port: 6379
+          protocol: TCP
+    # Allow NATS
+    - to:
+        - podSelector:
+            matchLabels:
+              app: nats
+      ports:
+        - port: 4222
+          protocol: TCP
+    # Allow gRPC to other services
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: yousoon
+      ports:
+        - port: 50051
+          protocol: TCP
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow OpenTelemetry collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: observability
+      ports:
+        - port: 4317
+          protocol: TCP

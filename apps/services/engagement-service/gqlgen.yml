@@ -1,0 +1,106 @@
+schema:
+  - internal/interface/graphql/*.graphqls
+
+exec:
+  filename: internal/interface/graphql/generated/generated.go
+  package: generated
+
+federation:
+  filename: internal/interface/graphql/generated/federation.go
+  package: generated
+
+model:
+  filename: internal/interface/graphql/model/models_gen.go
+  package: model
+
+resolver:
+  layout: follow-schema
+  dir: internal/interface/graphql/resolver
+  package: resolver
+  filename_template: "{name}.resolvers.go"
+
+autobind:
+  - "github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model"
+
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+  DateTime:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time
+  JSON:
+    model:
+      - github.com/99designs/gqlgen/graphql.Map
+  
+  # Federation types
+  User:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.User
+  Offer:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.Offer
+  Partner:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.Partner
+  
+  # Local types
+  Favorite:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.Favorite
+  Review:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.Review
+  ReviewReport:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ReviewReport
+  RatingStats:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.RatingStats
+  
+  # Connection types
+  FavoriteConnection:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.FavoriteConnection
+  FavoriteEdge:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.FavoriteEdge
+  ReviewConnection:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ReviewConnection
+  ReviewEdge:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ReviewEdge
+  PageInfo:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.PageInfo
+  
+  # Input types
+  SubmitReviewInput:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.SubmitReviewInput
+  UpdateReviewInput:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.UpdateReviewInput
+  ReviewFilterInput:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ReviewFilterInput
+  PaginationInput:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.PaginationInput
+  ReportReviewInput:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ReportReviewInput
+  
+  # Payload types
+  AddToFavoritesPayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.AddToFavoritesPayload
+  RemoveFromFavoritesPayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.RemoveFromFavoritesPayload
+  ToggleFavoritePayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ToggleFavoritePayload
+  SubmitReviewPayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.SubmitReviewPayload
+  UpdateReviewPayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.UpdateReviewPayload
+  DeleteReviewPayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.DeleteReviewPayload
+  ReportReviewPayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ReportReviewPayload
+  ApproveReviewPayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ApproveReviewPayload
+  RejectReviewPayload:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.RejectReviewPayload
+  
+  # Enums
+  ReviewStatus:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ReviewStatus
+  ReviewSortBy:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.ReviewSortBy
+  SortDirection:
+    model: github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model.SortDirection
+
+omit_slice_element_pointers: true
