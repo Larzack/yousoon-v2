@@ -261,22 +261,23 @@ jobs:
           track: internal
           status: completed
 
-      - name: Notify deployment
-        uses: slackapi/slack-github-action@v1
-        if: always()
-        with:
-          payload: |
-            {
-              "text": "Mobile deployment: ${{ job.status }}",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*Mobile Deployment*\niOS: TestFlight\nAndroid: Play Store Internal\nStatus: ${{ job.status }}"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      # Slack notification disabled - configure SLACK_WEBHOOK_URL secret first
+      # - name: Notify deployment
+      #   uses: slackapi/slack-github-action@v1
+      #   if: always()
+      #   with:
+      #     payload: |
+      #       {
+      #         "text": "Mobile deployment: ${{ job.status }}",
+      #         "blocks": [
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "*Mobile Deployment*\niOS: TestFlight\nAndroid: Play Store Internal\nStatus: ${{ job.status }}"
+      #             }
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
