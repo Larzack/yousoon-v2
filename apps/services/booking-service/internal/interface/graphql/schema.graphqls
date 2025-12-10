@@ -1,0 +1,313 @@
+# Extends the base Query type from the supergraph
+extend type Query {
+  # Get a single outing by ID
+  outing(id: ID!): Outing
+  
+  # Get outing by QR code (for check-in)
+  outingByQRCode(qrCode: String!): Outing
+  
+  # List user's outings
+  myOutings(filter: OutingFilterInput, pagination: PaginationInput): OutingConnection!
+  
+  # List outings for a partner (partner access)
+  partnerOutings(partnerId: ID!, filter: OutingFilterInput, pagination: PaginationInput): OutingConnection!
+  
+  # List outings for an establishment (partner access)
+  establishmentOutings(establishmentId: ID!, filter: OutingFilterInput, pagination: PaginationInput): OutingConnection!
+  
+  # Get booking statistics
+  bookingStats(partnerId: ID, establishmentId: ID, offerId: ID): BookingStats!
+}
+
+# Extends the base Mutation type from the supergraph
+extend type Mutation {
+  # Book an offer (create an outing)
+  bookOffer(input: BookOfferInput!): BookOfferPayload!
+  
+  # Check in to an outing via QR code
+  checkInOuting(input: CheckInInput!): CheckInPayload!
+  
+  # Manual check-in (partner staff)
+  manualCheckIn(input: ManualCheckInInput!): CheckInPayload!
+  
+  # Cancel an outing
+  cancelOuting(input: CancelOutingInput!): CancelOutingPayload!
+}
+
+# Federation: Extend User type from Identity service
+extend type User @key(fields: "id") {
+  id: ID! @external
+  # User's outings
+  outings(filter: OutingFilterInput, pagination: PaginationInput): OutingConnection!
+}
+
+# Federation: Extend Offer type from Discovery service
+extend type Offer @key(fields: "id") {
+  id: ID! @external
+  # Outings for this offer
+  bookings(filter: OutingFilterInput, pagination: PaginationInput): OutingConnection!
+  # Count of active bookings
+  activeBookingsCount: Int!
+}
+
+# Federation: Extend Partner type from Partner service
+extend type Partner @key(fields: "id") {
+  id: ID! @external
+  # Partner's outings
+  outings(filter: OutingFilterInput, pagination: PaginationInput): OutingConnection!
+}
+
+# Federation: Extend Establishment type from Partner service
+extend type Establishment @key(fields: "id") {
+  id: ID! @external
+  # Establishment's outings
+  outings(filter: OutingFilterInput, pagination: PaginationInput): OutingConnection!
+}
+
+# =============================================================================
+# TYPES
+# =============================================================================
+
+# Outing represents a booking/reservation
+type Outing @key(fields: "id") {
+  id: ID!
+  userId: ID!
+  user: User!
+  
+  # Offer snapshot (immutable copy at booking time)
+  offerSnapshot: OfferSnapshot!
+  
+  # QR Code for check-in
+  qrCode: QRCodeInfo!
+  
+  # Status
+  status: OutingStatus!
+  timeline: [TimelineEntry!]!
+  
+  # Check-in info (if checked in)
+  checkIn: CheckInInfo
+  
+  # Cancellation info (if cancelled)
+  cancellation: CancellationInfo
+  
+  # Timing
+  bookedAt: DateTime!
+  expiresAt: DateTime!
+  
+  # Metadata
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# Offer snapshot (immutable copy at booking time)
+type OfferSnapshot {
+  offerId: ID!
+  partnerId: ID!
+  establishmentId: ID!
+  title: String!
+  description: String
+  discountType: String!
+  discountValue: Int!
+  category: String
+  establishmentName: String!
+  establishmentAddress: String!
+  latitude: Float!
+  longitude: Float!
+  imageUrl: String
+  capturedAt: DateTime!
+}
+
+# QR Code information
+type QRCodeInfo {
+  code: String!
+  fullCode: String!
+  expiresAt: DateTime!
+  isExpired: Boolean!
+}
+
+# Timeline entry for status changes
+type TimelineEntry {
+  status: OutingStatus!
+  timestamp: DateTime!
+  actor: String!
+  metadata: JSON
+}
+
+# Check-in information
+type CheckInInfo {
+  checkedInAt: DateTime!
+  checkedInBy: ID!
+  method: CheckInMethod!
+  latitude: Float
+  longitude: Float
+}
+
+# Cancellation information
+type CancellationInfo {
+  cancelledAt: DateTime!
+  cancelledBy: CancellationActor!
+  reason: String
+}
+
+# Booking statistics
+type BookingStats {
+  totalBookings: Int!
+  totalCheckIns: Int!
+  totalCancelled: Int!
+  totalExpired: Int!
+  conversionRate: Float!
+  averageCheckInTime: Float!
+}
+
+# Connection type for pagination
+type OutingConnection {
+  edges: [OutingEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OutingEdge {
+  node: Outing!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# =============================================================================
+# ENUMS
+# =============================================================================
+
+enum OutingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CANCELLED
+  EXPIRED
+  NO_SHOW
+}
+
+enum CheckInMethod {
+  QR_SCAN
+  MANUAL
+}
+
+enum CancellationActor {
+  USER
+  PARTNER
+  SYSTEM
+}
+
+# =============================================================================
+# INPUTS
+# =============================================================================
+
+input BookOfferInput {
+  offerId: ID!
+}
+
+input CheckInInput {
+  qrCode: String!
+  latitude: Float
+  longitude: Float
+}
+
+input ManualCheckInInput {
+  outingId: ID!
+  latitude: Float
+  longitude: Float
+}
+
+input CancelOutingInput {
+  outingId: ID!
+  reason: String
+}
+
+input OutingFilterInput {
+  status: [OutingStatus!]
+  startDate: DateTime
+  endDate: DateTime
+}
+
+input PaginationInput {
+  first: Int
+  after: String
+  last: Int
+  before: String
+}
+
+# =============================================================================
+# PAYLOADS
+# =============================================================================
+
+type BookOfferPayload {
+  success: Boolean!
+  outing: Outing
+  error: BookingError
+}
+
+type CheckInPayload {
+  success: Boolean!
+  outing: Outing
+  error: CheckInError
+}
+
+type CancelOutingPayload {
+  success: Boolean!
+  outing: Outing
+  error: CancellationError
+}
+
+# Error types
+type BookingError {
+  code: BookingErrorCode!
+  message: String!
+}
+
+enum BookingErrorCode {
+  OFFER_NOT_FOUND
+  OFFER_NOT_AVAILABLE
+  OFFER_QUOTA_EXCEEDED
+  USER_NOT_VERIFIED
+  USER_QUOTA_EXCEEDED
+  ALREADY_BOOKED
+  SUBSCRIPTION_REQUIRED
+  INTERNAL_ERROR
+}
+
+type CheckInError {
+  code: CheckInErrorCode!
+  message: String!
+}
+
+enum CheckInErrorCode {
+  OUTING_NOT_FOUND
+  INVALID_QR_CODE
+  OUTING_EXPIRED
+  ALREADY_CHECKED_IN
+  OUTING_CANCELLED
+  INTERNAL_ERROR
+}
+
+type CancellationError {
+  code: CancellationErrorCode!
+  message: String!
+}
+
+enum CancellationErrorCode {
+  OUTING_NOT_FOUND
+  ALREADY_CANCELLED
+  ALREADY_CHECKED_IN
+  INTERNAL_ERROR
+}
+
+# =============================================================================
+# SCALARS
+# =============================================================================
+
+scalar DateTime
+scalar JSON
