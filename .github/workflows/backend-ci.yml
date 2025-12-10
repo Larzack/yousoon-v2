@@ -114,6 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     strategy:
+      fail-fast: false  # Continue building other images even if one fails
       matrix:
         service:
           - identity-service
@@ -127,6 +128,9 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    
+    outputs:
+      build_status: ${{ steps.build-result.outputs.status }}
 
     steps:
       - name: Checkout
@@ -160,7 +164,9 @@ jobs:
           echo "Generated version: ${VERSION}"
 
       - name: Build and push to ECR
+        id: docker-build
         uses: docker/build-push-action@v5
+        continue-on-error: true
         with:
           context: apps/services/${{ matrix.service }}
           push: true
@@ -173,7 +179,19 @@ jobs:
           build-args: |
             VERSION=${{ steps.version.outputs.version }}
 
+      - name: Track build result
+        id: build-result
+        run: |
+          if [ "${{ steps.docker-build.outcome }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "✅ Build succeeded for ${{ matrix.service }}"
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "❌ Build failed for ${{ matrix.service }}"
+          fi
+
       - name: Output image info
+        if: steps.docker-build.outcome == 'success'
         run: |
           echo "### Image Built :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -189,7 +207,8 @@ jobs:
     name: Deploy to Staging
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+    # Only deploy if ALL builds succeeded (needs.build.result checks all matrix jobs)
+    if: github.ref == 'refs/heads/develop' && needs.build.result == 'success'
     environment: staging
     
     steps:
@@ -241,7 +260,8 @@ jobs:
     name: Deploy to Production
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # Only deploy if ALL builds succeeded (needs.build.result checks all matrix jobs)
+    if: github.ref == 'refs/heads/main' && needs.build.result == 'success'
     environment: production
     
     steps:
