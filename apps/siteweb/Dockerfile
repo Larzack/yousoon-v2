@@ -6,7 +6,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install --only=production
+RUN npm install
 
 # ===========================================
 # Stage 2: Builder

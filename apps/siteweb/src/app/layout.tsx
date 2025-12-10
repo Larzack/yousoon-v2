@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
-import localFont from 'next/font/local';
+import { Inter, Poppins } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getLocale } from 'next-intl/server';
 import { Header } from '@/components/layout/Header';
@@ -14,22 +13,12 @@ const inter = Inter({
   display: 'swap',
 });
 
-const futura = localFont({
-  src: [
-    {
-      path: '../fonts/FuturaMedium.woff2',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: '../fonts/FuturaBold.woff2',
-      weight: '700',
-      style: 'normal',
-    },
-  ],
+// Using Poppins as a fallback for Futura (similar geometric sans-serif)
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['500', '700'],
   variable: '--font-futura',
   display: 'swap',
-  fallback: ['Inter', 'system-ui', 'sans-serif'],
 });
 
 export const metadata: Metadata = {
