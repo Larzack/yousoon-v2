@@ -2,75 +2,131 @@
 package config
 
 import (
+	"strings"
 	"time"
 
-	"github.com/yousoon/shared/config"
+	sharedConfig "github.com/yousoon/shared/config"
 )
 
 // Config holds all configuration for the Discovery service.
 type Config struct {
 	// Service
-	ServiceName string `env:"SERVICE_NAME" envDefault:"discovery-service"`
-	Environment string `env:"ENVIRONMENT" envDefault:"development"`
-	Version     string `env:"VERSION" envDefault:"1.0.0"`
+	ServiceName string
+	Environment string
+	Version     string
 
 	// Server
-	HTTPPort string `env:"HTTP_PORT" envDefault:"8080"`
-	GRPCPort string `env:"GRPC_PORT" envDefault:"9090"`
+	HTTPPort string
+	GRPCPort string
 
 	// MongoDB
-	MongoURI         string        `env:"MONGO_URI" envDefault:"mongodb://localhost:27017"`
-	MongoDB          string        `env:"MONGO_DB" envDefault:"discovery_db"`
-	MongoTimeout     time.Duration `env:"MONGO_TIMEOUT" envDefault:"10s"`
-	MongoMaxPoolSize uint64        `env:"MONGO_MAX_POOL_SIZE" envDefault:"100"`
+	MongoURI         string
+	MongoDB          string
+	MongoTimeout     time.Duration
+	MongoMaxPoolSize uint64
 
 	// Elasticsearch
-	ElasticsearchURLs     []string `env:"ELASTICSEARCH_URLS" envDefault:"http://localhost:9200"`
-	ElasticsearchUsername string   `env:"ELASTICSEARCH_USERNAME"`
-	ElasticsearchPassword string   `env:"ELASTICSEARCH_PASSWORD"`
+	ElasticsearchURLs     []string
+	ElasticsearchUsername string
+	ElasticsearchPassword string
 
 	// Redis
-	RedisAddr     string `env:"REDIS_ADDR" envDefault:"localhost:6379"`
-	RedisPassword string `env:"REDIS_PASSWORD"`
-	RedisDB       int    `env:"REDIS_DB" envDefault:"0"`
+	RedisAddr     string
+	RedisPassword string
+	RedisDB       int
 
 	// NATS
-	NATSURL       string `env:"NATS_URL" envDefault:"nats://localhost:4222"`
-	NATSClusterID string `env:"NATS_CLUSTER_ID" envDefault:"yousoon-cluster"`
+	NATSURL       string
+	NATSClusterID string
 
 	// gRPC Clients
-	PartnerServiceAddr string `env:"PARTNER_SERVICE_ADDR" envDefault:"localhost:9091"`
+	PartnerServiceAddr string
 
 	// Schema Registry
-	SchemaRegistryURL string `env:"SCHEMA_REGISTRY_URL" envDefault:"http://localhost:8081"`
+	SchemaRegistryURL string
 
 	// Observability
-	JaegerEndpoint string `env:"JAEGER_ENDPOINT" envDefault:"http://localhost:14268/api/traces"`
-	MetricsPort    string `env:"METRICS_PORT" envDefault:"9100"`
-	LogLevel       string `env:"LOG_LEVEL" envDefault:"info"`
-	LogFormat      string `env:"LOG_FORMAT" envDefault:"json"`
+	JaegerEndpoint string
+	MetricsPort    string
+	LogLevel       string
+	LogFormat      string
 
 	// Cache
-	CacheTTL         time.Duration `env:"CACHE_TTL" envDefault:"5m"`
-	CategoryCacheTTL time.Duration `env:"CATEGORY_CACHE_TTL" envDefault:"1h"`
+	CacheTTL         time.Duration
+	CategoryCacheTTL time.Duration
 
 	// Rate Limiting
-	RateLimitRequests int           `env:"RATE_LIMIT_REQUESTS" envDefault:"100"`
-	RateLimitWindow   time.Duration `env:"RATE_LIMIT_WINDOW" envDefault:"1m"`
+	RateLimitRequests int
+	RateLimitWindow   time.Duration
 
 	// Search
-	DefaultSearchRadius float64 `env:"DEFAULT_SEARCH_RADIUS" envDefault:"10.0"` // km
-	MaxSearchRadius     float64 `env:"MAX_SEARCH_RADIUS" envDefault:"50.0"`     // km
-	DefaultPageSize     int     `env:"DEFAULT_PAGE_SIZE" envDefault:"20"`
-	MaxPageSize         int     `env:"MAX_PAGE_SIZE" envDefault:"100"`
+	DefaultSearchRadius float64
+	MaxSearchRadius     float64
+	DefaultPageSize     int
+	MaxPageSize         int
 }
 
 // Load loads configuration from environment variables.
 func Load() (*Config, error) {
-	cfg := &Config{}
-	if err := config.Load(cfg); err != nil {
-		return nil, err
+	esURLs := sharedConfig.GetEnv("ELASTICSEARCH_URLS", "http://localhost:9200")
+
+	cfg := &Config{
+		// Service
+		ServiceName: sharedConfig.GetEnv("SERVICE_NAME", "discovery-service"),
+		Environment: sharedConfig.GetEnv("ENVIRONMENT", "development"),
+		Version:     sharedConfig.GetEnv("VERSION", "1.0.0"),
+
+		// Server
+		HTTPPort: sharedConfig.GetEnv("HTTP_PORT", "8080"),
+		GRPCPort: sharedConfig.GetEnv("GRPC_PORT", "9090"),
+
+		// MongoDB
+		MongoURI:         sharedConfig.GetEnv("MONGO_URI", "mongodb://localhost:27017"),
+		MongoDB:          sharedConfig.GetEnv("MONGO_DB", "discovery_db"),
+		MongoTimeout:     sharedConfig.GetEnvDuration("MONGO_TIMEOUT", 10*time.Second),
+		MongoMaxPoolSize: uint64(sharedConfig.GetEnvInt("MONGO_MAX_POOL_SIZE", 100)),
+
+		// Elasticsearch
+		ElasticsearchURLs:     strings.Split(esURLs, ","),
+		ElasticsearchUsername: sharedConfig.GetEnv("ELASTICSEARCH_USERNAME", ""),
+		ElasticsearchPassword: sharedConfig.GetEnv("ELASTICSEARCH_PASSWORD", ""),
+
+		// Redis
+		RedisAddr:     sharedConfig.GetEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword: sharedConfig.GetEnv("REDIS_PASSWORD", ""),
+		RedisDB:       sharedConfig.GetEnvInt("REDIS_DB", 0),
+
+		// NATS
+		NATSURL:       sharedConfig.GetEnv("NATS_URL", "nats://localhost:4222"),
+		NATSClusterID: sharedConfig.GetEnv("NATS_CLUSTER_ID", "yousoon-cluster"),
+
+		// gRPC Clients
+		PartnerServiceAddr: sharedConfig.GetEnv("PARTNER_SERVICE_ADDR", "localhost:9091"),
+
+		// Schema Registry
+		SchemaRegistryURL: sharedConfig.GetEnv("SCHEMA_REGISTRY_URL", "http://localhost:8081"),
+
+		// Observability
+		JaegerEndpoint: sharedConfig.GetEnv("JAEGER_ENDPOINT", "http://localhost:14268/api/traces"),
+		MetricsPort:    sharedConfig.GetEnv("METRICS_PORT", "9100"),
+		LogLevel:       sharedConfig.GetEnv("LOG_LEVEL", "info"),
+		LogFormat:      sharedConfig.GetEnv("LOG_FORMAT", "json"),
+
+		// Cache
+		CacheTTL:         sharedConfig.GetEnvDuration("CACHE_TTL", 5*time.Minute),
+		CategoryCacheTTL: sharedConfig.GetEnvDuration("CATEGORY_CACHE_TTL", 1*time.Hour),
+
+		// Rate Limiting
+		RateLimitRequests: sharedConfig.GetEnvInt("RATE_LIMIT_REQUESTS", 100),
+		RateLimitWindow:   sharedConfig.GetEnvDuration("RATE_LIMIT_WINDOW", 1*time.Minute),
+
+		// Search
+		DefaultSearchRadius: float64(sharedConfig.GetEnvInt("DEFAULT_SEARCH_RADIUS", 10)),
+		MaxSearchRadius:     float64(sharedConfig.GetEnvInt("MAX_SEARCH_RADIUS", 50)),
+		DefaultPageSize:     sharedConfig.GetEnvInt("DEFAULT_PAGE_SIZE", 20),
+		MaxPageSize:         sharedConfig.GetEnvInt("MAX_PAGE_SIZE", 100),
 	}
+
 	return cfg, nil
 }
 
