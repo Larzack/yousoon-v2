@@ -1,0 +1,681 @@
+{
+  "metadata": {
+    "title": "Yousoon - Go out more, pay less",
+    "description": "Discover the best deals near you. Bars, restaurants, leisure activities with exclusive discounts."
+  },
+  "nav": {
+    "features": "Features",
+    "partners": "Become a partner",
+    "pricing": "Pricing",
+    "about": "About",
+    "downloadApp": "Download the app",
+    "login": "Login"
+  },
+  "hero": {
+    "title": "Go out more,",
+    "titleHighlight": "pay less",
+    "subtitle": "Discover exclusive offers at the best bars, restaurants and leisure spots near you.",
+    "cta": "Download the app",
+    "secondaryCta": "Learn more",
+    "stats": {
+      "users": "Users",
+      "partners": "Partners",
+      "savings": "savings"
+    }
+  },
+  "features": {
+    "pageTitle": "All features",
+    "pageDescription": "Discover everything Yousoon can do to make your outings unforgettable.",
+    "title": "Everything you need",
+    "subtitle": "An app designed to maximize your outings",
+    "items": {
+      "geolocated": {
+        "title": "Geolocated offers",
+        "description": "Discover the best deals around you in real time."
+      },
+      "discounts": {
+        "title": "Exclusive discounts",
+        "description": "Enjoy unique offers negotiated with our partners."
+      },
+      "instant": {
+        "title": "Instant booking",
+        "description": "Book in one click and validate on-site with a QR code."
+      },
+      "favorites": {
+        "title": "Personalized favorites",
+        "description": "Save your favorite offers and receive alerts."
+      },
+      "community": {
+        "title": "Active community",
+        "description": "Share your experiences and discover reviews."
+      },
+      "secure": {
+        "title": "Secure payment",
+        "description": "Subscription managed via Apple Pay and Google Pay."
+      },
+      "geolocatedOffers": {
+        "title": "Geolocated offers",
+        "description": "Receive notifications about available offers around you, wherever you are."
+      },
+      "exclusiveDiscounts": {
+        "title": "Exclusive discounts",
+        "description": "Access discounts negotiated exclusively for Yousoon members."
+      },
+      "instantBooking": {
+        "title": "Instant booking",
+        "description": "Book in seconds and receive your confirmation immediately."
+      },
+      "qrCheckin": {
+        "title": "QR Code check-in",
+        "description": "Simply show your QR code at the entrance to enjoy your offer."
+      },
+      "smartSearch": {
+        "title": "Smart search",
+        "description": "Find exactly what you're looking for with our advanced filters."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Be alerted to new offers and exclusive promotions."
+      },
+      "reviews": {
+        "title": "Verified reviews",
+        "description": "Check reviews from other users to make the best choice."
+      },
+      "history": {
+        "title": "History",
+        "description": "Easily find all your past outings and visited venues."
+      },
+      "security": {
+        "title": "Security",
+        "description": "Your data is protected with the highest security standards."
+      },
+      "offlineMode": {
+        "title": "Offline mode",
+        "description": "Access your bookings and QR codes even without internet connection."
+      }
+    },
+    "appPreview": {
+      "title": "An optimized mobile experience",
+      "description": "Our app has been designed to offer you the best possible experience, with an intuitive interface and optimal performance.",
+      "point1": "Modern and intuitive interface",
+      "point2": "Ultra-fast loading",
+      "point3": "Native dark mode",
+      "point4": "Available on iOS and Android"
+    }
+  },
+  "howItWorks": {
+    "title": "How does it work?",
+    "subtitle": "In 4 simple steps",
+    "steps": {
+      "download": {
+        "title": "Download the app",
+        "description": "Available for free on iOS and Android."
+      },
+      "explore": {
+        "title": "Explore offers",
+        "description": "Browse deals near you or in a city."
+      },
+      "book": {
+        "title": "Book",
+        "description": "Select an offer and book instantly."
+      },
+      "enjoy": {
+        "title": "Enjoy!",
+        "description": "Show your QR code on-site and enjoy."
+      }
+    }
+  },
+  "testimonials": {
+    "title": "They love Yousoon",
+    "subtitle": "Discover what our users think"
+  },
+  "cta": {
+    "title": "Ready to save on your outings?",
+    "subtitle": "Join thousands of users already enjoying exclusive discounts.",
+    "button": "Download for free",
+    "note": "30-day free trial. No commitment."
+  },
+  "footer": {
+    "description": "The best way to enjoy your outings at a reduced price.",
+    "product": "Product",
+    "company": "Company",
+    "partners": "Partners",
+    "legal": "Legal",
+    "newsletter": {
+      "title": "Newsletter",
+      "placeholder": "Your email",
+      "button": "Subscribe",
+      "description": "Receive the best offers directly in your inbox."
+    },
+    "copyright": "© {year} Yousoon. All rights reserved."
+  },
+  "pricing": {
+    "title": "Simple and transparent pricing",
+    "subtitle": "Choose the plan that suits you",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "perMonth": "/month",
+    "perYear": "/year",
+    "free": "Free",
+    "popular": "Popular",
+    "cta": {
+      "free": "Start for free",
+      "trial": "Try for free",
+      "save": "Save 40%",
+      "title": "Any questions?",
+      "description": "Our team is here to help you choose the right subscription.",
+      "button": "Contact us"
+    },
+    "faq": {
+      "title": "Pricing questions",
+      "subtitle": "Everything you need to know about our subscriptions"
+    }
+  },
+  "partners": {
+    "badge": "Partners",
+    "title": "Grow your business with Yousoon",
+    "subtitle": "Join our partner network and attract new customers through our engaged community.",
+    "cta": {
+      "primary": "Become a partner",
+      "secondary": "Contact us",
+      "title": "Ready to grow your business?",
+      "description": "Join over 500 partners who trust Yousoon to attract new customers.",
+      "button": "Create my partner account"
+    },
+    "stats": {
+      "traffic": "more traffic",
+      "users": "active users",
+      "partners": "partners",
+      "satisfaction": "satisfaction"
+    },
+    "partnerTypes": {
+      "title": "All types of establishments welcome"
+    },
+    "benefits": {
+      "title": "Why become a partner?",
+      "subtitle": "Concrete benefits to grow your business",
+      "items": {
+        "newCustomers": {
+          "title": "New customers",
+          "description": "Attract a new clientele through our community of Yousooners."
+        },
+        "increaseRevenue": {
+          "title": "Increase your revenue",
+          "description": "Promotional offers generate additional traffic."
+        },
+        "targetedMarketing": {
+          "title": "Targeted marketing",
+          "description": "Reach the right people at the right time with geolocation."
+        },
+        "analytics": {
+          "title": "Detailed analytics",
+          "description": "Track your offers' performance in real-time."
+        }
+      }
+    },
+    "howItWorks": {
+      "title": "How does it work?",
+      "subtitle": "A simple 4-step process",
+      "steps": {
+        "step1": {
+          "title": "Sign up",
+          "description": "Create your partner account in minutes."
+        },
+        "step2": {
+          "title": "Setup",
+          "description": "Add your establishments and create your first offers."
+        },
+        "step3": {
+          "title": "Publish",
+          "description": "Your offers are visible to all Yousoon users."
+        },
+        "step4": {
+          "title": "Validate",
+          "description": "Scan customers' QR codes to validate their bookings."
+        }
+      }
+    },
+    "features": {
+      "title": "Everything you need",
+      "subtitle": "A complete partner dashboard to manage your business",
+      "items": {
+        "feature1": "Intuitive dashboard",
+        "feature2": "Unlimited offer creation",
+        "feature3": "Real-time statistics",
+        "feature4": "Multi-establishment management",
+        "feature5": "Dedicated support",
+        "feature6": "No hidden fees"
+      }
+    },
+    "pricing": {
+      "title": "Free to start",
+      "price": "€0",
+      "period": "",
+      "description": "No registration fees or commissions. Create your offers and attract new customers.",
+      "cta": "Create my free account"
+    }
+  },
+  "about": {
+    "badge": "Our story",
+    "title": "Making outings accessible to everyone",
+    "subtitle": "Yousoon was born from a simple belief: everyone should be able to enjoy quality outings without breaking the bank.",
+    "mission": {
+      "title": "Our mission",
+      "description1": "We believe that the best experiences shouldn't be reserved for an elite. That's why we created Yousoon: a platform that connects outing enthusiasts with the best venues in their city.",
+      "description2": "By negotiating exclusive offers with our partners, we enable everyone to discover new places, live new experiences, all while managing their budget.",
+      "stats": {
+        "users": "active users",
+        "partners": "partners",
+        "bookings": "bookings",
+        "rating": "on app stores"
+      }
+    },
+    "values": {
+      "title": "Our values",
+      "subtitle": "What guides us every day",
+      "items": {
+        "passion": {
+          "title": "Passion",
+          "description": "We are passionate about outings and connections. That's what motivates us every day."
+        },
+        "community": {
+          "title": "Community",
+          "description": "We build a tight-knit community of enthusiasts who share their discoveries."
+        },
+        "accessibility": {
+          "title": "Accessibility",
+          "description": "We make quality outings accessible to everyone, regardless of budget."
+        },
+        "innovation": {
+          "title": "Innovation",
+          "description": "We constantly innovate to improve the experience of our users."
+        }
+      }
+    },
+    "timeline": {
+      "title": "Our journey",
+      "subtitle": "Key milestones in the Yousoon adventure",
+      "items": {
+        "milestone1": {
+          "title": "The idea is born",
+          "description": "Birth of the concept during a night out with friends."
+        },
+        "milestone2": {
+          "title": "First partners",
+          "description": "Launch with 50 partners in Paris."
+        },
+        "milestone3": {
+          "title": "Expansion",
+          "description": "Deployment in 10 major French cities."
+        },
+        "milestone4": {
+          "title": "What's next?",
+          "description": "European expansion and new features."
+        }
+      }
+    },
+    "team": {
+      "title": "The team",
+      "subtitle": "The people behind Yousoon",
+      "members": {
+        "member1": {
+          "name": "Founder 1",
+          "role": "CEO & Co-founder"
+        },
+        "member2": {
+          "name": "Founder 2",
+          "role": "CTO & Co-founder"
+        },
+        "member3": {
+          "name": "Founder 3",
+          "role": "COO & Co-founder"
+        }
+      }
+    },
+    "cta": {
+      "title": "Join the adventure",
+      "description": "Whether you're an outing enthusiast or a venue looking to grow your clientele, Yousoon is for you.",
+      "download": "Download the app",
+      "contact": "Contact us"
+    }
+  },
+  "contact": {
+    "title": "Contact us",
+    "subtitle": "A question, a suggestion? Our team is here to help.",
+    "methods": {
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address"
+    },
+    "form": {
+      "subject": {
+        "label": "Subject of your message",
+        "options": {
+          "general": "General question",
+          "partnership": "Partnership",
+          "support": "Technical support",
+          "press": "Press"
+        }
+      },
+      "name": {
+        "label": "Full name",
+        "placeholder": "Your name"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "your@email.com"
+      },
+      "message": {
+        "label": "Message",
+        "placeholder": "How can we help you?"
+      },
+      "submit": "Send message",
+      "submitting": "Sending...",
+      "success": {
+        "title": "Message sent!",
+        "description": "Thank you for your message. Our team will get back to you as soon as possible.",
+        "button": "Send another message"
+      }
+    },
+    "faq": {
+      "title": "Have a question?",
+      "description": "Check out our FAQ for quick answers.",
+      "button": "View FAQ"
+    }
+  },
+  "legal": {
+    "title": "Legal notices",
+    "lastUpdated": "Last updated: {date}",
+    "sections": {
+      "editor": {
+        "title": "Site editor",
+        "content": "Yousoon SAS\nShare capital: €10,000\nRegistered office: 123 Avenue des Champs-Élysées, 75008 Paris, France\nRCS Paris: XXX XXX XXX\nVAT: FR XX XXX XXX XXX"
+      },
+      "director": {
+        "title": "Publication director",
+        "content": "The publication director is [Name of director], in the capacity of President of Yousoon SAS."
+      },
+      "hosting": {
+        "title": "Hosting",
+        "content": "This site is hosted by:\nVercel Inc.\n440 N Barranca Ave #4133\nCovina, CA 91723\nUnited States"
+      },
+      "intellectual": {
+        "title": "Intellectual property",
+        "content": "All content on this site (texts, images, videos, logos, icons, sounds, software, etc.) is the property of Yousoon SAS or its partners. Any reproduction, distribution, modification, or use of this content without prior written authorization is strictly prohibited and constitutes infringement under the Intellectual Property Code."
+      },
+      "personal": {
+        "title": "Personal data",
+        "content": "The information collected on this site is processed by Yousoon SAS for managing requests and service provision. In accordance with the General Data Protection Regulation (GDPR), you have rights of access, rectification, deletion, and portability of your data. For any questions, contact us at: privacy@yousoon.com"
+      },
+      "cookies": {
+        "title": "Cookies",
+        "content": "This site uses cookies to improve user experience. By continuing to browse, you accept the use of cookies. You can change your preferences at any time in your browser settings."
+      },
+      "limitation": {
+        "title": "Limitation of liability",
+        "content": "Yousoon SAS strives to ensure that the information on this site is accurate and up-to-date. However, we cannot guarantee the completeness or accuracy of the content. Yousoon SAS shall not be held liable for any damages resulting from site access or use."
+      },
+      "law": {
+        "title": "Applicable law",
+        "content": "This site is governed by French law. Any dispute relating to its use will be submitted to the exclusive jurisdiction of the French courts."
+      }
+    }
+  },
+  "privacy": {
+    "title": "Privacy policy",
+    "lastUpdated": "Last updated: {date}",
+    "intro": "At Yousoon, we take the protection of your personal data very seriously. This privacy policy explains how we collect, use, and protect your information.",
+    "sections": {
+      "collected": {
+        "title": "Data collected",
+        "content": "We collect the following data:",
+        "items": {
+          "identity": "Identity information: name, first name, date of birth",
+          "contact": "Contact information: email address, phone number",
+          "location": "Location data (with your consent)",
+          "usage": "Usage data: preferences, history, favorites",
+          "technical": "Technical data: IP address, browser type, device"
+        }
+      },
+      "purposes": {
+        "title": "Purposes of processing",
+        "intro": "Your data is collected for:",
+        "items": {
+          "service": "Providing and improving our service",
+          "personalization": "Personalizing your experience",
+          "communication": "Sending notifications and important information",
+          "marketing": "Marketing communications (with your consent)",
+          "security": "Security and fraud prevention"
+        }
+      },
+      "legal": {
+        "title": "Legal basis",
+        "content": "Processing of your data is based on:",
+        "items": {
+          "contract": "Contract performance",
+          "consent": "Your consent",
+          "legitimate": "Our legitimate interests",
+          "obligation": "Legal obligations"
+        }
+      },
+      "sharing": {
+        "title": "Data sharing",
+        "content": "We do not sell your personal data. We may share your information with:",
+        "items": {
+          "partners": "Our commercial partners (to provide offers)",
+          "providers": "Our technical service providers",
+          "authorities": "Authorities when required by law"
+        }
+      },
+      "retention": {
+        "title": "Data retention",
+        "content": "We retain your data for the duration necessary for the purposes set out in this policy, and in any case no longer than:",
+        "items": {
+          "account": "Active accounts: duration of the relationship + 3 years",
+          "inactive": "Inactive accounts: 3 years after last activity",
+          "legal": "Legal obligations: as required by legislation"
+        }
+      },
+      "rights": {
+        "title": "Your rights",
+        "intro": "Under GDPR, you have the following rights:",
+        "items": {
+          "access": "Right of access to your data",
+          "rectification": "Right to rectification",
+          "erasure": "Right to erasure (right to be forgotten)",
+          "portability": "Right to data portability",
+          "objection": "Right to object",
+          "restriction": "Right to restriction of processing"
+        },
+        "contact": "To exercise your rights, contact us at: privacy@yousoon.com"
+      },
+      "security": {
+        "title": "Security",
+        "content": "We implement appropriate technical and organizational measures to protect your data against unauthorized access, loss, or alteration. Our measures include end-to-end encryption, regular security audits, and strict access controls."
+      },
+      "cookies": {
+        "title": "Cookies",
+        "content": "We use cookies and similar technologies for:",
+        "items": {
+          "essential": "Essential cookies: necessary for site operation",
+          "analytics": "Analytics cookies: to understand usage",
+          "personalization": "Personalization cookies: to improve your experience",
+          "advertising": "Advertising cookies: to display relevant ads (with your consent)"
+        }
+      },
+      "updates": {
+        "title": "Policy updates",
+        "content": "We may update this policy from time to time. We will notify you of any significant changes via the app or by email."
+      },
+      "contact": {
+        "title": "Contact",
+        "content": "For any questions about this privacy policy, contact us:\n\nYousoon SAS\nPrivacy Team\nprivacy@yousoon.com\n\nData Protection Officer: dpo@yousoon.com"
+      }
+    }
+  },
+  "terms": {
+    "title": "Terms of use",
+    "lastUpdated": "Last updated: {date}",
+    "intro": "Welcome to Yousoon. By using our service, you agree to these terms of use. Please read them carefully.",
+    "sections": {
+      "definitions": {
+        "title": "Definitions",
+        "items": {
+          "service": "\"Service\": the Yousoon mobile application and associated services",
+          "user": "\"User\" or \"Yousooner\": any person using the Service",
+          "partner": "\"Partner\": a professional establishment offering offers on the platform",
+          "offer": "\"Offer\": a discount or advantage offered by a Partner",
+          "booking": "\"Booking\": reservation of an Offer by a User"
+        }
+      },
+      "access": {
+        "title": "Access to the service",
+        "eligibility": {
+          "title": "Eligibility",
+          "content": "The Service is accessible to any adult capable of entering into a contract. Users must be at least 18 years of age."
+        },
+        "registration": {
+          "title": "Account creation",
+          "content": "Access to certain features requires creating an account. You undertake to provide accurate and complete information and to keep it up to date."
+        },
+        "verification": {
+          "title": "Identity verification",
+          "content": "Identity verification (via ID card) may be required to use certain features. This verification aims to guarantee service security."
+        }
+      },
+      "subscription": {
+        "title": "Subscription",
+        "plans": {
+          "title": "Available plans",
+          "content": "Yousoon offers different subscription plans, including a free plan with limited access and paid plans with all features."
+        },
+        "payment": {
+          "title": "Payment",
+          "content": "Payments are processed exclusively via Apple Pay (iOS) or Google Pay (Android). By subscribing, you authorize automatic recurring billing."
+        },
+        "cancellation": {
+          "title": "Cancellation",
+          "content": "You can cancel your subscription at any time. Cancellation takes effect at the end of the current billing period. No refunds will be given for the current period."
+        },
+        "trial": {
+          "title": "Free trial",
+          "content": "New users may benefit from a free trial. At the end of the trial, your paid subscription will begin automatically unless cancelled before."
+        }
+      },
+      "usage": {
+        "title": "Service usage",
+        "booking": {
+          "title": "Bookings",
+          "content": "Bookings are subject to Partner availability. Each booking generates a unique QR code valid only for single use."
+        },
+        "checkin": {
+          "title": "Check-in",
+          "content": "Check-in must be done on-site by presenting your QR code. The QR code is valid for 30 minutes after booking."
+        },
+        "rules": {
+          "title": "Rules of conduct",
+          "content": "You agree to use the Service fairly, to respect Partners, and not to engage in any fraudulent behavior."
+        }
+      },
+      "intellectual": {
+        "title": "Intellectual property",
+        "content": "All Service content (brand, logo, design, software) is the exclusive property of Yousoon SAS. Any unauthorized reproduction or use is prohibited."
+      },
+      "liability": {
+        "title": "Liability",
+        "yousoon": {
+          "title": "Yousoon's liability",
+          "content": "Yousoon acts as an intermediary between Users and Partners. We are not responsible for the quality of services provided by Partners."
+        },
+        "user": {
+          "title": "User's liability",
+          "content": "You are responsible for the use of your account and for respecting these terms. Any misuse may result in account suspension."
+        }
+      },
+      "modifications": {
+        "title": "Modifications to the terms",
+        "content": "We reserve the right to modify these terms at any time. Significant changes will be communicated to you by email or via the application."
+      },
+      "termination": {
+        "title": "Termination",
+        "content": "You can delete your account at any time. Yousoon reserves the right to suspend or delete an account in case of violation of these terms."
+      },
+      "law": {
+        "title": "Applicable law",
+        "content": "These terms are governed by French law. Any dispute will be submitted to the exclusive jurisdiction of the French courts."
+      },
+      "contact": {
+        "title": "Contact",
+        "content": "For any questions about these terms:\n\nYousoon SAS\n123 Avenue des Champs-Élysées\n75008 Paris, France\n\nlegal@yousoon.com"
+      }
+    }
+  },
+  "faq": {
+    "title": "Frequently asked questions",
+    "subtitle": "Everything you need to know about Yousoon"
+  },
+  "download": {
+    "badge": "Mobile app",
+    "title": {
+      "line1": "Download Yousoon",
+      "line2": "and start saving"
+    },
+    "description": "Join thousands of users already saving on their outings. Available for free on iOS and Android.",
+    "stats": {
+      "rating": "App Store rating",
+      "downloads": "Downloads",
+      "partners": "Partners"
+    },
+    "qrCode": {
+      "title": "Scan to download",
+      "description": "Point your camera at this QR code"
+    },
+    "featuresSection": {
+      "title": "Everything you need",
+      "description": "A complete app to enjoy the best deals near you."
+    },
+    "features": {
+      "discover": {
+        "title": "Discover offers",
+        "description": "Explore hundreds of geolocated offers around you."
+      },
+      "favorites": {
+        "title": "Save your favorites",
+        "description": "Keep your favorite offers at your fingertips."
+      },
+      "qrcode": {
+        "title": "Easy check-in",
+        "description": "Validate your booking with a simple QR code."
+      },
+      "notifications": {
+        "title": "Personalized alerts",
+        "description": "Receive notifications about new offers."
+      }
+    },
+    "requirements": {
+      "title": "System requirements",
+      "description": "Check that your device is compatible with Yousoon.",
+      "ios": {
+        "version": "Minimum version",
+        "size": "Size",
+        "languages": "Languages"
+      },
+      "android": {
+        "version": "Minimum version",
+        "size": "Size",
+        "languages": "Languages"
+      }
+    },
+    "cta": {
+      "title": "Ready to save on your outings?",
+      "description": "Download Yousoon now and enjoy exclusive discounts today."
+    }
+  },
+  "common": {
+    "learnMore": "Learn more",
+    "getStarted": "Get started",
+    "downloadApp": "Download the app",
+    "appStore": "App Store",
+    "playStore": "Play Store"
+  }
+}

@@ -4,7 +4,7 @@ import (
 	"context"
 
 	partnerdomain "github.com/yousoon/services/partner/internal/domain"
-	sharedomain "github.com/yousoon/services/shared/domain"
+	sharedomain "github.com/yousoon/shared/domain"
 )
 
 // =============================================================================

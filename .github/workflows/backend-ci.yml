@@ -1,0 +1,275 @@
+# Backend CI/CD Pipeline - Go Microservices
+# Triggered on push to main/develop or pull requests
+# Images pushed to AWS ECR: 771322424.dkr.ecr.eu-west-1.amazonaws.com
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/services/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/services/**'
+
+env:
+  GO_VERSION: '1.21'
+  AWS_REGION: eu-west-1
+  ECR_REGISTRY: 771322424.dkr.ecr.eu-west-1.amazonaws.com
+  IMAGE_VERSION_MAJOR: 2
+  IMAGE_VERSION_MINOR: 0
+
+jobs:
+  # ============================================
+  # LINT & TEST
+  # ============================================
+  lint-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - identity-service
+          - partner-service
+          - discovery-service
+          - booking-service
+          - engagement-service
+          - notification-service
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: apps/services/${{ matrix.service }}/go.sum
+
+      - name: Install dependencies
+        working-directory: apps/services/${{ matrix.service }}
+        run: go mod download
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: apps/services/${{ matrix.service }}
+          args: --timeout=5m
+
+      - name: Run tests
+        working-directory: apps/services/${{ matrix.service }}
+        run: |
+          go test -v -race -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: apps/services/${{ matrix.service }}/coverage.out
+          flags: ${{ matrix.service }}
+          name: ${{ matrix.service }}-coverage
+
+  # ============================================
+  # BUILD DOCKER IMAGES & PUSH TO ECR
+  # ============================================
+  build:
+    name: Build Images
+    needs: lint-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        service:
+          - identity-service
+          - partner-service
+          - discovery-service
+          - booking-service
+          - engagement-service
+          - notification-service
+          - router
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate version
+        id: version
+        run: |
+          # Count commits for patch version
+          PATCH=$(git rev-list --count HEAD)
+          VERSION="${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Generated version: ${VERSION}"
+
+      - name: Build and push to ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/services/${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/yousoon-${{ matrix.service }}:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon-${{ matrix.service }}:${{ steps.version.outputs.short_sha }}
+            ${{ env.ECR_REGISTRY }}/yousoon-${{ matrix.service }}:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+
+      - name: Output image info
+        run: |
+          echo "### Image Built :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service**: ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry**: ${{ env.ECR_REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Full Image**: \`${{ env.ECR_REGISTRY }}/yousoon-${{ matrix.service }}:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # DEPLOY TO STAGING
+  # ============================================
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubectl for EKS
+        run: |
+          aws eks update-kubeconfig --name yousoon-staging --region ${{ env.AWS_REGION }}
+
+      - name: Generate version
+        id: version
+        run: |
+          PATCH=$(git rev-list --count HEAD)
+          VERSION="${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Deploy services
+        run: |
+          for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
+            kubectl set image deployment/${service} \
+              ${service}=${{ env.ECR_REGISTRY }}/yousoon-${service}:${{ steps.version.outputs.version }} \
+              -n yousoon-staging || true
+          done
+
+      - name: Wait for rollout
+        run: |
+          for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
+            kubectl rollout status deployment/${service} \
+              -n yousoon-staging --timeout=5m || true
+          done
+
+  # ============================================
+  # DEPLOY TO PRODUCTION
+  # ============================================
+  deploy-production:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubectl for EKS
+        run: |
+          aws eks update-kubeconfig --name yousoon-production --region ${{ env.AWS_REGION }}
+
+      - name: Generate version
+        id: version
+        run: |
+          PATCH=$(git rev-list --count HEAD)
+          VERSION="${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Deploy services
+        run: |
+          for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
+            kubectl set image deployment/${service} \
+              ${service}=${{ env.ECR_REGISTRY }}/yousoon-${service}:${{ steps.version.outputs.version }} \
+              -n yousoon || true
+          done
+
+      - name: Wait for rollout
+        run: |
+          for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
+            kubectl rollout status deployment/${service} \
+              -n yousoon --timeout=5m || true
+          done
+
+      - name: Notify deployment
+        uses: slackapi/slack-github-action@v1
+        if: always()
+        with:
+          payload: |
+            {
+              "text": "Backend deployment to production: ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Backend Deployment*\nStatus: ${{ job.status }}\nVersion: ${{ steps.version.outputs.version }}\nCommit: ${{ github.sha }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

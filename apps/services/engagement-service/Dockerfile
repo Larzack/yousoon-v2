@@ -1,16 +1,16 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
 
 COPY shared/ ./shared/
-COPY engagement-service/go.mod engagement-service/go.sum ./engagement-service/
+COPY engagement-service/go.mod ./engagement-service/
+COPY engagement-service/go.sum* ./engagement-service/
+COPY engagement-service/ ./engagement-service/
 WORKDIR /app/engagement-service
-RUN go mod download
-
-COPY engagement-service/ ./
+RUN go mod tidy && go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /engagement-service ./cmd/main.go
 

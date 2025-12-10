@@ -1,0 +1,290 @@
+services:
+  # ===========================================
+  # INFRASTRUCTURE
+  # ===========================================
+  
+  mongodb:
+    image: mongo:7.0
+    container_name: yousoon-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: yousoon
+      MONGO_INITDB_ROOT_PASSWORD: yousoon_dev_password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - yousoon-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: yousoon-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - yousoon-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: yousoon-nats
+    ports:
+      - "4222:4222"   # Client
+      - "8222:8222"   # Monitoring
+    command: 
+      - "-js"
+      - "-m"
+      - "8222"
+      - "--name"
+      - "yousoon-nats"
+      - "--system_account"
+      - "SYS"
+    networks:
+      - yousoon-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # BACKEND SERVICES
+  # ===========================================
+
+  identity-service:
+    build:
+      context: ./services
+      dockerfile: identity-service/Dockerfile
+    container_name: yousoon-identity
+    ports:
+      - "4001:4000"
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://yousoon:yousoon_dev_password@mongodb:27017/identity?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - JWT_SECRET=dev-jwt-secret-change-in-production
+      - JWT_EXPIRES_IN=6h
+      - REFRESH_TOKEN_EXPIRES_IN=720h
+      - ENV=development
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - yousoon-network
+
+  partner-service:
+    build:
+      context: ./services
+      dockerfile: partner-service/Dockerfile
+    container_name: yousoon-partner
+    ports:
+      - "4002:4000"
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://yousoon:yousoon_dev_password@mongodb:27017/partner?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - ENV=development
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - yousoon-network
+
+  discovery-service:
+    build:
+      context: ./services
+      dockerfile: discovery-service/Dockerfile
+    container_name: yousoon-discovery
+    ports:
+      - "4003:4000"
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://yousoon:yousoon_dev_password@mongodb:27017/discovery?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - ENV=development
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - yousoon-network
+
+  booking-service:
+    build:
+      context: ./services
+      dockerfile: booking-service/Dockerfile
+    container_name: yousoon-booking
+    ports:
+      - "4004:4000"
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://yousoon:yousoon_dev_password@mongodb:27017/booking?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - ENV=development
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - yousoon-network
+
+  engagement-service:
+    build:
+      context: ./services
+      dockerfile: engagement-service/Dockerfile
+    container_name: yousoon-engagement
+    ports:
+      - "4005:4000"
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://yousoon:yousoon_dev_password@mongodb:27017/engagement?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - ENV=development
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - yousoon-network
+
+  notification-service:
+    build:
+      context: ./services
+      dockerfile: notification-service/Dockerfile
+    container_name: yousoon-notification
+    ports:
+      - "4006:4000"
+    environment:
+      - PORT=4000
+      - MONGODB_URI=mongodb://yousoon:yousoon_dev_password@mongodb:27017/notification?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - ENV=development
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - yousoon-network
+
+  # ===========================================
+  # API GATEWAY
+  # ===========================================
+
+  apollo-router:
+    build:
+      context: ./services/router
+      dockerfile: Dockerfile
+    container_name: yousoon-router
+    ports:
+      - "4000:4000"
+    environment:
+      - APOLLO_ROUTER_SUPERGRAPH_PATH=/app/supergraph.graphql
+      - APOLLO_ROUTER_CONFIG_PATH=/app/router.yaml
+      - IDENTITY_SERVICE_URL=http://identity-service:4000/graphql
+      - PARTNER_SERVICE_URL=http://partner-service:4000/graphql
+      - DISCOVERY_SERVICE_URL=http://discovery-service:4000/graphql
+      - BOOKING_SERVICE_URL=http://booking-service:4000/graphql
+      - ENGAGEMENT_SERVICE_URL=http://engagement-service:4000/graphql
+      - NOTIFICATION_SERVICE_URL=http://notification-service:4000/graphql
+    depends_on:
+      - identity-service
+      - partner-service
+      - discovery-service
+      - booking-service
+      - engagement-service
+      - notification-service
+    networks:
+      - yousoon-network
+
+  # ===========================================
+  # WEB APPLICATIONS
+  # ===========================================
+
+  partners:
+    build:
+      context: ./partners
+      dockerfile: Dockerfile
+    container_name: yousoon-partners
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=http://localhost:4000/graphql
+    depends_on:
+      - apollo-router
+    networks:
+      - yousoon-network
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    container_name: yousoon-admin
+    ports:
+      - "3001:80"
+    environment:
+      - VITE_API_URL=http://localhost:4000/graphql
+    depends_on:
+      - apollo-router
+    networks:
+      - yousoon-network
+
+  siteweb:
+    build:
+      context: ./siteweb
+      dockerfile: Dockerfile
+    container_name: yousoon-siteweb
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:4000/graphql
+    depends_on:
+      - apollo-router
+    networks:
+      - yousoon-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  yousoon-network:
+    driver: bridge

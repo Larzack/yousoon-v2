@@ -11,9 +11,9 @@ import (
 
 	mongodb "github.com/yousoon/services/identity/internal/infrastructure/mongodb"
 	"github.com/yousoon/services/identity/internal/interface/graphql/resolver"
-	"github.com/yousoon/services/shared/config"
-	sharedmongo "github.com/yousoon/services/shared/infrastructure/mongodb"
-	"github.com/yousoon/services/shared/infrastructure/nats"
+	"github.com/yousoon/shared/config"
+	sharedmongo "github.com/yousoon/shared/infrastructure/mongodb"
+	"github.com/yousoon/shared/infrastructure/nats"
 )
 
 const (

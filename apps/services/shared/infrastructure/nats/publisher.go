@@ -8,7 +8,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 
-	"github.com/yousoon/services/shared/domain"
+	"github.com/yousoon/shared/domain"
 )
 
 // EventPublisher publishes domain events to NATS JetStream.

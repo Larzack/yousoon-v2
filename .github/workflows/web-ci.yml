@@ -1,0 +1,337 @@
+# Web CI/CD Pipeline - React (Partners & Admin) + Next.js (Siteweb)
+# Images pushed to AWS ECR: 771322424.dkr.ecr.eu-west-1.amazonaws.com
+name: Web CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/partners/**'
+      - 'apps/admin/**'
+      - 'apps/siteweb/**'
+      - '.github/workflows/web-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/partners/**'
+      - 'apps/admin/**'
+      - 'apps/siteweb/**'
+
+env:
+  NODE_VERSION: '20'
+  AWS_REGION: eu-west-1
+  ECR_REGISTRY: 771322424.dkr.ecr.eu-west-1.amazonaws.com
+  IMAGE_VERSION_MAJOR: 2
+  IMAGE_VERSION_MINOR: 0
+
+jobs:
+  # ============================================
+  # LINT & TEST - Partners
+  # ============================================
+  lint-test-partners:
+    name: Lint & Test Partners
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/partners/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/partners
+        run: npm ci
+
+      - name: Lint
+        working-directory: apps/partners
+        run: npm run lint
+
+      - name: Type check
+        working-directory: apps/partners
+        run: npm run type-check || true
+
+      - name: Run tests
+        working-directory: apps/partners
+        run: npm run test --if-present
+
+  # ============================================
+  # LINT & TEST - Admin
+  # ============================================
+  lint-test-admin:
+    name: Lint & Test Admin
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/admin/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/admin
+        run: npm ci
+
+      - name: Lint
+        working-directory: apps/admin
+        run: npm run lint
+
+      - name: Type check
+        working-directory: apps/admin
+        run: npm run type-check || true
+
+      - name: Run tests
+        working-directory: apps/admin
+        run: npm run test --if-present
+
+  # ============================================
+  # LINT & TEST - Siteweb
+  # ============================================
+  lint-test-siteweb:
+    name: Lint & Test Siteweb
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/siteweb/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/siteweb
+        run: npm ci
+
+      - name: Lint
+        working-directory: apps/siteweb
+        run: npm run lint
+
+      - name: Type check
+        working-directory: apps/siteweb
+        run: npm run type-check || true
+
+      - name: Run tests
+        working-directory: apps/siteweb
+        run: npm run test --if-present
+
+  # ============================================
+  # BUILD & DEPLOY - Partners (ECR)
+  # ============================================
+  build-deploy-partners:
+    name: Build & Deploy Partners
+    needs: lint-test-partners
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate version
+        id: version
+        run: |
+          PATCH=$(git rev-list --count HEAD)
+          VERSION="${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build and push to ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/partners
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ steps.version.outputs.short_sha }}
+            ${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_URL=${{ secrets.API_URL }}
+            VITE_GRAPHQL_URL=${{ secrets.GRAPHQL_URL }}
+
+      - name: Output image info
+        run: |
+          echo "### Web Partners Image Built :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # BUILD & DEPLOY - Admin (ECR)
+  # ============================================
+  build-deploy-admin:
+    name: Build & Deploy Admin
+    needs: lint-test-admin
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate version
+        id: version
+        run: |
+          PATCH=$(git rev-list --count HEAD)
+          VERSION="${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build and push to ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/admin
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ steps.version.outputs.short_sha }}
+            ${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_URL=${{ secrets.API_URL }}
+            VITE_GRAPHQL_URL=${{ secrets.GRAPHQL_URL }}
+
+      - name: Output image info
+        run: |
+          echo "### Web Admin Image Built :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # BUILD & DEPLOY - Siteweb (Vercel)
+  # ============================================
+  deploy-siteweb:
+    name: Deploy Siteweb to Vercel
+    needs: lint-test-siteweb
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel (Preview)
+        if: github.ref == 'refs/heads/develop'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: apps/siteweb
+
+      - name: Deploy to Vercel (Production)
+        if: github.ref == 'refs/heads/main'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: apps/siteweb
+
+  # ============================================
+  # DEPLOY K8s - Partners & Admin
+  # ============================================
+  deploy-k8s:
+    name: Deploy to Kubernetes
+    needs: [build-deploy-partners, build-deploy-admin]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubectl for EKS
+        run: |
+          aws eks update-kubeconfig --name yousoon-production --region ${{ env.AWS_REGION }}
+
+      - name: Generate version
+        id: version
+        run: |
+          PATCH=$(git rev-list --count HEAD)
+          VERSION="${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Deploy web apps
+        run: |
+          kubectl set image deployment/web-partners \
+            web-partners=${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ steps.version.outputs.version }} \
+            -n yousoon || true
+          kubectl set image deployment/web-admin \
+            web-admin=${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ steps.version.outputs.version }} \
+            -n yousoon || true
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/web-partners -n yousoon --timeout=5m || true
+          kubectl rollout status deployment/web-admin -n yousoon --timeout=5m || true

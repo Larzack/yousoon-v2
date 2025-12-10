@@ -144,4 +144,10 @@ abstract class AppTypography {
     fontWeight: FontWeight.w600,
     color: AppColors.textPrimary,
   );
+
+  // Aliases pour compatibilité avec le design system original
+  static TextStyle get headline1 => headlineLarge;
+  static TextStyle get headline2 => headlineMedium;
+  static TextStyle get headline3 => headlineSmall;
+  static TextStyle get bodyText => bodyMedium;
 }

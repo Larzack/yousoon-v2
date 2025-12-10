@@ -1,63 +1,39 @@
-# ==============================================================================
 # Partner Service Dockerfile
-# Multi-stage build for minimal production image
-# ==============================================================================
+FROM golang:1.23-alpine AS builder
 
-# Stage 1: Build
-FROM golang:1.21-alpine AS builder
-
-# Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Set working directory
 WORKDIR /app
 
-# Copy go mod files first for better caching
-COPY go.mod go.sum ./
+# Copy shared module first
+COPY shared/ ./shared/
 
-# Download dependencies
-RUN go mod download
+# Copy service module
+COPY partner-service/go.mod ./partner-service/
+COPY partner-service/go.sum* ./partner-service/
+COPY partner-service/ ./partner-service/
+WORKDIR /app/partner-service
+RUN go mod tidy && go mod download
 
-# Copy source code
-COPY . .
-
-# Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X main.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'dev')" \
-    -o /app/partner-service \
+    -ldflags="-w -s" \
+    -o /partner-service \
     ./cmd/main.go
 
-# Stage 2: Production
 FROM alpine:3.19
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata
+RUN adduser -D -g '' appuser
 
-# Create non-root user
-RUN addgroup -g 1000 -S yousoon && \
-    adduser -u 1000 -S yousoon -G yousoon
-
-# Set working directory
 WORKDIR /app
 
-# Copy binary from builder
-COPY --from=builder /app/partner-service .
+COPY --from=builder /partner-service .
 
-# Copy timezone data
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+USER appuser
 
-# Set timezone
-ENV TZ=Europe/Paris
+EXPOSE 4000
 
-# Use non-root user
-USER yousoon
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
 
-# Expose ports
-EXPOSE 8080 9090 9091
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
-
-# Run the application
-ENTRYPOINT ["/app/partner-service"]
+CMD ["./partner-service"]

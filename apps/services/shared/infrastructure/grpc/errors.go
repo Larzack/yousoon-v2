@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/yousoon/services/shared/domain"
+	"github.com/yousoon/shared/domain"
 )
 
 // DomainErrorToGRPC converts a domain error to a gRPC status error.

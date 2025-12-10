@@ -4,7 +4,7 @@ package commands
 import (
 	"context"
 
-	sharedomain "github.com/yousoon/services/shared/domain"
+	sharedomain "github.com/yousoon/shared/domain"
 )
 
 // =============================================================================

@@ -22,9 +22,11 @@ spec:
         prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: apollo-router
+      imagePullSecrets:
+        - name: ecr-registry-secret
       containers:
         - name: router
-          image: yousoon/apollo-router:latest
+          image: 771322424.dkr.ecr.eu-west-1.amazonaws.com/yousoon/apollo-router:2.0.0
           imagePullPolicy: Always
           ports:
             - containerPort: 4000

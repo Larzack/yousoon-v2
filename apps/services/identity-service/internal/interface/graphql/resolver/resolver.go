@@ -4,7 +4,7 @@ import (
 	"github.com/yousoon/services/identity/internal/application/commands"
 	"github.com/yousoon/services/identity/internal/application/queries"
 	"github.com/yousoon/services/identity/internal/domain"
-	"github.com/yousoon/services/shared/infrastructure/nats"
+	"github.com/yousoon/shared/infrastructure/nats"
 )
 
 // This file will not be regenerated automatically.

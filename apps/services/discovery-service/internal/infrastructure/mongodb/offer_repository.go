@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/yousoon/services/discovery/internal/domain"
+	"github.com/yousoon/discovery-service/internal/domain"
 )
 
 // OfferDocument represents the MongoDB document structure for offers.

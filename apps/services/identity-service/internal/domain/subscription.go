@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yousoon/services/shared/domain"
+	"github.com/yousoon/shared/domain"
 )
 
 // =============================================================================

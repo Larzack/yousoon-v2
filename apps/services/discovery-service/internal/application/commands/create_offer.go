@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/yousoon/services/discovery/internal/domain"
+	"github.com/yousoon/discovery-service/internal/domain"
 )
 
 // =============================================================================

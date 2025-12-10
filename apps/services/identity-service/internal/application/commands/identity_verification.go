@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/yousoon/services/identity/internal/domain"
-	"github.com/yousoon/services/shared/infrastructure/nats"
+	"github.com/yousoon/shared/infrastructure/nats"
 )
 
 // SubmitIdentityVerificationCommand represents a command to submit identity verification.

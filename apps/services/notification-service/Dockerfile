@@ -1,19 +1,22 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
 # Install dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy go mod files
-COPY go.mod go.sum ./
-RUN go mod download
+# Copy shared module first
+COPY shared/ ./shared/
 
-# Copy source
-COPY . .
+# Copy service module
+COPY notification-service/go.mod ./notification-service/
+COPY notification-service/go.sum* ./notification-service/
+COPY notification-service/ ./notification-service/
+WORKDIR /app/notification-service
+RUN go mod tidy && go mod download
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /main ./cmd/main.go
 
 # Final stage
 FROM alpine:3.19
@@ -24,7 +27,7 @@ WORKDIR /app
 RUN apk --no-cache add ca-certificates tzdata
 
 # Copy binary from builder
-COPY --from=builder /app/main .
+COPY --from=builder /main .
 
 # Expose port
 EXPOSE 8080

@@ -4,7 +4,7 @@ package commands
 import (
 	"context"
 
-	"github.com/yousoon/services/discovery/internal/domain"
+	"github.com/yousoon/discovery-service/internal/domain"
 )
 
 // =============================================================================

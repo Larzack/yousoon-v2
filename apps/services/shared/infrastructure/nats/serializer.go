@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yousoon/services/shared/domain"
+	"github.com/yousoon/shared/domain"
 )
 
 // Serializer handles event serialization and deserialization.

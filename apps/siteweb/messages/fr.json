@@ -1,0 +1,462 @@
+{
+  "metadata": {
+    "title": "Yousoon - Sortez plus, payez moins",
+    "description": "Découvrez les meilleures offres de sorties près de chez vous. Bars, restaurants, loisirs avec des réductions exclusives."
+  },
+  "nav": {
+    "features": "Fonctionnalités",
+    "partners": "Devenir partenaire",
+    "pricing": "Tarifs",
+    "about": "À propos",
+    "downloadApp": "Télécharger l'app",
+    "login": "Connexion"
+  },
+  "hero": {
+    "title": "Sortez plus,",
+    "titleHighlight": "payez moins",
+    "subtitle": "Découvrez des offres exclusives dans les meilleurs bars, restaurants et lieux de sortie près de chez vous.",
+    "cta": "Télécharger l'app",
+    "secondaryCta": "En savoir plus",
+    "stats": {
+      "users": "Utilisateurs",
+      "partners": "Partenaires",
+      "savings": "d'économies"
+    }
+  },
+  "features": {
+    "pageTitle": "Toutes les fonctionnalités",
+    "pageDescription": "Découvrez tout ce que Yousoon peut faire pour rendre vos sorties inoubliables.",
+    "title": "Tout ce dont vous avez besoin",
+    "subtitle": "Une app pensée pour maximiser vos sorties",
+    "items": {
+      "geolocated": {
+        "title": "Offres géolocalisées",
+        "description": "Découvrez les meilleures réductions autour de vous en temps réel."
+      },
+      "discounts": {
+        "title": "Réductions exclusives",
+        "description": "Profitez d'offres uniques négociées avec nos partenaires."
+      },
+      "instant": {
+        "title": "Réservation instantanée",
+        "description": "Réservez en un clic et validez sur place avec un QR code."
+      },
+      "favorites": {
+        "title": "Favoris personnalisés",
+        "description": "Sauvegardez vos offres préférées et recevez des alertes."
+      },
+      "community": {
+        "title": "Communauté active",
+        "description": "Partagez vos expériences et découvrez les avis."
+      },
+      "secure": {
+        "title": "Paiement sécurisé",
+        "description": "Abonnement géré via Apple Pay et Google Pay."
+      },
+      "geolocatedOffers": {
+        "title": "Offres géolocalisées",
+        "description": "Recevez des notifications sur les offres disponibles autour de vous, où que vous soyez."
+      },
+      "exclusiveDiscounts": {
+        "title": "Réductions exclusives",
+        "description": "Accédez à des réductions négociées exclusivement pour les membres Yousoon."
+      },
+      "instantBooking": {
+        "title": "Réservation instantanée",
+        "description": "Réservez en quelques secondes et recevez votre confirmation immédiatement."
+      },
+      "qrCheckin": {
+        "title": "Check-in QR Code",
+        "description": "Présentez simplement votre QR code à l'entrée pour profiter de votre offre."
+      },
+      "favorites": {
+        "title": "Favoris",
+        "description": "Enregistrez vos offres et établissements préférés pour les retrouver facilement."
+      },
+      "smartSearch": {
+        "title": "Recherche intelligente",
+        "description": "Trouvez exactement ce que vous cherchez grâce à nos filtres avancés."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Soyez alerté des nouvelles offres et des promotions exclusives."
+      },
+      "reviews": {
+        "title": "Avis vérifiés",
+        "description": "Consultez les avis des autres utilisateurs pour faire le meilleur choix."
+      },
+      "community": {
+        "title": "Communauté",
+        "description": "Rejoignez une communauté de passionnés de sorties et partagez vos découvertes."
+      },
+      "history": {
+        "title": "Historique",
+        "description": "Retrouvez facilement toutes vos sorties passées et vos établissements visités."
+      },
+      "security": {
+        "title": "Sécurité",
+        "description": "Vos données sont protégées avec les standards de sécurité les plus élevés."
+      },
+      "offlineMode": {
+        "title": "Mode hors-ligne",
+        "description": "Accédez à vos réservations et QR codes même sans connexion internet."
+      }
+    },
+    "appPreview": {
+      "title": "Une expérience mobile optimisée",
+      "description": "Notre application a été conçue pour vous offrir la meilleure expérience possible, avec une interface intuitive et des performances optimales.",
+      "point1": "Interface moderne et intuitive",
+      "point2": "Chargement ultra-rapide",
+      "point3": "Mode sombre natif",
+      "point4": "Disponible sur iOS et Android"
+    }
+  },
+  "howItWorks": {
+    "title": "Comment ça marche ?",
+    "subtitle": "En 4 étapes simples",
+    "steps": {
+      "download": {
+        "title": "Téléchargez l'app",
+        "description": "Disponible gratuitement sur iOS et Android."
+      },
+      "explore": {
+        "title": "Explorez les offres",
+        "description": "Parcourez les réductions près de vous ou dans une ville."
+      },
+      "book": {
+        "title": "Réservez",
+        "description": "Sélectionnez une offre et réservez instantanément."
+      },
+      "enjoy": {
+        "title": "Profitez !",
+        "description": "Présentez votre QR code sur place et profitez."
+      }
+    }
+  },
+  "testimonials": {
+    "title": "Ils adorent Yousoon",
+    "subtitle": "Découvrez ce que nos utilisateurs en pensent"
+  },
+  "cta": {
+    "title": "Prêt à économiser sur vos sorties ?",
+    "subtitle": "Rejoignez des milliers d'utilisateurs qui profitent déjà de réductions exclusives.",
+    "button": "Télécharger gratuitement",
+    "note": "Essai gratuit de 30 jours. Aucun engagement."
+  },
+  "footer": {
+    "description": "La meilleure façon de profiter de vos sorties à prix réduit.",
+    "product": "Produit",
+    "company": "Entreprise",
+    "partners": "Partenaires",
+    "legal": "Légal",
+    "newsletter": {
+      "title": "Newsletter",
+      "placeholder": "Votre email",
+      "button": "S'inscrire",
+      "description": "Recevez les meilleures offres directement dans votre boîte mail."
+    },
+    "copyright": "© {year} Yousoon. Tous droits réservés."
+  },
+  "pricing": {
+    "title": "Tarifs simples et transparents",
+    "subtitle": "Choisissez le plan qui vous correspond",
+    "monthly": "Mensuel",
+    "yearly": "Annuel",
+    "perMonth": "/mois",
+    "perYear": "/an",
+    "free": "Gratuit",
+    "popular": "Populaire",
+    "cta": {
+      "free": "Commencer gratuitement",
+      "trial": "Essayer gratuitement",
+      "save": "Économiser 40%",
+      "title": "Des questions ?",
+      "description": "Notre équipe est là pour vous accompagner dans le choix de votre abonnement.",
+      "button": "Nous contacter"
+    },
+    "faq": {
+      "title": "Questions sur les tarifs",
+      "subtitle": "Tout ce que vous devez savoir sur nos abonnements"
+    }
+  },
+  "partners": {
+    "badge": "Partenaires",
+    "title": "Développez votre activité avec Yousoon",
+    "subtitle": "Rejoignez notre réseau de partenaires et attirez de nouveaux clients grâce à notre communauté engagée.",
+    "cta": {
+      "primary": "Devenir partenaire",
+      "secondary": "Nous contacter",
+      "title": "Prêt à développer votre activité ?",
+      "description": "Rejoignez plus de 500 partenaires qui font confiance à Yousoon pour attirer de nouveaux clients.",
+      "button": "Créer mon compte partenaire"
+    },
+    "stats": {
+      "traffic": "de trafic en plus",
+      "users": "utilisateurs actifs",
+      "partners": "partenaires",
+      "satisfaction": "de satisfaction"
+    },
+    "partnerTypes": {
+      "title": "Tous types d'établissements bienvenus"
+    },
+    "benefits": {
+      "title": "Pourquoi devenir partenaire ?",
+      "subtitle": "Des avantages concrets pour développer votre activité",
+      "items": {
+        "newCustomers": {
+          "title": "Nouveaux clients",
+          "description": "Attirez une nouvelle clientèle grâce à notre communauté de Yousooners."
+        },
+        "increaseRevenue": {
+          "title": "Augmentez votre CA",
+          "description": "Les offres promotionnelles génèrent du trafic additionnel."
+        },
+        "targetedMarketing": {
+          "title": "Marketing ciblé",
+          "description": "Touchez les bonnes personnes au bon moment grâce à la géolocalisation."
+        },
+        "analytics": {
+          "title": "Analytics détaillés",
+          "description": "Suivez les performances de vos offres en temps réel."
+        }
+      }
+    },
+    "howItWorks": {
+      "title": "Comment ça fonctionne ?",
+      "subtitle": "Un processus simple en 4 étapes",
+      "steps": {
+        "step1": {
+          "title": "Inscription",
+          "description": "Créez votre compte partenaire en quelques minutes."
+        },
+        "step2": {
+          "title": "Configuration",
+          "description": "Ajoutez vos établissements et créez vos premières offres."
+        },
+        "step3": {
+          "title": "Publication",
+          "description": "Vos offres sont visibles par tous les utilisateurs Yousoon."
+        },
+        "step4": {
+          "title": "Validation",
+          "description": "Scannez les QR codes des clients pour valider leurs réservations."
+        }
+      }
+    },
+    "features": {
+      "title": "Tout ce dont vous avez besoin",
+      "subtitle": "Un espace partenaire complet pour gérer votre activité",
+      "items": {
+        "feature1": "Tableau de bord intuitif",
+        "feature2": "Création d'offres illimitée",
+        "feature3": "Statistiques en temps réel",
+        "feature4": "Gestion multi-établissements",
+        "feature5": "Support dédié",
+        "feature6": "Aucun frais caché"
+      }
+    },
+    "pricing": {
+      "title": "Gratuit pour commencer",
+      "price": "0€",
+      "period": "",
+      "description": "Aucun frais d'inscription ni de commission. Créez vos offres et attirez de nouveaux clients.",
+      "cta": "Créer mon compte gratuit"
+    }
+  },
+  "about": {
+    "badge": "Notre histoire",
+    "title": "Rendre les sorties accessibles à tous",
+    "subtitle": "Yousoon est né d'une conviction simple : tout le monde devrait pouvoir profiter de sorties de qualité sans se ruiner.",
+    "mission": {
+      "title": "Notre mission",
+      "description1": "Nous croyons que les meilleures expériences ne devraient pas être réservées à une élite. C'est pourquoi nous avons créé Yousoon : une plateforme qui connecte les amateurs de sorties avec les meilleurs établissements de leur ville.",
+      "description2": "En négociant des offres exclusives avec nos partenaires, nous permettons à chacun de découvrir de nouveaux endroits, de vivre de nouvelles expériences, tout en maîtrisant son budget.",
+      "stats": {
+        "users": "utilisateurs actifs",
+        "partners": "partenaires",
+        "bookings": "réservations",
+        "rating": "sur les stores"
+      }
+    },
+    "values": {
+      "title": "Nos valeurs",
+      "subtitle": "Ce qui nous guide au quotidien",
+      "items": {
+        "passion": {
+          "title": "Passion",
+          "description": "Nous sommes passionnés par les sorties et les rencontres. C'est ce qui nous motive chaque jour."
+        },
+        "community": {
+          "title": "Communauté",
+          "description": "Nous construisons une communauté soudée de passionnés qui partagent leurs découvertes."
+        },
+        "accessibility": {
+          "title": "Accessibilité",
+          "description": "Nous rendons les sorties de qualité accessibles à tous, peu importe le budget."
+        },
+        "innovation": {
+          "title": "Innovation",
+          "description": "Nous innovons constamment pour améliorer l'expérience de nos utilisateurs."
+        }
+      }
+    },
+    "timeline": {
+      "title": "Notre parcours",
+      "subtitle": "Les grandes étapes de l'aventure Yousoon",
+      "items": {
+        "milestone1": {
+          "title": "L'idée germe",
+          "description": "Naissance du concept lors d'une soirée entre amis."
+        },
+        "milestone2": {
+          "title": "Premiers partenaires",
+          "description": "Lancement avec 50 partenaires à Paris."
+        },
+        "milestone3": {
+          "title": "Expansion",
+          "description": "Déploiement dans 10 grandes villes françaises."
+        },
+        "milestone4": {
+          "title": "Et demain ?",
+          "description": "Expansion européenne et nouvelles fonctionnalités."
+        }
+      }
+    },
+    "team": {
+      "title": "L'équipe",
+      "subtitle": "Les personnes derrière Yousoon",
+      "members": {
+        "member1": {
+          "name": "Fondateur 1",
+          "role": "CEO & Co-fondateur"
+        },
+        "member2": {
+          "name": "Fondateur 2",
+          "role": "CTO & Co-fondateur"
+        },
+        "member3": {
+          "name": "Fondateur 3",
+          "role": "COO & Co-fondateur"
+        }
+      }
+    },
+    "cta": {
+      "title": "Rejoignez l'aventure",
+      "description": "Que vous soyez un passionné de sorties ou un établissement souhaitant développer sa clientèle, Yousoon est fait pour vous.",
+      "download": "Télécharger l'app",
+      "contact": "Nous contacter"
+    }
+  },
+  "contact": {
+    "title": "Contactez-nous",
+    "subtitle": "Une question, une suggestion ? Notre équipe est là pour vous aider.",
+    "methods": {
+      "email": "Email",
+      "phone": "Téléphone",
+      "address": "Adresse"
+    },
+    "form": {
+      "subject": {
+        "label": "Objet de votre message",
+        "options": {
+          "general": "Question générale",
+          "partnership": "Partenariat",
+          "support": "Support technique",
+          "press": "Presse"
+        }
+      },
+      "name": {
+        "label": "Nom complet",
+        "placeholder": "Votre nom"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "votre@email.com"
+      },
+      "message": {
+        "label": "Message",
+        "placeholder": "Comment pouvons-nous vous aider ?"
+      },
+      "submit": "Envoyer le message",
+      "submitting": "Envoi en cours...",
+      "success": {
+        "title": "Message envoyé !",
+        "description": "Merci pour votre message. Notre équipe vous répondra dans les plus brefs délais.",
+        "button": "Envoyer un autre message"
+      }
+    },
+    "faq": {
+      "title": "Vous avez une question ?",
+      "description": "Consultez notre FAQ pour trouver rapidement une réponse.",
+      "button": "Voir la FAQ"
+    }
+  },
+  "faq": {
+    "title": "Questions fréquentes",
+    "subtitle": "Tout ce que vous devez savoir sur Yousoon"
+  },
+  "download": {
+    "badge": "Application mobile",
+    "title": {
+      "line1": "Téléchargez Yousoon",
+      "line2": "et commencez à économiser"
+    },
+    "description": "Rejoignez des milliers d'utilisateurs qui économisent déjà sur leurs sorties. Disponible gratuitement sur iOS et Android.",
+    "stats": {
+      "rating": "Note App Store",
+      "downloads": "Téléchargements",
+      "partners": "Partenaires"
+    },
+    "qrCode": {
+      "title": "Scannez pour télécharger",
+      "description": "Pointez votre caméra vers ce QR code"
+    },
+    "featuresSection": {
+      "title": "Tout ce dont vous avez besoin",
+      "description": "Une application complète pour profiter des meilleures offres de sorties près de chez vous."
+    },
+    "features": {
+      "discover": {
+        "title": "Découvrez des offres",
+        "description": "Explorez des centaines d'offres géolocalisées autour de vous."
+      },
+      "favorites": {
+        "title": "Sauvegardez vos favoris",
+        "description": "Gardez vos offres préférées à portée de main."
+      },
+      "qrcode": {
+        "title": "Check-in facile",
+        "description": "Validez votre réservation avec un simple QR code."
+      },
+      "notifications": {
+        "title": "Alertes personnalisées",
+        "description": "Recevez des notifications sur les nouvelles offres."
+      }
+    },
+    "requirements": {
+      "title": "Configuration requise",
+      "description": "Vérifiez que votre appareil est compatible avec Yousoon.",
+      "ios": {
+        "version": "Version minimum",
+        "size": "Taille",
+        "languages": "Langues"
+      },
+      "android": {
+        "version": "Version minimum",
+        "size": "Taille",
+        "languages": "Langues"
+      }
+    },
+    "cta": {
+      "title": "Prêt à économiser sur vos sorties ?",
+      "description": "Téléchargez Yousoon maintenant et profitez de réductions exclusives dès aujourd'hui."
+    }
+  },
+  "common": {
+    "learnMore": "En savoir plus",
+    "getStarted": "Commencer",
+    "downloadApp": "Télécharger l'app",
+    "appStore": "App Store",
+    "playStore": "Play Store"
+  }
+}

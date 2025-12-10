@@ -1,6 +1,15 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// NewID generates a new unique identifier.
+func NewID() string {
+	return uuid.New().String()
+}
 
 // Entity is the base interface for all domain entities.
 // Entities have identity that persists over time.

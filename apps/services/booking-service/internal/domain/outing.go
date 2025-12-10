@@ -423,16 +423,15 @@ func NewOuting(
 		updatedAt: now,
 	}
 
-	outing.AddDomainEvent(OutingBooked{
-		OutingID:        id,
-		UserID:          userID,
-		OfferID:         offer.OfferID(),
-		PartnerID:       offer.PartnerID(),
-		EstablishmentID: offer.EstablishmentID(),
-		QRCode:          qrCode.FullCode(),
-		ExpiresAt:       expiresAt,
-		Timestamp:       now,
-	})
+	outing.AddDomainEvent(NewOutingBookedEvent(
+		id,
+		userID,
+		offer.OfferID(),
+		offer.PartnerID(),
+		offer.EstablishmentID(),
+		qrCode.FullCode(),
+		expiresAt,
+	))
 
 	return outing, nil
 }
@@ -518,16 +517,15 @@ func (o *Outing) CheckInWithQR(scannedQR string, staffUserID string, lat, lng *f
 		"method": string(CheckInMethodQRScan),
 	}))
 
-	o.AddDomainEvent(OutingCheckedIn{
-		OutingID:        o.id,
-		UserID:          o.userID,
-		OfferID:         o.offer.OfferID(),
-		PartnerID:       o.offer.PartnerID(),
-		EstablishmentID: o.offer.EstablishmentID(),
-		CheckedInBy:     staffUserID,
-		Method:          string(CheckInMethodQRScan),
-		Timestamp:       now,
-	})
+	o.AddDomainEvent(NewOutingCheckedInEvent(
+		o.id,
+		o.userID,
+		o.offer.OfferID(),
+		o.offer.PartnerID(),
+		o.offer.EstablishmentID(),
+		staffUserID,
+		string(CheckInMethodQRScan),
+	))
 
 	return nil
 }
@@ -547,16 +545,15 @@ func (o *Outing) CheckInManual(staffUserID string, lat, lng *float64) error {
 		"method": string(CheckInMethodManual),
 	}))
 
-	o.AddDomainEvent(OutingCheckedIn{
-		OutingID:        o.id,
-		UserID:          o.userID,
-		OfferID:         o.offer.OfferID(),
-		PartnerID:       o.offer.PartnerID(),
-		EstablishmentID: o.offer.EstablishmentID(),
-		CheckedInBy:     staffUserID,
-		Method:          string(CheckInMethodManual),
-		Timestamp:       now,
-	})
+	o.AddDomainEvent(NewOutingCheckedInEvent(
+		o.id,
+		o.userID,
+		o.offer.OfferID(),
+		o.offer.PartnerID(),
+		o.offer.EstablishmentID(),
+		staffUserID,
+		string(CheckInMethodManual),
+	))
 
 	return nil
 }
@@ -579,15 +576,14 @@ func (o *Outing) Cancel(actor CancellationActor, reason string) error {
 		"reason": reason,
 	}))
 
-	o.AddDomainEvent(OutingCancelled{
-		OutingID:    o.id,
-		UserID:      o.userID,
-		OfferID:     o.offer.OfferID(),
-		PartnerID:   o.offer.PartnerID(),
-		CancelledBy: string(actor),
-		Reason:      reason,
-		Timestamp:   now,
-	})
+	o.AddDomainEvent(NewOutingCancelledEvent(
+		o.id,
+		o.userID,
+		o.offer.OfferID(),
+		o.offer.PartnerID(),
+		string(actor),
+		reason,
+	))
 
 	return nil
 }
@@ -608,13 +604,12 @@ func (o *Outing) MarkAsExpired() error {
 		"action": "auto_expired",
 	}))
 
-	o.AddDomainEvent(OutingExpired{
-		OutingID:  o.id,
-		UserID:    o.userID,
-		OfferID:   o.offer.OfferID(),
-		PartnerID: o.offer.PartnerID(),
-		Timestamp: now,
-	})
+	o.AddDomainEvent(NewOutingExpiredEvent(
+		o.id,
+		o.userID,
+		o.offer.OfferID(),
+		o.offer.PartnerID(),
+	))
 
 	return nil
 }

@@ -2,7 +2,7 @@
 # Multi-stage build for minimal image size
 
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -10,16 +10,15 @@ RUN apk add --no-cache git ca-certificates tzdata
 # Set working directory
 WORKDIR /app
 
-# Copy go mod files first for caching
-COPY go.mod go.sum ./
-COPY ../shared/go.mod ../shared/go.sum ../shared/
+# Copy shared module first
+COPY shared/ ./shared/
 
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY . .
-COPY ../shared ../shared
+# Copy service module
+COPY discovery-service/go.mod ./discovery-service/
+COPY discovery-service/go.sum* ./discovery-service/
+COPY discovery-service/ ./discovery-service/
+WORKDIR /app/discovery-service
+RUN go mod tidy && go mod download
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
