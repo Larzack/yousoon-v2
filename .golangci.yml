@@ -1,8 +1,6 @@
 # golangci-lint configuration
 # https://golangci-lint.run/usage/configuration/
 
-version: "2"
-
 run:
   timeout: 5m
   tests: true
@@ -30,17 +28,17 @@ linters:
     - forcetypeassert
     - ireturn
 
-  settings:
-    errcheck:
-      # Ignore these functions for errcheck
-      exclude-functions:
-        - (net/http.ResponseWriter).Write
-        - (*go.mongodb.org/mongo-driver/mongo.Client).Disconnect
-        - io.Copy
-        - fmt.Fprintf
-        - fmt.Fprint
-        - fmt.Fprintln
-        - (io.Closer).Close
+linters-settings:
+  errcheck:
+    # Ignore these functions for errcheck
+    exclude-functions:
+      - (net/http.ResponseWriter).Write
+      - (*go.mongodb.org/mongo-driver/mongo.Client).Disconnect
+      - io.Copy
+      - fmt.Fprintf
+      - fmt.Fprint
+      - fmt.Fprintln
+      - (io.Closer).Close
 
 issues:
   # Don't limit the number of issues per linter

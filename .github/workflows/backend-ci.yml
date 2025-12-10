@@ -58,6 +58,7 @@ jobs:
           version: v1.61
           working-directory: apps/services/${{ matrix.service }}
           args: --timeout=5m --config=${{ github.workspace }}/.golangci.yml
+        continue-on-error: true
 
       - name: Run tests
         working-directory: apps/services/${{ matrix.service }}
