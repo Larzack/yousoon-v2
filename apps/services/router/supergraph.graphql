@@ -226,7 +226,7 @@ type IdentityVerification @join__type(graph: IDENTITY) {
   rejectionReason: String
 }
 
-type Subscription @join__type(graph: IDENTITY) {
+type UserSubscription @join__type(graph: IDENTITY) {
   id: ID!
   plan: SubscriptionPlan!
   status: SubscriptionStatus!

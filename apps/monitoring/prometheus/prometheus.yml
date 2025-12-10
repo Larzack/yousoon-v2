@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'apollo-router'
+    static_configs:
+      - targets: ['apollo-router:9090']
+
+  - job_name: 'identity-service'
+    static_configs:
+      - targets: ['identity-service:9090']
+
+  - job_name: 'partner-service'
+    static_configs:
+      - targets: ['partner-service:9090']
+
+  - job_name: 'booking-service'
+    static_configs:
+      - targets: ['booking-service:9090']
+
+  - job_name: 'engagement-service'
+    static_configs:
+      - targets: ['engagement-service:9090']
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:9090']

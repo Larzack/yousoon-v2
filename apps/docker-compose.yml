@@ -49,8 +49,6 @@ services:
       - "8222"
       - "--name"
       - "yousoon-nats"
-      - "--system_account"
-      - "SYS"
     networks:
       - yousoon-network
     healthcheck:
@@ -217,8 +215,8 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - APOLLO_ROUTER_SUPERGRAPH_PATH=/app/supergraph.graphql
-      - APOLLO_ROUTER_CONFIG_PATH=/app/router.yaml
+      - APOLLO_ROUTER_SUPERGRAPH_PATH=/dist/supergraph.graphql
+      - APOLLO_ROUTER_CONFIG_PATH=/dist/config/router.yaml
       - IDENTITY_SERVICE_URL=http://identity-service:4000/graphql
       - PARTNER_SERVICE_URL=http://partner-service:4000/graphql
       # - DISCOVERY_SERVICE_URL=http://discovery-service:4000/graphql  # Désactivé
@@ -282,9 +280,85 @@ services:
     networks:
       - yousoon-network
 
+  # ===========================================
+  # MONITORING STACK
+  # ===========================================
+
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: yousoon-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - yousoon-network
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: yousoon-grafana
+    ports:
+      - "3030:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - yousoon-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    container_name: yousoon-jaeger
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - yousoon-network
+
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: yousoon-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - yousoon-network
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: yousoon-promtail
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - yousoon-network
+
 volumes:
   mongodb_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
 
 networks:
   yousoon-network:

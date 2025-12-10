@@ -2,7 +2,6 @@
 # https://www.apollographql.com/docs/router/configuration/overview
 
 supergraph:
-  # Path to the supergraph schema (composed from subgraphs)
   listen: 0.0.0.0:4000
   introspection: true
 
@@ -10,6 +9,10 @@ supergraph:
 health_check:
   listen: 0.0.0.0:8088
   enabled: true
+
+# Disable homepage to enable sandbox
+homepage:
+  enabled: false
 
 # CORS configuration
 cors:
@@ -19,6 +22,9 @@ cors:
     - https://business.yousoon.com
     - https://admin.yousoon.com
     - http://localhost:3000
+    - http://localhost:3001
+    - http://localhost:3002
+    - http://localhost:3003
     - http://localhost:5173
   allow_credentials: true
   methods:
@@ -31,96 +37,19 @@ cors:
     - X-Apollo-Operation-Name
     - Apollo-Require-Preflight
 
-# Subgraphs configuration
-subgraphs:
-  identity:
-    routing_url: http://identity-service:8081/graphql
-    subscription:
-      enabled: true
-      mode:
-        passthrough:
-          all:
-            path: /ws
-  
-  partner:
-    routing_url: http://partner-service:8082/graphql
-    subscription:
-      enabled: true
-      mode:
-        passthrough:
-          all:
-            path: /ws
-  
-  discovery:
-    routing_url: http://discovery-service:8083/graphql
-    subscription:
-      enabled: true
-      mode:
-        passthrough:
-          all:
-            path: /ws
-  
-  booking:
-    routing_url: http://booking-service:8084/graphql
-    subscription:
-      enabled: true
-      mode:
-        passthrough:
-          all:
-            path: /ws
-  
-  engagement:
-    routing_url: http://engagement-service:8085/graphql
-  
-  notification:
-    routing_url: http://notification-service:8086/graphql
-
-# Telemetry (OpenTelemetry)
+# Telemetry
 telemetry:
   exporters:
-    tracing:
-      otlp:
-        enabled: true
-        endpoint: http://jaeger-collector:4317
-        protocol: grpc
-    
     metrics:
       prometheus:
         enabled: true
         listen: 0.0.0.0:9090
         path: /metrics
 
-  instrumentation:
-    spans:
-      mode: spec_compliant
-    
-    instruments:
-      default_requirement_level: recommended
-
 # Traffic shaping
 traffic_shaping:
   all:
     timeout: 30s
-  
-  subgraphs:
-    identity:
-      timeout: 10s
-    partner:
-      timeout: 10s
-    discovery:
-      timeout: 10s
-    booking:
-      timeout: 15s
-    engagement:
-      timeout: 10s
-    notification:
-      timeout: 10s
-
-# Query planning
-query_planning:
-  cache:
-    in_memory:
-      limit: 1000
 
 # APQ (Automatic Persisted Queries)
 apq:
@@ -129,19 +58,6 @@ apq:
     cache:
       in_memory:
         limit: 1000
-
-# Subscription support
-subscription:
-  enabled: true
-  mode:
-    passthrough:
-      all:
-        path: /ws
-
-# Rate limiting (via Rhai plugin)
-rhai:
-  scripts: /app/plugins
-  main: main.rhai
 
 # Headers propagation
 headers:
@@ -154,20 +70,9 @@ headers:
       - propagate:
           named: Accept-Language
 
-# Include operation name in metrics
+# Include subgraph errors
 include_subgraph_errors:
   all: true
-
-# Limits
-limits:
-  max_depth: 15
-  max_height: 200
-  max_aliases: 30
-  max_root_fields: 20
-
-# Preview features
-preview_entity_cache:
-  enabled: false
 
 # Sandbox (development only)
 sandbox:
