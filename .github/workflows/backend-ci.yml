@@ -229,7 +229,7 @@ jobs:
 
       - name: Configure kubectl for EKS
         run: |
-          aws eks update-kubeconfig --name yousoon-staging --region ${{ env.AWS_REGION }}
+          aws eks update-kubeconfig --name jemoco2 --region ${{ env.AWS_REGION }}
 
       - name: Generate version
         id: version
@@ -282,7 +282,7 @@ jobs:
 
       - name: Configure kubectl for EKS
         run: |
-          aws eks update-kubeconfig --name yousoon-production --region ${{ env.AWS_REGION }}
+          aws eks update-kubeconfig --name jemoco2 --region ${{ env.AWS_REGION }}
 
       - name: Generate version
         id: version
