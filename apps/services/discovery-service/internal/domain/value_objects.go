@@ -16,6 +16,14 @@ type OfferID string
 func (id OfferID) String() string { return string(id) }
 func (id OfferID) IsEmpty() bool  { return id == "" }
 
+// ParseOfferID parses a string into an OfferID.
+func ParseOfferID(s string) (OfferID, error) {
+	if s == "" {
+		return "", errors.New("offer ID cannot be empty")
+	}
+	return OfferID(s), nil
+}
+
 // CategoryID represents a unique category identifier.
 type CategoryID string
 
@@ -36,11 +44,27 @@ type PartnerID string
 func (id PartnerID) String() string { return string(id) }
 func (id PartnerID) IsEmpty() bool  { return id == "" }
 
+// ParsePartnerID parses a string into a PartnerID.
+func ParsePartnerID(s string) (PartnerID, error) {
+	if s == "" {
+		return "", errors.New("partner ID cannot be empty")
+	}
+	return PartnerID(s), nil
+}
+
 // EstablishmentID represents a reference to an establishment (cross-context).
 type EstablishmentID string
 
 func (id EstablishmentID) String() string { return string(id) }
 func (id EstablishmentID) IsEmpty() bool  { return id == "" }
+
+// ParseEstablishmentID parses a string into an EstablishmentID.
+func ParseEstablishmentID(s string) (EstablishmentID, error) {
+	if s == "" {
+		return "", errors.New("establishment ID cannot be empty")
+	}
+	return EstablishmentID(s), nil
+}
 
 // UserID represents a reference to a user (cross-context).
 type UserID string
@@ -414,10 +438,13 @@ func NewOfferImage(url, alt string, isPrimary bool, order int) OfferImage {
 
 // OfferStats represents statistics for an offer.
 type OfferStats struct {
-	Views     int `json:"views" bson:"views"`
-	Bookings  int `json:"bookings" bson:"bookings"`
-	Checkins  int `json:"checkins" bson:"checkins"`
-	Favorites int `json:"favorites" bson:"favorites"`
+	Views       int     `json:"views" bson:"views"`
+	Clicks      int     `json:"clicks" bson:"clicks"`
+	Bookings    int     `json:"bookings" bson:"bookings"`
+	Checkins    int     `json:"checkins" bson:"checkins"`
+	Favorites   int     `json:"favorites" bson:"favorites"`
+	AvgRating   float64 `json:"avgRating" bson:"avg_rating"`
+	ReviewCount int     `json:"reviewCount" bson:"review_count"`
 }
 
 // =============================================================================

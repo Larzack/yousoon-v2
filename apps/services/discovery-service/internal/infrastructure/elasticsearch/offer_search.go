@@ -644,16 +644,16 @@ func (r *OfferSearchRepository) offerToDocument(offer *domain.Offer) *offerDocum
 		ValidityStartDate: offer.Validity().StartDate,
 		ValidityEndDate:   offer.Validity().EndDate,
 		Location: GeoPoint{
-			Lat: offer.EstablishmentSnapshot().Location.Latitude,
-			Lon: offer.EstablishmentSnapshot().Location.Longitude,
+			Lat: offer.EstablishmentSnapshot().Location.Latitude(),
+			Lon: offer.EstablishmentSnapshot().Location.Longitude(),
 		},
 		PartnerName:       offer.PartnerSnapshot().Name,
 		EstablishmentName: offer.EstablishmentSnapshot().Name,
 		EstablishmentCity: offer.EstablishmentSnapshot().City,
-		Views:             offer.Stats().Views,
-		Clicks:            offer.Stats().Clicks,
-		Bookings:          offer.Stats().Bookings,
-		Favorites:         offer.Stats().Favorites,
+		Views:             int64(offer.Stats().Views),
+		Clicks:            int64(offer.Stats().Clicks),
+		Bookings:          int64(offer.Stats().Bookings),
+		Favorites:         int64(offer.Stats().Favorites),
 		AvgRating:         offer.Stats().AvgRating,
 		ReviewCount:       offer.Stats().ReviewCount,
 		CreatedAt:         offer.CreatedAt(),
@@ -662,11 +662,7 @@ func (r *OfferSearchRepository) offerToDocument(offer *domain.Offer) *offerDocum
 
 	// Optional fields
 	if offer.Discount().OriginalPrice != nil {
-		doc.OriginalPrice = offer.Discount().OriginalPrice.Amount
-		doc.OriginalPriceCurrency = offer.Discount().OriginalPrice.Currency
-	}
-	if offer.Discount().DiscountedPrice != nil {
-		doc.DiscountedPrice = offer.Discount().DiscountedPrice.Amount
+		doc.OriginalPrice = *offer.Discount().OriginalPrice
 	}
 	if offer.Discount().Formula != "" {
 		doc.Formula = offer.Discount().Formula

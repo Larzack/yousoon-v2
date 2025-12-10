@@ -208,9 +208,9 @@ enum SubscriptionStatus @join__type(graph: IDENTITY) {
   EXPIRED @join__enumValue(graph: IDENTITY)
 }
 
-enum Platform @join__type(graph: IDENTITY) {
-  IOS @join__enumValue(graph: IDENTITY)
-  ANDROID @join__enumValue(graph: IDENTITY)
+enum Platform @join__type(graph: IDENTITY) @join__type(graph: NOTIFICATION) {
+  IOS @join__enumValue(graph: IDENTITY) @join__enumValue(graph: NOTIFICATION)
+  ANDROID @join__enumValue(graph: IDENTITY) @join__enumValue(graph: NOTIFICATION)
 }
 
 # ============================================
