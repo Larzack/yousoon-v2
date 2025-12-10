@@ -110,7 +110,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang={locale} className="dark scroll-smooth">
       <body
-        className={`${inter.variable} ${futura.variable} font-sans antialiased`}
+        className={`${inter.variable} ${poppins.variable} font-sans antialiased`}
       >
         <NextIntlClientProvider messages={messages}>
           <div className="relative flex min-h-screen flex-col bg-background text-foreground">
