@@ -57,12 +57,13 @@ jobs:
 
   # ============================================
   # BUILD ANDROID
+  # Skipped: Android signing secrets not configured
   # ============================================
   build-android:
     name: Build Android
     needs: analyze-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: false  # Skipped: Configure ANDROID_KEYSTORE and related secrets first
     
     steps:
       - name: Checkout
@@ -119,12 +120,13 @@ jobs:
 
   # ============================================
   # BUILD iOS
+  # Skipped: iOS signing secrets not configured
   # ============================================
   build-ios:
     name: Build iOS
     needs: analyze-test
     runs-on: macos-latest
-    if: github.event_name == 'push'
+    if: false  # Skipped: Configure IOS_DISTRIBUTION_CERTIFICATE and related secrets first
     
     steps:
       - name: Checkout
