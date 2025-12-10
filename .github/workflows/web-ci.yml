@@ -244,9 +244,9 @@ jobs:
           context: apps/partners
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ steps.version.outputs.version }}
-            ${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ steps.version.outputs.short_sha }}
-            ${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+            ${{ env.ECR_REGISTRY }}/yousoon/web-partners:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon/web-partners:${{ steps.version.outputs.short_sha }}
+            ${{ env.ECR_REGISTRY }}/yousoon/web-partners:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -257,7 +257,7 @@ jobs:
         run: |
           echo "### Web Partners Image Built :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: \`${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.ECR_REGISTRY }}/yousoon/web-partners:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # BUILD & DEPLOY - Admin (ECR)
@@ -307,9 +307,9 @@ jobs:
           context: apps/admin
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ steps.version.outputs.version }}
-            ${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ steps.version.outputs.short_sha }}
-            ${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+            ${{ env.ECR_REGISTRY }}/yousoon/web-admin:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon/web-admin:${{ steps.version.outputs.short_sha }}
+            ${{ env.ECR_REGISTRY }}/yousoon/web-admin:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -320,7 +320,7 @@ jobs:
         run: |
           echo "### Web Admin Image Built :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: \`${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.ECR_REGISTRY }}/yousoon/web-admin:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # BUILD & DEPLOY - Siteweb (Vercel)
@@ -395,10 +395,10 @@ jobs:
       - name: Deploy web apps
         run: |
           kubectl set image deployment/web-partners \
-            web-partners=${{ env.ECR_REGISTRY }}/yousoon-web-partners:${{ steps.version.outputs.version }} \
+            web-partners=${{ env.ECR_REGISTRY }}/yousoon/web-partners:${{ steps.version.outputs.version }} \
             -n yousoon || true
           kubectl set image deployment/web-admin \
-            web-admin=${{ env.ECR_REGISTRY }}/yousoon-web-admin:${{ steps.version.outputs.version }} \
+            web-admin=${{ env.ECR_REGISTRY }}/yousoon/web-admin:${{ steps.version.outputs.version }} \
             -n yousoon || true
 
       - name: Wait for rollout

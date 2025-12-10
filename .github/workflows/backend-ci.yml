@@ -165,9 +165,9 @@ jobs:
           context: apps/services/${{ matrix.service }}
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/yousoon-${{ matrix.service }}:${{ steps.version.outputs.version }}
-            ${{ env.ECR_REGISTRY }}/yousoon-${{ matrix.service }}:${{ steps.version.outputs.short_sha }}
-            ${{ env.ECR_REGISTRY }}/yousoon-${{ matrix.service }}:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+            ${{ env.ECR_REGISTRY }}/yousoon/${{ matrix.service }}:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon/${{ matrix.service }}:${{ steps.version.outputs.short_sha }}
+            ${{ env.ECR_REGISTRY }}/yousoon/${{ matrix.service }}:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -180,7 +180,7 @@ jobs:
           echo "- **Service**: ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Registry**: ${{ env.ECR_REGISTRY }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Full Image**: \`${{ env.ECR_REGISTRY }}/yousoon-${{ matrix.service }}:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Full Image**: \`${{ env.ECR_REGISTRY }}/yousoon/${{ matrix.service }}:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # DEPLOY TO STAGING
@@ -223,7 +223,7 @@ jobs:
         run: |
           for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
             kubectl set image deployment/${service} \
-              ${service}=${{ env.ECR_REGISTRY }}/yousoon-${service}:${{ steps.version.outputs.version }} \
+              ${service}=${{ env.ECR_REGISTRY }}/yousoon/${service}:${{ steps.version.outputs.version }} \
               -n yousoon-staging || true
           done
 
@@ -275,7 +275,7 @@ jobs:
         run: |
           for service in identity-service partner-service discovery-service booking-service engagement-service notification-service router; do
             kubectl set image deployment/${service} \
-              ${service}=${{ env.ECR_REGISTRY }}/yousoon-${service}:${{ steps.version.outputs.version }} \
+              ${service}=${{ env.ECR_REGISTRY }}/yousoon/${service}:${{ steps.version.outputs.version }} \
               -n yousoon || true
           done
 
