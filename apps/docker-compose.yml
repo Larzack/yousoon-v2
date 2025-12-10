@@ -112,7 +112,7 @@ services:
     networks:
       - yousoon-network
 
-  # NOTE: discovery-service désactivé temporairement - nécessite corrections code gqlgen
+  # NOTE: discovery-service désactivé temporairement - nécessite corrections code Go
   # discovery-service:
   #   build:
   #     context: ./services
@@ -221,14 +221,14 @@ services:
       - APOLLO_ROUTER_CONFIG_PATH=/app/router.yaml
       - IDENTITY_SERVICE_URL=http://identity-service:4000/graphql
       - PARTNER_SERVICE_URL=http://partner-service:4000/graphql
-      # - DISCOVERY_SERVICE_URL=http://discovery-service:4000/graphql  # Désactivé temporairement
+      # - DISCOVERY_SERVICE_URL=http://discovery-service:4000/graphql  # Désactivé
       - BOOKING_SERVICE_URL=http://booking-service:4000/graphql
       - ENGAGEMENT_SERVICE_URL=http://engagement-service:4000/graphql
       - NOTIFICATION_SERVICE_URL=http://notification-service:4000/graphql
     depends_on:
       - identity-service
       - partner-service
-      # - discovery-service  # Désactivé temporairement
+      # - discovery-service  # Désactivé
       - booking-service
       - engagement-service
       - notification-service
@@ -267,21 +267,20 @@ services:
     networks:
       - yousoon-network
 
-  # NOTE: siteweb désactivé temporairement - nécessite corrections polices et CSS
-  # siteweb:
-  #   build:
-  #     context: ./siteweb
-  #     dockerfile: Dockerfile
-  #   container_name: yousoon-siteweb
-  #   ports:
-  #     - "3002:3000"
-  #   environment:
-  #     - NODE_ENV=production
-  #     - NEXT_PUBLIC_API_URL=http://localhost:4000/graphql
-  #   depends_on:
-  #     - apollo-router
-  #   networks:
-  #     - yousoon-network
+  siteweb:
+    build:
+      context: ./siteweb
+      dockerfile: Dockerfile
+    container_name: yousoon-siteweb
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:4000/graphql
+    depends_on:
+      - apollo-router
+    networks:
+      - yousoon-network
 
 volumes:
   mongodb_data:
