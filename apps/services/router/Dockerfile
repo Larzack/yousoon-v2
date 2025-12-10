@@ -1,5 +1,10 @@
 FROM ghcr.io/apollographql/router:v1.43.0
 
+# Install curl for healthcheck (the router image is debian-based)
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+USER router
+
 # Copy configuration
 COPY config/router.yaml /dist/config/router.yaml
 
@@ -15,8 +20,8 @@ ENV APOLLO_ROUTER_CONFIG_PATH=/dist/config/router.yaml
 ENV APOLLO_ROUTER_LOG=info
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8088/health || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8088/health || exit 1
 
 # Expose ports
 EXPOSE 4000

@@ -23,8 +23,8 @@ FROM alpine:3.19
 
 WORKDIR /app
 
-# Install ca-certificates and timezone data
-RUN apk --no-cache add ca-certificates tzdata
+# Install ca-certificates, timezone data and wget for healthcheck
+RUN apk --no-cache add ca-certificates tzdata wget
 
 # Copy binary from builder
 COPY --from=builder /main .
@@ -34,7 +34,7 @@ EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
 
 # Run
 CMD ["./main"]

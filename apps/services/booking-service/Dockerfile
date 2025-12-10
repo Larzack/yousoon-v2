@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /booking-service 
 # Runtime stage
 FROM alpine:3.19
 
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata wget
 
 WORKDIR /app
 
@@ -35,6 +35,6 @@ EXPOSE 8083
 EXPOSE 9093
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8083/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
 
 ENTRYPOINT ["./booking-service"]
