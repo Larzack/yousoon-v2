@@ -20,7 +20,7 @@ on:
 env:
   NODE_VERSION: '20'
   AWS_REGION: eu-west-1
-  ECR_REGISTRY: 771322424.dkr.ecr.eu-west-1.amazonaws.com
+  ECR_REGISTRY: 499771322424.dkr.ecr.eu-west-1.amazonaws.com
   IMAGE_VERSION_MAJOR: 2
   IMAGE_VERSION_MINOR: 0
 
