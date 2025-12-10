@@ -4,6 +4,7 @@ package commands
 import (
 	"context"
 
+	partnerdomain "github.com/yousoon/services/partner/internal/domain"
 	sharedomain "github.com/yousoon/shared/domain"
 )
 
@@ -142,7 +143,7 @@ func (h *RegisterPartnerHandler) Handle(ctx context.Context, cmd RegisterPartner
 
 	// Publish domain events
 	for _, event := range partner.GetDomainEvents() {
-		if err := h.publisher.Publish(ctx, event); err != nil {
+		if err := h.publisher.Publish(event); err != nil {
 			// Log error but don't fail the command
 			// Events will be retried via outbox pattern
 		}

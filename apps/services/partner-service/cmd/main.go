@@ -24,6 +24,7 @@ import (
 	"github.com/yousoon/services/partner/internal/application/commands"
 	"github.com/yousoon/services/partner/internal/application/queries"
 	"github.com/yousoon/services/partner/internal/config"
+	"github.com/yousoon/services/partner/internal/infrastructure"
 	"github.com/yousoon/services/partner/internal/infrastructure/mongodb"
 	"github.com/yousoon/services/partner/internal/interface/graphql/resolver"
 	// "github.com/yousoon/services/partner/internal/interface/graphql/generated"
@@ -66,15 +67,19 @@ func main() {
 	// Initialize repositories
 	db := mongoClient.Database(cfg.MongoDB.Database)
 	partnerRepo := mongodb.NewPartnerRepository(db)
+	partnerReadRepo := mongodb.NewPartnerReadRepository(db)
+
+	// Initialize event publisher (NoOp for now, will be replaced with NATS)
+	eventPublisher := infrastructure.NewNoOpEventPublisher()
 
 	// Initialize command handlers
-	registerPartnerHandler := commands.NewRegisterPartnerHandler(partnerRepo)
-	updatePartnerHandler := commands.NewUpdatePartnerHandler(partnerRepo)
-	verifyPartnerHandler := commands.NewVerifyPartnerHandler(partnerRepo)
-	suspendPartnerHandler := commands.NewSuspendPartnerHandler(partnerRepo)
-	addEstablishmentHandler := commands.NewAddEstablishmentHandler(partnerRepo)
-	inviteTeamMemberHandler := commands.NewInviteTeamMemberHandler(partnerRepo)
-	acceptTeamInvitationHandler := commands.NewAcceptTeamInvitationHandler(partnerRepo)
+	registerPartnerHandler := commands.NewRegisterPartnerHandler(partnerRepo, eventPublisher)
+	updatePartnerHandler := commands.NewUpdatePartnerHandler(partnerRepo, eventPublisher)
+	verifyPartnerHandler := commands.NewVerifyPartnerHandler(partnerRepo, eventPublisher)
+	suspendPartnerHandler := commands.NewSuspendPartnerHandler(partnerRepo, eventPublisher)
+	addEstablishmentHandler := commands.NewAddEstablishmentHandler(partnerRepo, eventPublisher)
+	inviteTeamMemberHandler := commands.NewInviteTeamMemberHandler(partnerRepo, eventPublisher)
+	acceptTeamInvitationHandler := commands.NewAcceptTeamInvitationHandler(partnerRepo, eventPublisher)
 
 	// Initialize query handlers
 	getPartnerHandler := queries.NewGetPartnerHandler(partnerRepo)
@@ -88,7 +93,7 @@ func main() {
 	// Create resolver with all dependencies
 	resolverConfig := &resolver.Resolver{
 		PartnerRepo:                     partnerRepo,
-		PartnerReadRepo:                 partnerRepo,
+		PartnerReadRepo:                 partnerReadRepo,
 		RegisterPartnerHandler:          registerPartnerHandler,
 		UpdatePartnerHandler:            updatePartnerHandler,
 		VerifyPartnerHandler:            verifyPartnerHandler,

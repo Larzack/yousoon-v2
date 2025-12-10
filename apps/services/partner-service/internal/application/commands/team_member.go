@@ -100,7 +100,7 @@ func (h *InviteTeamMemberHandler) Handle(ctx context.Context, cmd InviteTeamMemb
 
 	// Publish domain events
 	for _, event := range partner.GetDomainEvents() {
-		if err := h.publisher.Publish(ctx, event); err != nil {
+		if err := h.publisher.Publish(event); err != nil {
 			// Log error but don't fail
 		}
 	}
@@ -185,7 +185,7 @@ func (h *AcceptTeamInvitationHandler) Handle(ctx context.Context, cmd AcceptTeam
 
 	// Publish domain events
 	for _, event := range partner.GetDomainEvents() {
-		if err := h.publisher.Publish(ctx, event); err != nil {
+		if err := h.publisher.Publish(event); err != nil {
 			// Log error but don't fail
 		}
 	}
