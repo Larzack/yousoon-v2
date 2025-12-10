@@ -325,44 +325,71 @@ jobs:
           echo "- **Image**: \`${{ env.ECR_REGISTRY }}/yousoon/web-admin:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
-  # BUILD & DEPLOY - Siteweb (Vercel)
-  # Skipped: Vercel secrets not configured
+  # BUILD & DEPLOY - Siteweb (ECR)
   # ============================================
-  deploy-siteweb:
-    name: Deploy Siteweb to Vercel
+  build-deploy-siteweb:
+    name: Build & Deploy Siteweb
     needs: [lint-siteweb, test-siteweb]
     runs-on: ubuntu-latest
-    if: false  # Skipped: Configure VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets first
+    if: github.event_name == 'push'
     
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Deploy to Vercel (Preview)
-        if: github.ref == 'refs/heads/develop'
-        uses: amondnet/vercel-action@v25
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: apps/siteweb
+          fetch-depth: 0
 
-      - name: Deploy to Vercel (Production)
-        if: github.ref == 'refs/heads/main'
-        uses: amondnet/vercel-action@v25
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: apps/siteweb
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate version
+        id: version
+        run: |
+          PATCH=$(git rev-list --count HEAD)
+          VERSION="${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}"
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build and push to ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/siteweb
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/yousoon/web-siteweb:${{ steps.version.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon/web-siteweb:${{ steps.version.outputs.short_sha }}
+            ${{ env.ECR_REGISTRY }}/yousoon/web-siteweb:${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image info
+        run: |
+          echo "### Web Siteweb Image Built :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: \`${{ env.ECR_REGISTRY }}/yousoon/web-siteweb:${{ steps.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
-  # DEPLOY K8s - Partners & Admin
+  # DEPLOY K8s - Partners, Admin & Siteweb
   # ============================================
   deploy-k8s:
     name: Deploy to Kubernetes
-    needs: [build-deploy-partners, build-deploy-admin]
+    needs: [build-deploy-partners, build-deploy-admin, build-deploy-siteweb]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     environment: production
@@ -414,8 +441,16 @@ jobs:
           kubectl create deployment web-admin \
             --image=${{ env.ECR_REGISTRY }}/yousoon/web-admin:${{ steps.version.outputs.version }} \
             -n ${{ env.K8S_NAMESPACE_PROD }}
+          
+          kubectl set image deployment/web-siteweb \
+            web-siteweb=${{ env.ECR_REGISTRY }}/yousoon/web-siteweb:${{ steps.version.outputs.version }} \
+            -n ${{ env.K8S_NAMESPACE_PROD }} 2>/dev/null || \
+          kubectl create deployment web-siteweb \
+            --image=${{ env.ECR_REGISTRY }}/yousoon/web-siteweb:${{ steps.version.outputs.version }} \
+            -n ${{ env.K8S_NAMESPACE_PROD }}
 
       - name: Wait for rollout
         run: |
           kubectl rollout status deployment/web-partners -n ${{ env.K8S_NAMESPACE_PROD }} --timeout=5m
           kubectl rollout status deployment/web-admin -n ${{ env.K8S_NAMESPACE_PROD }} --timeout=5m
+          kubectl rollout status deployment/web-siteweb -n ${{ env.K8S_NAMESPACE_PROD }} --timeout=5m
