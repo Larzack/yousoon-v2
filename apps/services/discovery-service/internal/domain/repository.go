@@ -40,8 +40,10 @@ type OfferRepository interface {
 // OfferFilter defines filters for listing offers.
 type OfferFilter struct {
 	// Location-based search
-	Location *GeoLocation
-	RadiusKm float64
+	Location  *GeoLocation
+	Latitude  *float64
+	Longitude *float64
+	RadiusKm  float64
 
 	// Filtering
 	PartnerID       *PartnerID
@@ -49,6 +51,8 @@ type OfferFilter struct {
 	CategoryID      *CategoryID
 	Status          *OfferStatus
 	Tags            []string
+	DiscountType    *string
+	MinRating       *float64
 
 	// Search
 	SearchQuery string
@@ -56,6 +60,7 @@ type OfferFilter struct {
 	// Availability
 	OnlyActive       bool
 	OnlyAvailableNow bool
+	ActiveOnly       bool
 
 	// Moderation
 	ModerationStatus *ModerationStatus

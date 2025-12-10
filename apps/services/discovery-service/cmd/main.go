@@ -26,7 +26,6 @@ import (
 	"github.com/yousoon/discovery-service/internal/config"
 	esrepo "github.com/yousoon/discovery-service/internal/infrastructure/elasticsearch"
 	mongorepo "github.com/yousoon/discovery-service/internal/infrastructure/mongodb"
-	"github.com/yousoon/discovery-service/internal/interface/graphql/generated"
 	"github.com/yousoon/discovery-service/internal/interface/graphql/resolver"
 	"github.com/yousoon/shared/infrastructure/nats"
 	"github.com/yousoon/shared/observability/logger"
@@ -120,12 +119,11 @@ func main() {
 	}
 
 	// Create resolver
-	res := resolver.NewResolver(offerRepo, categoryRepo, searchRepo, eventPublisher)
+	_ = resolver.NewResolver(offerRepo, categoryRepo, searchRepo, eventPublisher)
 
 	// Setup GraphQL server
-	srv := handler.New(generated.NewExecutableSchema(generated.Config{
-		Resolvers: res,
-	}))
+	// TODO: Use generated.NewExecutableSchema when gqlgen code is generated
+	srv := handler.NewDefaultServer(nil)
 
 	// Add transports
 	srv.AddTransport(transport.Options{})

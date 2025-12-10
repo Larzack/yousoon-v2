@@ -22,6 +22,14 @@ type CategoryID string
 func (id CategoryID) String() string { return string(id) }
 func (id CategoryID) IsEmpty() bool  { return id == "" }
 
+// ParseCategoryID parses a string into a CategoryID.
+func ParseCategoryID(s string) (CategoryID, error) {
+	if s == "" {
+		return "", errors.New("category ID cannot be empty")
+	}
+	return CategoryID(s), nil
+}
+
 // PartnerID represents a reference to a partner (cross-context).
 type PartnerID string
 
