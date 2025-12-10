@@ -26,7 +26,7 @@ COPY --from=builder /engagement-service .
 RUN adduser -D -g '' appuser
 USER appuser
 
-EXPOSE 8084
+EXPOSE 4000
 EXPOSE 9094
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

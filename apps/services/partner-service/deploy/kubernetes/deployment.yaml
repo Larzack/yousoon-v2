@@ -39,7 +39,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 4000
               protocol: TCP
             - name: grpc
               containerPort: 9090
@@ -52,7 +52,7 @@ spec:
             - name: SERVER_HOST
               value: "0.0.0.0"
             - name: SERVER_PORT
-              value: "8080"
+              value: "4000"
             - name: GRPC_PORT
               value: "9090"
             
@@ -109,7 +109,7 @@ spec:
             - name: SERVICE_NAME
               value: "partner-service"
             - name: SERVICE_URL
-              value: "http://partner-service.yousoon:8080"
+              value: "http://partner-service.yousoon:4000"
             - name: REGISTRY_URL
               value: "http://schema-registry.yousoon:4000"
             
@@ -138,7 +138,7 @@ spec:
           
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
@@ -175,12 +175,12 @@ metadata:
     app: partner-service
     graphql.federation/subgraph: "true"
   annotations:
-    graphql.federation/routing-url: "http://partner-service.yousoon:8080/graphql"
+    graphql.federation/routing-url: "http://partner-service.yousoon:4000/graphql"
 spec:
   type: ClusterIP
   ports:
     - name: http
-      port: 8080
+      port: 4000
       targetPort: http
       protocol: TCP
     - name: grpc
@@ -281,7 +281,7 @@ spec:
               app: apollo-router
       ports:
         - protocol: TCP
-          port: 8080
+          port: 4000
     # Allow traffic from other services (gRPC)
     - from:
         - podSelector:

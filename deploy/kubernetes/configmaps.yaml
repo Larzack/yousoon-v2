@@ -36,12 +36,12 @@ metadata:
   namespace: yousoon
 data:
   # Service URLs (internal)
-  IDENTITY_SERVICE_URL: "identity-service.yousoon.svc.cluster.local:8080"
-  PARTNER_SERVICE_URL: "partner-service.yousoon.svc.cluster.local:8080"
-  DISCOVERY_SERVICE_URL: "discovery-service.yousoon.svc.cluster.local:8080"
-  BOOKING_SERVICE_URL: "booking-service.yousoon.svc.cluster.local:8080"
-  ENGAGEMENT_SERVICE_URL: "engagement-service.yousoon.svc.cluster.local:8080"
-  NOTIFICATION_SERVICE_URL: "notification-service.yousoon.svc.cluster.local:8080"
+  IDENTITY_SERVICE_URL: "identity-service.yousoon.svc.cluster.local:4000"
+  PARTNER_SERVICE_URL: "partner-service.yousoon.svc.cluster.local:4000"
+  DISCOVERY_SERVICE_URL: "discovery-service.yousoon.svc.cluster.local:4000"
+  BOOKING_SERVICE_URL: "booking-service.yousoon.svc.cluster.local:4000"
+  ENGAGEMENT_SERVICE_URL: "engagement-service.yousoon.svc.cluster.local:4000"
+  NOTIFICATION_SERVICE_URL: "notification-service.yousoon.svc.cluster.local:4000"
   
   # GraphQL Gateway
   GRAPHQL_GATEWAY_URL: "apollo-router.yousoon.svc.cluster.local:4000"

@@ -31,7 +31,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - name: http
-              containerPort: 8083
+              containerPort: 4000
               protocol: TCP
             - name: metrics
               containerPort: 9093
@@ -40,7 +40,7 @@ spec:
             - name: ENVIRONMENT
               value: "production"
             - name: SERVER_PORT
-              value: "8083"
+              value: "4000"
             - name: MONGO_URI
               valueFrom:
                 secretKeyRef:
@@ -87,7 +87,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
@@ -121,7 +121,7 @@ spec:
   type: ClusterIP
   ports:
     - name: http
-      port: 8083
+      port: 4000
       targetPort: http
       protocol: TCP
     - name: metrics
