@@ -76,12 +76,13 @@ jobs:
 
   # ============================================
   # BUILD DOCKER IMAGES & PUSH TO ECR
+  # Skipped: AWS secrets not configured
   # ============================================
   build:
     name: Build Images
     needs: lint-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: false  # Skipped: Configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets first
     strategy:
       matrix:
         service:
@@ -154,12 +155,13 @@ jobs:
 
   # ============================================
   # DEPLOY TO STAGING
+  # Skipped: AWS/K8s secrets not configured
   # ============================================
   deploy-staging:
     name: Deploy to Staging
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+    if: false  # Skipped: Configure secrets first
     environment: staging
     
     steps:
@@ -206,12 +208,13 @@ jobs:
 
   # ============================================
   # DEPLOY TO PRODUCTION
+  # Skipped: AWS/K8s secrets not configured
   # ============================================
   deploy-production:
     name: Deploy to Production
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: false  # Skipped: Configure secrets first
     environment: production
     
     steps:

@@ -129,12 +129,13 @@ jobs:
 
   # ============================================
   # BUILD & DEPLOY - Partners (ECR)
+  # Skipped: AWS secrets not configured
   # ============================================
   build-deploy-partners:
     name: Build & Deploy Partners
     needs: lint-test-partners
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: false  # Skipped: Configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets first
     
     permissions:
       contents: read
@@ -192,12 +193,13 @@ jobs:
 
   # ============================================
   # BUILD & DEPLOY - Admin (ECR)
+  # Skipped: AWS secrets not configured
   # ============================================
   build-deploy-admin:
     name: Build & Deploy Admin
     needs: lint-test-admin
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: false  # Skipped: Configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets first
     
     permissions:
       contents: read
@@ -255,12 +257,13 @@ jobs:
 
   # ============================================
   # BUILD & DEPLOY - Siteweb (Vercel)
+  # Skipped: Vercel secrets not configured
   # ============================================
   deploy-siteweb:
     name: Deploy Siteweb to Vercel
     needs: lint-test-siteweb
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: false  # Skipped: Configure VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID secrets first
     
     steps:
       - name: Checkout
@@ -287,12 +290,13 @@ jobs:
 
   # ============================================
   # DEPLOY K8s - Partners & Admin
+  # Skipped: AWS/K8s secrets not configured
   # ============================================
   deploy-k8s:
     name: Deploy to Kubernetes
     needs: [build-deploy-partners, build-deploy-admin]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: false  # Skipped: Configure AWS and K8s secrets first
     environment: production
     
     steps:
