@@ -48,7 +48,7 @@ export function Header() {
                 href={item.href}
                 className="text-grey-eerie hover:text-white transition-colors text-sm font-medium"
               >
-                {t(item.label.toLowerCase().replace(/[^a-z]/g, ''))}
+                {t(item.key)}
               </Link>
             ))}
           </div>
@@ -92,7 +92,7 @@ export function Header() {
                   className="text-grey-eerie hover:text-white transition-colors py-2 text-lg"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  {t(item.label.toLowerCase().replace(/[^a-z]/g, ''))}
+                  {t(item.key)}
                 </Link>
               ))}
               <div className="flex flex-col gap-3 pt-4 border-t border-white/10">

@@ -25,10 +25,10 @@ export const STATS = {
 }
 
 export const NAV_ITEMS = [
-  { href: '/fonctionnalites', label: 'Fonctionnalités' },
-  { href: '/partenaires', label: 'Devenir partenaire' },
-  { href: '/tarifs', label: 'Tarifs' },
-  { href: '/a-propos', label: 'À propos' },
+  { href: '/fonctionnalites', label: 'Fonctionnalités', key: 'features' },
+  { href: '/partenaires', label: 'Devenir partenaire', key: 'partners' },
+  { href: '/tarifs', label: 'Tarifs', key: 'pricing' },
+  { href: '/a-propos', label: 'À propos', key: 'about' },
 ]
 
 export const FOOTER_LINKS = {
