@@ -135,15 +135,23 @@
 ### Étape 2.3 : Discovery Service (Subgraph)
 | Composant | Statut | Date | Notes |
 |-----------|--------|------|-------|
-| `cmd/main.go` | ⬜ | - | - |
-| `gqlgen.yml` | ⬜ | - | - |
-| `internal/domain/` | ⬜ | - | Offer, Category |
-| `internal/application/` | ⬜ | - | - |
-| `internal/infrastructure/` | ⬜ | - | - |
-| `internal/interface/graphql/` | ⬜ | - | - |
-| `Dockerfile` | ⬜ | - | - |
+| `cmd/main.go` | ✅ | 10 déc 2025 | Entry point |
+| `gqlgen.yml` | ✅ | 10 déc 2025 | GraphQL config |
+| `internal/domain/offer.go` | ✅ | 10 déc 2025 | Offer aggregate |
+| `internal/domain/category.go` | ✅ | 10 déc 2025 | Category aggregate |
+| `internal/domain/value_objects.go` | ✅ | 10 déc 2025 | Value objects |
+| `internal/domain/events.go` | ✅ | 10 déc 2025 | Domain events |
+| `internal/domain/errors.go` | ✅ | 10 déc 2025 | Domain errors |
+| `internal/domain/repository.go` | ✅ | 10 déc 2025 | Repository interfaces |
+| `internal/application/commands/` | ✅ | 10 déc 2025 | Command handlers |
+| `internal/application/queries/` | ✅ | 10 déc 2025 | Query handlers |
+| `internal/infrastructure/mongodb/` | ✅ | 10 déc 2025 | Repository impl |
+| `internal/infrastructure/elasticsearch/` | ✅ | 10 déc 2025 | Search impl |
+| `internal/interface/graphql/` | ✅ | 10 déc 2025 | GraphQL resolvers |
+| `Dockerfile` | ✅ | 10 déc 2025 | Docker image |
+| `deploy/kubernetes/` | ✅ | 10 déc 2025 | K8s manifests |
 
-**Statut Étape 2.3** : ⬜ `NOT_STARTED`
+**Statut Étape 2.3** : ✅ `COMPLETED`
 
 ---
 
@@ -152,23 +160,68 @@
 ### Étape 3.1 : Booking Service (Subgraph)
 | Composant | Statut | Date | Notes |
 |-----------|--------|------|-------|
-| Service complet | ⬜ | - | - |
+| `cmd/main.go` | ✅ | 10 déc 2025 | Entry point |
+| `gqlgen.yml` | ✅ | 10 déc 2025 | GraphQL config |
+| `internal/domain/outing.go` | ✅ | 10 déc 2025 | Outing aggregate (648 lignes) |
+| `internal/domain/events.go` | ✅ | 10 déc 2025 | Domain events |
+| `internal/domain/repository.go` | ✅ | 10 déc 2025 | Repository interface |
+| `internal/application/commands/` | ✅ | 10 déc 2025 | Command handlers |
+| `internal/application/queries/` | ✅ | 10 déc 2025 | Query handlers |
+| `internal/infrastructure/mongodb/` | ✅ | 10 déc 2025 | Repository impl |
+| `internal/interface/graphql/` | ✅ | 10 déc 2025 | Schema + Resolvers |
+| `Dockerfile` | ✅ | 10 déc 2025 | Docker image |
+| `config/config.go` | ✅ | 10 déc 2025 | Service config |
 
-**Statut Étape 3.1** : ⬜ `NOT_STARTED`
+**Statut Étape 3.1** : ✅ `COMPLETED`
 
 ### Étape 3.2 : Engagement Service (Subgraph)
 | Composant | Statut | Date | Notes |
 |-----------|--------|------|-------|
-| Service complet | ⬜ | - | - |
+| `cmd/main.go` | ✅ | 10 déc 2025 | Entry point |
+| `internal/domain/entities.go` | ✅ | 10 déc 2025 | Favorite, Review (382 lignes) |
+| `internal/domain/events.go` | ✅ | 10 déc 2025 | Domain events |
+| `internal/domain/repository.go` | ✅ | 10 déc 2025 | Repository interfaces |
+| `internal/application/commands/` | ✅ | 10 déc 2025 | Command handlers |
+| `internal/application/queries/` | ✅ | 10 déc 2025 | Query handlers |
+| `internal/infrastructure/mongodb/` | ✅ | 10 déc 2025 | Repository impl |
+| `internal/interface/graphql/` | ✅ | 10 déc 2025 | Schema + Resolvers |
+| `Dockerfile` | ✅ | 10 déc 2025 | Docker image |
+| `config/config.go` | ✅ | 10 déc 2025 | Service config |
 
-**Statut Étape 3.2** : ⬜ `NOT_STARTED`
+**Statut Étape 3.2** : ✅ `COMPLETED`
 
 ### Étape 3.3 : Notification Service (Subgraph)
 | Composant | Statut | Date | Notes |
 |-----------|--------|------|-------|
-| Service complet | ⬜ | - | - |
+| `cmd/main.go` | ✅ | 10 déc 2025 | Entry point |
+| `gqlgen.yml` | ✅ | 10 déc 2025 | GraphQL config |
+| `internal/domain/entities.go` | ✅ | 10 déc 2025 | Notification, Template, PushToken |
+| `internal/domain/repository.go` | ✅ | 10 déc 2025 | Repository interfaces |
+| `internal/application/commands/` | ✅ | 10 déc 2025 | Command handlers |
+| `internal/application/queries/` | ✅ | 10 déc 2025 | Query handlers |
+| `internal/infrastructure/mongodb/` | ✅ | 10 déc 2025 | Repository impl |
+| `internal/infrastructure/onesignal/` | ✅ | 10 déc 2025 | Push provider |
+| `internal/infrastructure/aws/` | ✅ | 10 déc 2025 | Email/SMS (SES, SNS) |
+| `internal/infrastructure/nats/` | ✅ | 10 déc 2025 | Event subscriber |
+| `internal/interface/graphql/` | ✅ | 10 déc 2025 | Schema + Resolvers |
+| `Dockerfile` | ✅ | 10 déc 2025 | Docker image |
+| `config/config.go` | ✅ | 10 déc 2025 | Service config |
 
-**Statut Étape 3.3** : ⬜ `NOT_STARTED`
+**Statut Étape 3.3** : ✅ `COMPLETED`
+
+### Étape 3.4 : Apollo Router (Federation Gateway)
+| Composant | Statut | Date | Notes |
+|-----------|--------|------|-------|
+| `supergraph.graphql` | ✅ | 10 déc 2025 | Composed schema (1096 lignes) |
+| `config/router.yaml` | ✅ | 10 déc 2025 | Router configuration |
+| `plugins/auth.rhai` | ✅ | 10 déc 2025 | Auth middleware |
+| `plugins/rate_limit.rhai` | ✅ | 10 déc 2025 | Rate limiting |
+| `plugins/logging.rhai` | ✅ | 10 déc 2025 | Request logging |
+| `plugins/main.rhai` | ✅ | 10 déc 2025 | Main plugin |
+| `Dockerfile` | ✅ | 10 déc 2025 | Docker image |
+| `deploy/kubernetes/` | ✅ | 10 déc 2025 | K8s manifests |
+
+**Statut Étape 3.4** : ✅ `COMPLETED`
 
 ---
 
@@ -278,16 +331,16 @@
 
 | Phase | Statut | Progression |
 |-------|--------|-------------|
-| Phase 1 : Backend Infrastructure | ⬜ | 0% |
-| Phase 2 : Core Subgraphs | ⬜ | 0% |
-| Phase 3 : Business Subgraphs | ⬜ | 0% |
+| Phase 1 : Backend Infrastructure | ✅ | 100% |
+| Phase 2 : Core Subgraphs | ✅ | 100% |
+| Phase 3 : Business Subgraphs | ✅ | 100% |
 | Phase 4 : App Mobile | ⬜ | 0% |
 | Phase 5 : Site Partenaires | ⬜ | 0% |
 | Phase 6 : Admin Backoffice | ⬜ | 0% |
 | Phase 7 : Site Vitrine | ⬜ | 0% |
-| Phase 8 : Déploiement | ⬜ | 0% |
+| Phase 8 : Déploiement | 🔄 | 50% (K8s manifests OK) |
 
-**Progression Totale** : 0%
+**Progression Totale** : ~35%
 
 ---
 
@@ -295,5 +348,13 @@
 
 | Date | Phase | Étape | Action | Résultat |
 |------|-------|-------|--------|----------|
-| - | - | - | - | - |
+| 9 déc 2025 | 1 | 1.1-1.7 | Génération Shared Module | ✅ |
+| 9 déc 2025 | 2 | 2.1 | Génération Identity Service | ✅ |
+| 10 déc 2025 | 2 | 2.2 | Génération Partner Service | ✅ |
+| 10 déc 2025 | 2 | 2.3 | Génération Discovery Service | ✅ |
+| 10 déc 2025 | 3 | 3.1 | Génération Booking Service | ✅ |
+| 10 déc 2025 | 3 | 3.2 | Génération Engagement Service | ✅ |
+| 10 déc 2025 | 3 | 3.3 | Génération Notification Service | ✅ |
+| 10 déc 2025 | 3 | 3.4 | Génération Apollo Router | ✅ |
+| 10 déc 2025 | - | - | Mise à jour statuts | ✅ |
 
