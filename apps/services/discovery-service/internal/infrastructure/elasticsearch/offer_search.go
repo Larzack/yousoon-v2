@@ -549,11 +549,11 @@ func (r *OfferSearchRepository) buildSearchQuery(query string, filter domain.Off
 	}
 
 	// Min rating filter
-	if filter.MinRating > 0 {
+	if filter.MinRating != nil && *filter.MinRating > 0 {
 		filterClauses = append(filterClauses, map[string]interface{}{
 			"range": map[string]interface{}{
 				"avg_rating": map[string]interface{}{
-					"gte": filter.MinRating,
+					"gte": *filter.MinRating,
 				},
 			},
 		})
@@ -677,36 +677,34 @@ func (r *OfferSearchRepository) offerToDocument(offer *domain.Offer) *offerDocum
 // documentToSummary converts an Elasticsearch document to a domain summary.
 func (r *OfferSearchRepository) documentToSummary(doc *offerDocument) *domain.OfferSummary {
 	offerID, _ := domain.ParseOfferID(doc.ID)
-	partnerID, _ := domain.ParsePartnerID(doc.PartnerID)
-	establishmentID, _ := domain.ParseEstablishmentID(doc.EstablishmentID)
 	categoryID, _ := domain.ParseCategoryID(doc.CategoryID)
 
-	var publishedAt *time.Time
-	if !doc.PublishedAt.IsZero() {
-		publishedAt = &doc.PublishedAt
+	// Build GeoLocation
+	location, _ := domain.NewGeoLocation(doc.Location.Lon, doc.Location.Lat)
+
+	// Build Discount
+	var originalPrice *int64
+	if doc.OriginalPrice > 0 {
+		originalPrice = &doc.OriginalPrice
+	}
+	discount := domain.Discount{
+		Type:          domain.DiscountType(doc.DiscountType),
+		Value:         doc.DiscountValue,
+		OriginalPrice: originalPrice,
+		Formula:       doc.Formula,
 	}
 
 	return &domain.OfferSummary{
 		ID:                offerID,
-		PartnerID:         partnerID,
-		EstablishmentID:   establishmentID,
 		Title:             doc.Title,
 		ShortDescription:  doc.ShortDescription,
-		CategoryID:        categoryID,
-		DiscountType:      domain.DiscountType(doc.DiscountType),
-		DiscountValue:     doc.DiscountValue,
-		Status:            domain.OfferStatus(doc.Status),
+		Discount:          discount,
+		PrimaryImage:      "", // Not stored in ES, would need separate lookup
 		PartnerName:       doc.PartnerName,
 		EstablishmentName: doc.EstablishmentName,
-		EstablishmentCity: doc.EstablishmentCity,
-		Location: domain.GeoLocation{
-			Latitude:  doc.Location.Lat,
-			Longitude: doc.Location.Lon,
-		},
-		Views:       doc.Views,
-		AvgRating:   doc.AvgRating,
-		ReviewCount: doc.ReviewCount,
-		PublishedAt: publishedAt,
+		City:              doc.EstablishmentCity,
+		Location:          location,
+		CategoryID:        categoryID,
 	}
 }
 
