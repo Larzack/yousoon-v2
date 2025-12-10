@@ -24,10 +24,19 @@
 ### Architecture
 
 - **App Mobile** : Flutter (iOS/Android)
-- **Site Partenaires** : React TypeScript + Vite (business.yousoon.com)
-- **Site Vitrine** : Next.js 14 (www.yousoon.com)
+- **Site Partenaires** : React TypeScript + Vite
+- **Site Vitrine** : Next.js 14
 - **Backend** : Go avec microservices DDD
 - **Admin Backoffice** : React TypeScript (accès restreint)
+
+### 🌐 URLs des Sites
+
+| Site | URL | Description |
+|------|-----|-------------|
+| **Site Vitrine** | [www.yousoon.com](https://www.yousoon.com) | Landing page publique |
+| **Portail Partenaires** | [business.yousoon.com](https://business.yousoon.com) | Gestion partenaires |
+| **API GraphQL** | [api.yousoon.com](https://api.yousoon.com) | Apollo Router Federation |
+| **Admin Backoffice** | `kubectl port-forward` | Accès interne uniquement |
 
 ---
 

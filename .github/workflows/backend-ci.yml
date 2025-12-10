@@ -53,11 +53,11 @@ jobs:
         run: go mod download
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6
         with:
-          version: latest
+          version: v1.61
           working-directory: apps/services/${{ matrix.service }}
-          args: --timeout=5m
+          args: --timeout=5m --config=${{ github.workspace }}/.golangci.yml
 
       - name: Run tests
         working-directory: apps/services/${{ matrix.service }}
