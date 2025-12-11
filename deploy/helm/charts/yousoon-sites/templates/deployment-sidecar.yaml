@@ -107,31 +107,31 @@ spec:
         # =====================================================================
         # Site Vitrine
         # =====================================================================
-        {{- if .Values.siteweb.enabled }}
-        - name: siteweb
-          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.siteweb.image.repository "tag" .Values.siteweb.image.tag) }}
+        {{- if .Values.website.enabled }}
+        - name: website
+          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.website.image.repository "tag" .Values.website.image.tag) }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           ports:
-            - name: http-siteweb
-              containerPort: {{ .Values.siteweb.port }}
+            - name: http-website
+              containerPort: {{ .Values.website.port }}
               protocol: TCP
           env:
-            {{- range .Values.siteweb.env }}
+            {{- range .Values.website.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
           resources:
-            {{- toYaml .Values.siteweb.resources | nindent 12 }}
+            {{- toYaml .Values.website.resources | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /
-              port: {{ .Values.siteweb.port }}
+              port: {{ .Values.website.port }}
             initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /
-              port: {{ .Values.siteweb.port }}
+              port: {{ .Values.website.port }}
             initialDelaySeconds: 5
             periodSeconds: 5
         {{- end }}

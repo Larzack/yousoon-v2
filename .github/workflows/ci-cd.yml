@@ -3,8 +3,8 @@
 # =============================================================================
 # 6 blocs de build parallèles :
 # - Backend (6 services Go) - mode sidecar ou classic
-# - Web (admin, partners) - mode sidecar ou classic
-# - Siteweb (Next.js) - déploiement indépendant
+# - Webapp (admin, partners) - mode sidecar ou classic
+# - Website (Next.js) - déploiement indépendant
 # - Storage (MongoDB, Redis, Elasticsearch, NATS) - mode sidecar ou classic
 # - Monitoring (Prometheus, Grafana, Loki, Jaeger) - déploiement indépendant
 # - Mobile (iOS + Android) - déploiement stores
@@ -25,8 +25,8 @@ on:
         options:
           - all
           - backend
-          - web
-          - siteweb
+          - webapp
+          - website
           - storage
           - monitoring
           - mobile
@@ -100,15 +100,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
-      web: ${{ steps.changes.outputs.web }}
-      siteweb: ${{ steps.changes.outputs.siteweb }}
+      web: ${{ steps.changes.outputs.webapp }}
+      website: ${{ steps.changes.outputs.website }}
       storage: ${{ steps.changes.outputs.storage }}
       monitoring: ${{ steps.changes.outputs.monitoring }}
       mobile: ${{ steps.changes.outputs.mobile }}
       environment: ${{ steps.env.outputs.environment }}
       namespace: ${{ steps.env.outputs.namespace }}
       arch_backend: ${{ steps.arch.outputs.backend }}
-      arch_web: ${{ steps.arch.outputs.web }}
+      arch_webapp: ${{ steps.arch.outputs.webapp }}
       arch_storage: ${{ steps.arch.outputs.storage }}
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -124,10 +124,10 @@ jobs:
           filters: |
             backend:
               - 'apps/services/**'
-            web:
+            webapp:
               - 'apps/partners/**'
               - 'apps/admin/**'
-            siteweb:
+            website:
               - 'apps/siteweb/**'
             storage:
               - 'deploy/helm/charts/yousoon-storage/**'
@@ -147,15 +147,15 @@ jobs:
             COMPONENT="${{ github.event.inputs.component }}"
             
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "backend" ]] && echo "backend=true" >> $GITHUB_OUTPUT || echo "backend=false" >> $GITHUB_OUTPUT
-            [[ "$COMPONENT" == "all" || "$COMPONENT" == "web" ]] && echo "web=true" >> $GITHUB_OUTPUT || echo "web=false" >> $GITHUB_OUTPUT
-            [[ "$COMPONENT" == "all" || "$COMPONENT" == "siteweb" ]] && echo "siteweb=true" >> $GITHUB_OUTPUT || echo "siteweb=false" >> $GITHUB_OUTPUT
+            [[ "$COMPONENT" == "all" || "$COMPONENT" == "webapp" ]] && echo "webapp=true" >> $GITHUB_OUTPUT || echo "webapp=false" >> $GITHUB_OUTPUT
+            [[ "$COMPONENT" == "all" || "$COMPONENT" == "website" ]] && echo "website=true" >> $GITHUB_OUTPUT || echo "website=false" >> $GITHUB_OUTPUT
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "storage" ]] && echo "storage=true" >> $GITHUB_OUTPUT || echo "storage=false" >> $GITHUB_OUTPUT
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "monitoring" ]] && echo "monitoring=true" >> $GITHUB_OUTPUT || echo "monitoring=false" >> $GITHUB_OUTPUT
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "mobile" ]] && echo "mobile=true" >> $GITHUB_OUTPUT || echo "mobile=false" >> $GITHUB_OUTPUT
           else
             echo "backend=${{ steps.filter.outputs.backend }}" >> $GITHUB_OUTPUT
-            echo "web=${{ steps.filter.outputs.web }}" >> $GITHUB_OUTPUT
-            echo "siteweb=${{ steps.filter.outputs.siteweb }}" >> $GITHUB_OUTPUT
+            echo "web=${{ steps.filter.outputs.webappapp }}" >> $GITHUB_OUTPUT
+            echo "website=${{ steps.filter.outputs.website }}" >> $GITHUB_OUTPUT
             echo "storage=${{ steps.filter.outputs.storage }}" >> $GITHUB_OUTPUT
             echo "monitoring=${{ steps.filter.outputs.monitoring }}" >> $GITHUB_OUTPUT
             echo "mobile=${{ steps.filter.outputs.mobile }}" >> $GITHUB_OUTPUT
@@ -215,8 +215,8 @@ jobs:
           echo "| Component | Changed |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|---------|" >> $GITHUB_STEP_SUMMARY
           echo "| Backend | ${{ steps.changes.outputs.backend }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Web | ${{ steps.changes.outputs.web }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Siteweb | ${{ steps.changes.outputs.siteweb }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Webapp | ${{ steps.changes.outputs.webapp }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Website | ${{ steps.changes.outputs.website }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Storage | ${{ steps.changes.outputs.storage }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Monitoring | ${{ steps.changes.outputs.monitoring }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Mobile | ${{ steps.changes.outputs.mobile }} |" >> $GITHUB_STEP_SUMMARY
@@ -287,12 +287,12 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
   # ============================================
-  # BLOC 2: WEB (admin, partners)
+  # BLOC 2: WEBAPP (admin, partners)
   # ============================================
-  build-web:
+  build-webapp:
     name: 🌐 Web - ${{ matrix.app }}
     needs: setup
-    if: needs.setup.outputs.web == 'true'
+    if: needs.setup.outputs.webapp == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
@@ -348,12 +348,12 @@ jobs:
           cache-to: type=gha,mode=max,scope=web-${{ matrix.app }}
 
   # ============================================
-  # BLOC 2b: SITEWEB (Next.js - déploiement autonome)
+  # BLOC 2b: WEBSITE (Next.js - déploiement autonome)
   # ============================================
-  build-siteweb:
-    name: 🌍 Siteweb
+  build-website:
+    name: 🌍 Website
     needs: setup
-    if: needs.setup.outputs.siteweb == 'true'
+    if: needs.setup.outputs.website == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -390,6 +390,12 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Create ECR Repository if not exists
+        if: github.event_name != 'pull_request'
+        run: |
+          aws ecr describe-repositories --repository-names yousoon/website 2>/dev/null || \
+          aws ecr create-repository --repository-name yousoon/website --image-scanning-configuration scanOnPush=true
+
       - name: Build and push Docker image
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v5
@@ -397,10 +403,10 @@ jobs:
           context: apps/siteweb
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/yousoon/siteweb:${{ needs.setup.outputs.version }}
-            ${{ env.ECR_REGISTRY }}/yousoon/siteweb:${{ needs.setup.outputs.environment }}
-          cache-from: type=gha,scope=siteweb
-          cache-to: type=gha,mode=max,scope=siteweb
+            ${{ env.ECR_REGISTRY }}/yousoon/website:${{ needs.setup.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon/website:${{ needs.setup.outputs.environment }}
+          cache-from: type=gha,scope=website
+          cache-to: type=gha,mode=max,scope=website
 
       - name: Setup Helm
         if: github.event_name != 'pull_request'
@@ -418,7 +424,7 @@ jobs:
         if: github.event_name != 'pull_request'
         run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy Siteweb
+      - name: Deploy Website
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
         working-directory: deploy/helm
         run: |
@@ -429,17 +435,17 @@ jobs:
             ARCH="sidecar"
           fi
           
-          echo "🚀 Deploying Siteweb in $ARCH mode..."
-          helm upgrade --install yousoon-siteweb ./charts/yousoon-sites \
-            -f values/siteweb-${ARCH}.yaml \
-            --set siteweb.image.tag=${{ needs.setup.outputs.version }} \
+          echo "🚀 Deploying Website in $ARCH mode..."
+          helm upgrade --install yousoon-website ./charts/yousoon-sites \
+            -f values/website-${ARCH}.yaml \
+            --set website.image.tag=${{ needs.setup.outputs.version }} \
             -n ${{ needs.setup.outputs.namespace }} \
             --wait --timeout 5m || true
 
-      - name: Verify Siteweb Deployment
+      - name: Verify Website Deployment
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
         run: |
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=siteweb" 2>/dev/null || echo "Siteweb pods pending..."
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=website" 2>/dev/null || echo "Website pods pending..."
           kubectl get ingress -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "No ingress yet"
 
   # ============================================
@@ -747,14 +753,14 @@ jobs:
   # ============================================
   deploy:
     name: 🚀 Deploy - ${{ needs.setup.outputs.environment }}
-    needs: [setup, build-backend, build-web, build-siteweb, build-storage]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage]
     if: |
       always() &&
       github.event_name != 'pull_request' &&
       github.event.inputs.deploy != 'false' &&
       (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
-      (needs.build-web.result == 'success' || needs.build-web.result == 'skipped') &&
-      (needs.build-siteweb.result == 'success' || needs.build-siteweb.result == 'skipped') &&
+      (needs.build-webapp.result == 'success' || needs.build-webapp.result == 'skipped') &&
+      (needs.build-website.result == 'success' || needs.build-website.result == 'skipped') &&
       (needs.build-storage.result == 'success' || needs.build-storage.result == 'skipped')
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
@@ -852,11 +858,11 @@ jobs:
             fi
           fi
 
-      - name: Deploy Web (${{ needs.setup.outputs.arch_web }} mode)
-        if: needs.build-web.result == 'success'
+      - name: Deploy Web (${{ needs.setup.outputs.arch_webapp }} mode)
+        if: needs.build-webapp.result == 'success'
         working-directory: deploy/helm
         run: |
-          ARCH="${{ needs.setup.outputs.arch_web }}"
+          ARCH="${{ needs.setup.outputs.arch_webapp }}"
           echo "🚀 Deploying Web in $ARCH mode"
           
           if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
@@ -871,18 +877,18 @@ jobs:
             fi
           fi
 
-      - name: Deploy Siteweb
-        if: needs.build-siteweb.result == 'success'
+      - name: Deploy Website
+        if: needs.build-website.result == 'success'
         working-directory: deploy/helm
         run: |
-          echo "🌍 Deploying Siteweb (Next.js)"
+          echo "🌍 Deploying Website (Next.js)"
           
           if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
             echo "Dry run - skipping actual deployment"
           else
             # Siteweb se déploie toujours de la même façon (pas de mode sidecar/classic)
-            # TODO: Créer chart yousoon-siteweb ou utiliser un Deployment simple
-            # helm upgrade --install yousoon-siteweb ./charts/yousoon-siteweb \
+            # TODO: Créer chart yousoon-website ou utiliser un Deployment simple
+            # helm upgrade --install yousoon-website ./charts/yousoon-website \
             #   -n ${{ needs.setup.outputs.namespace }} \
             #   --set image.tag=${{ needs.setup.outputs.version }} \
             #   --wait
@@ -991,7 +997,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-web, build-storage, build-mobile-android, build-mobile-ios, deploy, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-storage, build-mobile-android, build-mobile-ios, deploy, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1008,7 +1014,7 @@ jobs:
           echo "| Bloc | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🔧 Backend (6 services) | ${{ needs.build-backend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌐 Web (3 apps) | ${{ needs.build-web.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 Web (3 apps) | ${{ needs.build-webapp.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 💾 Storage | ${{ needs.build-storage.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 Android | ${{ needs.build-mobile-android.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 iOS | ${{ needs.build-mobile-ios.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY

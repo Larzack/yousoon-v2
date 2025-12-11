@@ -1,18 +1,18 @@
 # =============================================================================
-# Yousoon Siteweb - Classic Mode Values
+# Yousoon Website - Sidecar Mode Values
 # =============================================================================
 # Déploiement autonome du site vitrine (Next.js)
-# Mode classic: production avec plus de ressources
+# Mode sidecar: staging, développement
 # =============================================================================
 
 global:
-  infra: "classic"
-  namespace: yousoon-prod
+  infra: "sidecar"
+  namespace: yousoon-staging
   imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
   imagePullPolicy: IfNotPresent
 
 common:
-  replicas: 2
+  replicas: 1
 
 # Désactiver les autres sites (déploiement autonome)
 admin:
@@ -24,11 +24,11 @@ partners:
 # =============================================================================
 # Site Vitrine (Next.js) - ENABLED
 # =============================================================================
-siteweb:
+website:
   enabled: true
   image:
-    repository: yousoon/siteweb
-    tag: prod
+    repository: yousoon/website
+    tag: staging
   port: 3000
   
   resources: {}
@@ -45,14 +45,3 @@ siteweb:
     annotations:
       kubernetes.io/ingress.class: nginx
       cert-manager.io/cluster-issuer: letsencrypt-prod
-
-  # Production: anti-affinity pour distribuer sur plusieurs nodes
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/name: siteweb
-            topologyKey: kubernetes.io/hostname

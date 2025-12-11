@@ -4,7 +4,7 @@
 # Déploie les sites web:
 # - admin (backoffice)
 # - partners (portail partenaires)
-# - siteweb (site vitrine)
+# - website (site vitrine)
 # =============================================================================
 
 apiVersion: v2

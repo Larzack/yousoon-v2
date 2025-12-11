@@ -9,7 +9,7 @@
 # SIDECAR MODE: Single Ingress routing to different ports
 # =============================================================================
 
-{{- if or .Values.partners.ingress.enabled .Values.siteweb.ingress.enabled }}
+{{- if or .Values.partners.ingress.enabled .Values.website.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -26,10 +26,10 @@ spec:
         - {{ .Values.partners.ingress.host }}
       secretName: partners-tls
     {{- end }}
-    {{- if .Values.siteweb.ingress.enabled }}
+    {{- if .Values.website.ingress.enabled }}
     - hosts:
-        - {{ .Values.siteweb.ingress.host }}
-      secretName: siteweb-tls
+        - {{ .Values.website.ingress.host }}
+      secretName: website-tls
     {{- end }}
   rules:
     {{- if .Values.partners.ingress.enabled }}
@@ -44,8 +44,8 @@ spec:
                 port:
                   name: partners
     {{- end }}
-    {{- if .Values.siteweb.ingress.enabled }}
-    - host: {{ .Values.siteweb.ingress.host }}
+    {{- if .Values.website.ingress.enabled }}
+    - host: {{ .Values.website.ingress.host }}
       http:
         paths:
           - path: /
@@ -54,7 +54,7 @@ spec:
               service:
                 name: {{ include "yousoon-sites.fullname" . }}
                 port:
-                  name: siteweb
+                  name: website
     {{- end }}
 {{- end }}
 
@@ -93,32 +93,32 @@ spec:
                   name: http
 {{- end }}
 
-{{- if and .Values.siteweb.enabled .Values.siteweb.ingress.enabled }}
+{{- if and .Values.website.enabled .Values.website.ingress.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "yousoon-sites.fullname" . }}-siteweb
+  name: {{ include "yousoon-sites.fullname" . }}-website
   labels:
     {{- include "yousoon-sites.labels" . | nindent 4 }}
-  {{- with .Values.siteweb.ingress.annotations }}
+  {{- with .Values.website.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   tls:
     - hosts:
-        - {{ .Values.siteweb.ingress.host }}
-      secretName: siteweb-tls
+        - {{ .Values.website.ingress.host }}
+      secretName: website-tls
   rules:
-    - host: {{ .Values.siteweb.ingress.host }}
+    - host: {{ .Values.website.ingress.host }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ include "yousoon-sites.fullname" . }}-siteweb
+                name: {{ include "yousoon-sites.fullname" . }}-website
                 port:
                   name: http
 {{- end }}

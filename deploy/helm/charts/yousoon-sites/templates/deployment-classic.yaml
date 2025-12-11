@@ -116,52 +116,52 @@ spec:
 # =============================================================================
 # Site Vitrine Deployment
 # =============================================================================
-{{- if .Values.siteweb.enabled }}
+{{- if .Values.website.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "yousoon-sites.fullname" . }}-siteweb
+  name: {{ include "yousoon-sites.fullname" . }}-website
   labels:
     {{- include "yousoon-sites.labels" . | nindent 4 }}
-    app.kubernetes.io/component: siteweb
+    app.kubernetes.io/component: website
 spec:
   replicas: {{ .Values.common.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: siteweb
+      app.kubernetes.io/name: website
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: siteweb
+        app.kubernetes.io/name: website
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       containers:
-        - name: siteweb
-          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.siteweb.image.repository "tag" .Values.siteweb.image.tag) }}
+        - name: website
+          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.website.image.repository "tag" .Values.website.image.tag) }}
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.siteweb.port }}
+              containerPort: {{ .Values.website.port }}
               protocol: TCP
           env:
-            {{- range .Values.siteweb.env }}
+            {{- range .Values.website.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
           resources:
-            {{- toYaml .Values.siteweb.resources | nindent 12 }}
+            {{- toYaml .Values.website.resources | nindent 12 }}
           livenessProbe:
             httpGet:
               path: /
-              port: {{ .Values.siteweb.port }}
+              port: {{ .Values.website.port }}
             initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /
-              port: {{ .Values.siteweb.port }}
+              port: {{ .Values.website.port }}
             initialDelaySeconds: 5
             periodSeconds: 5
 {{- end }}

@@ -29,10 +29,10 @@ spec:
       targetPort: http-partners
       protocol: TCP
     {{- end }}
-    {{- if .Values.siteweb.enabled }}
-    - name: siteweb
+    {{- if .Values.website.enabled }}
+    - name: website
       port: 8083
-      targetPort: http-siteweb
+      targetPort: http-website
       protocol: TCP
     {{- end }}
   selector:
@@ -85,24 +85,24 @@ spec:
     app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- if .Values.siteweb.enabled }}
+{{- if .Values.website.enabled }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "yousoon-sites.fullname" . }}-siteweb
+  name: {{ include "yousoon-sites.fullname" . }}-website
   labels:
     {{- include "yousoon-sites.labels" . | nindent 4 }}
-    app.kubernetes.io/component: siteweb
+    app.kubernetes.io/component: website
 spec:
   type: ClusterIP
   ports:
     - name: http
-      port: {{ .Values.siteweb.port }}
+      port: {{ .Values.website.port }}
       targetPort: http
       protocol: TCP
   selector:
-    app.kubernetes.io/name: siteweb
+    app.kubernetes.io/name: website
     app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 

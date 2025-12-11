@@ -60,10 +60,10 @@ partners:
 # =============================================================================
 # Site Vitrine (Next.js)
 # =============================================================================
-siteweb:
+website:
   enabled: false  # Disabled until image is built
   image:
-    repository: yousoon/siteweb
+    repository: yousoon/website
     tag: latest
   port: 3000
   
