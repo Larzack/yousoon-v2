@@ -32,7 +32,7 @@ mongodb:
   enabled: true
   image:
     repository: mongo
-    tag: "7.0"
+    tag: "8.0"
     pullPolicy: IfNotPresent
   
   # Service
@@ -76,7 +76,7 @@ redis:
   enabled: true
   image:
     repository: redis
-    tag: "7.2-alpine"
+    tag: "8-alpine"
     pullPolicy: IfNotPresent
   
   # Service

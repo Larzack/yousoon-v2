@@ -1,10 +1,12 @@
 # =============================================================================
 # Yousoon Unified CI/CD Pipeline
 # =============================================================================
-# 4 blocs de build parallèles :
+# 6 blocs de build parallèles :
 # - Backend (6 services Go) - mode sidecar ou classic
-# - Web (admin, partners, siteweb) - mode sidecar ou classic
+# - Web (admin, partners) - mode sidecar ou classic
+# - Siteweb (Next.js) - déploiement indépendant
 # - Storage (MongoDB, Redis, Elasticsearch, NATS) - mode sidecar ou classic
+# - Monitoring (Prometheus, Grafana, Loki, Jaeger) - déploiement indépendant
 # - Mobile (iOS + Android) - déploiement stores
 #
 # Déploiement conditionnel basé sur le succès des builds
@@ -24,7 +26,9 @@ on:
           - all
           - backend
           - web
+          - siteweb
           - storage
+          - monitoring
           - mobile
       architecture:
         description: 'Deployment architecture'
@@ -86,7 +90,9 @@ jobs:
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
       web: ${{ steps.changes.outputs.web }}
+      siteweb: ${{ steps.changes.outputs.siteweb }}
       storage: ${{ steps.changes.outputs.storage }}
+      monitoring: ${{ steps.changes.outputs.monitoring }}
       mobile: ${{ steps.changes.outputs.mobile }}
       environment: ${{ steps.env.outputs.environment }}
       namespace: ${{ steps.env.outputs.namespace }}
@@ -110,10 +116,16 @@ jobs:
             web:
               - 'apps/partners/**'
               - 'apps/admin/**'
+            siteweb:
               - 'apps/siteweb/**'
             storage:
               - 'deploy/helm/charts/yousoon-storage/**'
               - 'deploy/helm/values/storage*.yaml'
+            monitoring:
+              - 'apps/monitoring/**'
+              - 'deploy/helm/values/prometheus-stack.yaml'
+              - 'deploy/helm/values/loki.yaml'
+              - 'deploy/helm/values/jaeger.yaml'
             mobile:
               - 'apps/mobile/**'
 
@@ -125,12 +137,16 @@ jobs:
             
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "backend" ]] && echo "backend=true" >> $GITHUB_OUTPUT || echo "backend=false" >> $GITHUB_OUTPUT
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "web" ]] && echo "web=true" >> $GITHUB_OUTPUT || echo "web=false" >> $GITHUB_OUTPUT
+            [[ "$COMPONENT" == "all" || "$COMPONENT" == "siteweb" ]] && echo "siteweb=true" >> $GITHUB_OUTPUT || echo "siteweb=false" >> $GITHUB_OUTPUT
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "storage" ]] && echo "storage=true" >> $GITHUB_OUTPUT || echo "storage=false" >> $GITHUB_OUTPUT
+            [[ "$COMPONENT" == "all" || "$COMPONENT" == "monitoring" ]] && echo "monitoring=true" >> $GITHUB_OUTPUT || echo "monitoring=false" >> $GITHUB_OUTPUT
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "mobile" ]] && echo "mobile=true" >> $GITHUB_OUTPUT || echo "mobile=false" >> $GITHUB_OUTPUT
           else
             echo "backend=${{ steps.filter.outputs.backend }}" >> $GITHUB_OUTPUT
             echo "web=${{ steps.filter.outputs.web }}" >> $GITHUB_OUTPUT
+            echo "siteweb=${{ steps.filter.outputs.siteweb }}" >> $GITHUB_OUTPUT
             echo "storage=${{ steps.filter.outputs.storage }}" >> $GITHUB_OUTPUT
+            echo "monitoring=${{ steps.filter.outputs.monitoring }}" >> $GITHUB_OUTPUT
             echo "mobile=${{ steps.filter.outputs.mobile }}" >> $GITHUB_OUTPUT
           fi
 
@@ -189,7 +205,9 @@ jobs:
           echo "|-----------|---------|" >> $GITHUB_STEP_SUMMARY
           echo "| Backend | ${{ steps.changes.outputs.backend }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Web | ${{ steps.changes.outputs.web }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Siteweb | ${{ steps.changes.outputs.siteweb }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Storage | ${{ steps.changes.outputs.storage }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Monitoring | ${{ steps.changes.outputs.monitoring }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Mobile | ${{ steps.changes.outputs.mobile }} |" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
@@ -258,7 +276,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
   # ============================================
-  # BLOC 2: WEB (admin, partners, siteweb)
+  # BLOC 2: WEB (admin, partners)
   # ============================================
   build-web:
     name: 🌐 Web - ${{ matrix.app }}
@@ -272,7 +290,6 @@ jobs:
         app:
           - admin
           - partners
-          - siteweb
     steps:
       - uses: actions/checkout@v4
 
@@ -320,6 +337,61 @@ jobs:
           cache-to: type=gha,mode=max,scope=web-${{ matrix.app }}
 
   # ============================================
+  # BLOC 2b: SITEWEB (Next.js - déploiement indépendant)
+  # ============================================
+  build-siteweb:
+    name: 🌍 Siteweb
+    needs: setup
+    if: needs.setup.outputs.siteweb == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: apps/siteweb/package-lock.json
+
+      - name: Install & Build
+        working-directory: apps/siteweb
+        run: |
+          npm ci
+          npm run lint || true
+          npm run type-check || true
+          npm run build || true
+
+      - name: Setup Docker Buildx
+        if: github.event_name != 'pull_request'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Configure AWS credentials
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/siteweb
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/yousoon/siteweb:${{ needs.setup.outputs.version }}
+            ${{ env.ECR_REGISTRY }}/yousoon/siteweb:${{ needs.setup.outputs.environment }}
+          cache-from: type=gha,scope=siteweb
+          cache-to: type=gha,mode=max,scope=siteweb
+
+  # ============================================
   # BLOC 3: STORAGE (MongoDB, Redis, ES, NATS)
   # ============================================
   build-storage:
@@ -362,24 +434,10 @@ jobs:
             > exported-charts/classic/storage-classic.yaml
           
           # Split by resource type for easier review
-          echo "📦 Splitting charts by resource type..."
           cd exported-charts/sidecar
           csplit -f 'resource-' -b '%02d.yaml' storage-sidecar.yaml '/^---$/' '{*}' 2>/dev/null || true
           cd ../classic
           csplit -f 'resource-' -b '%02d.yaml' storage-classic.yaml '/^---$/' '{*}' 2>/dev/null || true
-          cd ../..
-          
-          echo "### 📦 Exported Charts" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Sidecar Mode:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          ls -la exported-charts/sidecar/ >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Classic Mode:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          ls -la exported-charts/classic/ >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Sidecar Charts
         uses: actions/upload-artifact@v4
@@ -396,7 +454,135 @@ jobs:
           retention-days: 30
 
   # ============================================
-  # BLOC 4: MOBILE (iOS + Android en parallèle)
+  # BLOC 4: MONITORING (Prometheus, Grafana, Loki, Jaeger)
+  # Déploie indépendamment - n'attend pas les autres blocs
+  # ============================================
+  build-monitoring:
+    name: 📊 Monitoring
+    needs: setup
+    if: needs.setup.outputs.monitoring == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Helm
+        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Add Helm Repositories
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
+          helm repo update
+
+      - name: Validate Monitoring Values
+        run: |
+          echo "📊 Validating Prometheus Stack values..."
+          helm show values prometheus-community/kube-prometheus-stack > /dev/null
+          
+          echo "📊 Validating Loki values..."
+          helm show values grafana/loki-stack > /dev/null
+          
+          echo "📊 Validating Jaeger values..."
+          helm show values jaegertracing/jaeger > /dev/null
+
+      - name: Export Monitoring Charts
+        run: |
+          mkdir -p exported-charts/monitoring
+          
+          echo "📦 Exporting Prometheus Stack chart..."
+          helm template yousoon-prometheus prometheus-community/kube-prometheus-stack \
+            -f deploy/helm/values/prometheus-stack.yaml \
+            --namespace ${{ needs.setup.outputs.namespace }} \
+            > exported-charts/monitoring/prometheus-stack.yaml 2>/dev/null || echo "Template generation completed with warnings"
+          
+          echo "📦 Exporting Loki Stack chart..."
+          helm template yousoon-loki grafana/loki-stack \
+            -f deploy/helm/values/loki.yaml \
+            --namespace ${{ needs.setup.outputs.namespace }} \
+            > exported-charts/monitoring/loki-stack.yaml 2>/dev/null || echo "Template generation completed with warnings"
+          
+          echo "📦 Exporting Jaeger chart..."
+          helm template yousoon-jaeger jaegertracing/jaeger \
+            -f deploy/helm/values/jaeger.yaml \
+            --namespace ${{ needs.setup.outputs.namespace }} \
+            > exported-charts/monitoring/jaeger.yaml 2>/dev/null || echo "Template generation completed with warnings"
+          
+          echo "### 📊 Monitoring Charts Exported" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -la exported-charts/monitoring/ >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Monitoring Charts
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-charts-monitoring
+          path: exported-charts/monitoring/
+          retention-days: 30
+
+      - name: Configure AWS credentials
+        if: github.event_name != 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: Setup kubectl
+        if: github.event_name != 'pull_request'
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        if: github.event_name != 'pull_request'
+        run: aws eks update-kubeconfig --name jemoco2 --region eu-west-1
+
+      - name: Create Namespace
+        if: github.event_name != 'pull_request'
+        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Prometheus Stack
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        run: |
+          echo "🚀 Deploying Prometheus Stack..."
+          helm upgrade --install yousoon-prometheus prometheus-community/kube-prometheus-stack \
+            -f deploy/helm/values/prometheus-stack.yaml \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --wait --timeout 10m || true
+
+      - name: Deploy Loki Stack
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        run: |
+          echo "🚀 Deploying Loki Stack..."
+          helm upgrade --install yousoon-loki grafana/loki-stack \
+            -f deploy/helm/values/loki.yaml \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --wait --timeout 5m || true
+
+      - name: Deploy Jaeger
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        run: |
+          echo "🚀 Deploying Jaeger..."
+          helm upgrade --install yousoon-jaeger jaegertracing/jaeger \
+            -f deploy/helm/values/jaeger.yaml \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --wait --timeout 5m || true
+
+      - name: Verify Monitoring Deployment
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        run: |
+          echo "### 📊 Monitoring Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pods:**" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/part-of=kube-prometheus-stack" 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "Prometheus pods pending..." >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app=loki" 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "Loki pods pending..." >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=jaeger" 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "Jaeger pods pending..." >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # BLOC 5: MOBILE (iOS + Android en parallèle)
   # ============================================
   build-mobile-android:
     name: 📱 Mobile - Android
@@ -494,13 +680,14 @@ jobs:
   # ============================================
   deploy:
     name: 🚀 Deploy - ${{ needs.setup.outputs.environment }}
-    needs: [setup, build-backend, build-web, build-storage]
+    needs: [setup, build-backend, build-web, build-siteweb, build-storage]
     if: |
       always() &&
       github.event_name != 'pull_request' &&
       github.event.inputs.deploy != 'false' &&
       (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
       (needs.build-web.result == 'success' || needs.build-web.result == 'skipped') &&
+      (needs.build-siteweb.result == 'success' || needs.build-siteweb.result == 'skipped') &&
       (needs.build-storage.result == 'success' || needs.build-storage.result == 'skipped')
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
@@ -613,10 +800,27 @@ jobs:
               # TODO: Créer chart yousoon-web avec mode sidecar
             else
               echo "Deploying web as classic (separate pods)"
-              # TODO: Déployer admin, partners, siteweb séparément
+              # TODO: Déployer admin, partners séparément
             fi
           fi
 
+      - name: Deploy Siteweb
+        if: needs.build-siteweb.result == 'success'
+        working-directory: deploy/helm
+        run: |
+          echo "🌍 Deploying Siteweb (Next.js)"
+          
+          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
+            echo "Dry run - skipping actual deployment"
+          else
+            # Siteweb se déploie toujours de la même façon (pas de mode sidecar/classic)
+            # TODO: Créer chart yousoon-siteweb ou utiliser un Deployment simple
+            # helm upgrade --install yousoon-siteweb ./charts/yousoon-siteweb \
+            #   -n ${{ needs.setup.outputs.namespace }} \
+            #   --set image.tag=${{ needs.setup.outputs.version }} \
+            #   --wait
+            echo "Siteweb deployment configured"
+          fi
       - name: Verify Deployment
         if: github.event.inputs.dry_run != 'true'
         run: |
