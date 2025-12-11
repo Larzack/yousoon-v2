@@ -5,7 +5,7 @@
 # This provides better isolation, scaling and resilience.
 #
 # Usage:
-#   helm install yousoon ./charts/yousoon -f values-production.yaml
+#   helm install yousoon ./charts/yousoon -f values-prod.yaml
 # =============================================================================
 
 global:
@@ -21,7 +21,9 @@ global:
     app.kubernetes.io/managed-by: helm
     environment: production
 
-# Enable all components
+# =============================================================================
+# Enable Components
+# =============================================================================
 storage:
   enabled: true
 
@@ -35,7 +37,7 @@ monitoring:
   enabled: true
 
 # =============================================================================
-# Storage - Production Settings
+# Storage - Production Settings (Classic Mode)
 # =============================================================================
 yousoon-storage:
   global:
@@ -45,13 +47,11 @@ yousoon-storage:
   mongodb:
     enabled: true
     replicaCount: 3
-    resources: {}
     persistence:
       size: 50Gi
 
   redis:
     enabled: true
-    resources: {}
     persistence:
       size: 10Gi
 
@@ -63,98 +63,47 @@ yousoon-storage:
 
   elasticsearch:
     enabled: true
-    resources: {}
     persistence:
       size: 50Gi
 
 # =============================================================================
-# Services - Production Settings
+# Services - Production Settings (Classic Mode)
 # =============================================================================
 yousoon-services:
   global:
     infra: "classic"
     namespace: yousoon-production
 
-  # Each service with proper replicas
   identity:
     enabled: true
     replicaCount: 2
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
 
   partner:
     enabled: true
     replicaCount: 2
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
 
   discovery:
     enabled: true
     replicaCount: 2
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
 
   booking:
     enabled: true
     replicaCount: 2
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
 
   engagement:
     enabled: true
     replicaCount: 2
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
 
   notification:
     enabled: true
     replicaCount: 2
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
 
   router:
     enabled: true
     replicaCount: 2
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "200m"
-      limits:
-        memory: "512Mi"
-        cpu: "500m"
 
 # =============================================================================
-# Sites - Production Settings
+# Sites - Production Settings (Classic Mode)
 # =============================================================================
 yousoon-sites:
   global:
@@ -182,7 +131,7 @@ yousoon-sites:
       host: www.yousoon.com
 
 # =============================================================================
-# Monitoring - Production Settings
+# Monitoring - Production Settings (Classic Mode)
 # =============================================================================
 yousoon-monitoring:
   global:

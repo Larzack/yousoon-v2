@@ -47,25 +47,11 @@ yousoon-storage:
   mongodb:
     enabled: true
     replicaCount: 1
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
-        memory: "512Mi"
-        cpu: "300m"
     persistence:
       size: 10Gi
 
   redis:
     enabled: true
-    resources:
-      requests:
-        memory: "64Mi"
-        cpu: "50m"
-      limits:
-        memory: "128Mi"
-        cpu: "100m"
     persistence:
       size: 2Gi
 
@@ -77,13 +63,6 @@ yousoon-storage:
 
   elasticsearch:
     enabled: true
-    resources:
-      requests:
-        memory: "512Mi"
-        cpu: "100m"
-      limits:
-        memory: "1Gi"
-        cpu: "500m"
     persistence:
       size: 10Gi
 
@@ -95,83 +74,33 @@ yousoon-services:
     infra: "sidecar"
     namespace: yousoon-staging
 
-  # All services run together in sidecar mode
   identity:
     enabled: true
     replicaCount: 1
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
 
   partner:
     enabled: true
     replicaCount: 1
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
 
   discovery:
     enabled: true
     replicaCount: 1
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
 
   booking:
     enabled: true
     replicaCount: 1
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
 
   engagement:
     enabled: true
     replicaCount: 1
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
 
   notification:
     enabled: true
     replicaCount: 1
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
 
   router:
     enabled: true
     replicaCount: 1
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-      limits:
-        memory: "256Mi"
-        cpu: "300m"
 
 # =============================================================================
 # Sites - Staging Settings (Sidecar Mode)

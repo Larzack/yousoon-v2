@@ -1,20 +1,10 @@
-# Elasticsearch - Production overrides
-# Passer à 3 nodes pour HA plus tard
-# replicas: 3
-# minimumMasterNodes: 2
-
-resources:
-  requests:
-    memory: 2Gi
-    cpu: 500m
-  limits:
-    memory: 4Gi
-    cpu: 2000m
-
+# Elasticsearch - Configuration
 esJavaOpts: "-Xmx2g -Xms2g"
 
 volumeClaimTemplate:
   storageClassName: gp3
+  accessModes:
+    - ReadWriteOnce
   resources:
     requests:
       storage: 50Gi

@@ -1,16 +1,8 @@
-# Prometheus Stack - Production overrides
+# Prometheus Stack - Configuration
 prometheus:
   prometheusSpec:
     retention: 30d
     retentionSize: 50GB
-    
-    resources:
-      requests:
-        memory: 1Gi
-        cpu: 500m
-      limits:
-        memory: 4Gi
-        cpu: 2000m
     
     storageSpec:
       volumeClaimTemplate:
@@ -25,14 +17,6 @@ prometheus:
       env: production
 
 grafana:
-  resources:
-    requests:
-      memory: 256Mi
-      cpu: 200m
-    limits:
-      memory: 1Gi
-      cpu: 1000m
-  
   persistence:
     size: 10Gi
     storageClassName: gp3

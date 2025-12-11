@@ -1,15 +1,5 @@
-# Jaeger - Production overrides
-# Pour la production, envisager Elasticsearch comme backend
-
+# Jaeger - Configuration
 allInOne:
-  resources:
-    requests:
-      memory: 512Mi
-      cpu: 250m
-    limits:
-      memory: 1Gi
-      cpu: 1000m
-  
   extraEnv:
     - name: COLLECTOR_OTLP_ENABLED
       value: "true"
@@ -17,12 +7,3 @@ allInOne:
       value: "memory"
     - name: MEMORY_MAX_TRACES
       value: "100000"
-
-# TODO: Pour la production avec beaucoup de traces, passer à Elasticsearch
-# provisionDataStore:
-#   elasticsearch: true
-# storage:
-#   type: elasticsearch
-#   elasticsearch:
-#     host: elasticsearch
-#     port: 9200
