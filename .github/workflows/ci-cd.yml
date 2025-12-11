@@ -621,13 +621,12 @@ jobs:
       # - APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_KEY_P8 (for App Store Connect API)
 
   # ============================================
-  # DEPLOY - Déploie TOUS les charts Helm
-  # Si enabled=true → helm upgrade --install
-  # Si enabled=false → helm uninstall (supprime les ressources)
+  # DEPLOY - Déploie TOUS les charts Helm EN PARALLÈLE
+  # Utilise une matrice pour lancer storage, services, sites, monitoring simultanément
   # ============================================
 
   deploy:
-    name: 🚀 Deploy - ${{ needs.setup.outputs.environment }}
+    name: 🚀 Deploy ${{ matrix.component }}
     needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring]
     if: |
       always() &&
@@ -640,6 +639,23 @@ jobs:
       (needs.build-monitoring.result == 'success' || needs.build-monitoring.result == 'skipped')
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [storage, services, sites, monitoring]
+        include:
+          - component: storage
+            chart: yousoon-storage
+            has_statefulset: true
+          - component: services
+            chart: yousoon-services
+            has_statefulset: false
+          - component: sites
+            chart: yousoon-sites
+            has_statefulset: false
+          - component: monitoring
+            chart: yousoon-monitoring
+            has_statefulset: false
     steps:
       - uses: actions/checkout@v4
 
@@ -664,173 +680,94 @@ jobs:
       - name: Create Namespace
         run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Read enabled states from values file
-        id: config
-        working-directory: deploy/helm/charts/yousoon
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          
-          # Select values file based on environment
-          if [ "$ENV" == "prod" ]; then
-            VALUES_FILE="values-production.yaml"
-            MODE="classic"
-          else
-            VALUES_FILE="values-staging.yaml"
-            MODE="sidecar"
-          fi
-          
-          echo "📋 Reading enabled states from $VALUES_FILE..."
-          
-          STORAGE_ENABLED=$(grep -A1 "^storage:" $VALUES_FILE | grep "enabled:" | awk '{print $2}')
-          SERVICES_ENABLED=$(grep -A1 "^services:" $VALUES_FILE | grep "enabled:" | awk '{print $2}')
-          SITES_ENABLED=$(grep -A1 "^sites:" $VALUES_FILE | grep "enabled:" | awk '{print $2}')
-          MONITORING_ENABLED=$(grep -A1 "^monitoring:" $VALUES_FILE | grep "enabled:" | awk '{print $2}')
-          
-          echo "values_file=$VALUES_FILE" >> $GITHUB_OUTPUT
-          echo "storage_enabled=$STORAGE_ENABLED" >> $GITHUB_OUTPUT
-          echo "services_enabled=$SERVICES_ENABLED" >> $GITHUB_OUTPUT
-          echo "sites_enabled=$SITES_ENABLED" >> $GITHUB_OUTPUT
-          echo "monitoring_enabled=$MONITORING_ENABLED" >> $GITHUB_OUTPUT
-          echo "mode=$MODE" >> $GITHUB_OUTPUT
-          
-          echo ""
-          echo "📊 Configuration Summary:"
-          echo "  Environment: $ENV"
-          echo "  Values File: $VALUES_FILE"
-          echo "  Mode:        $MODE"
-          echo "  Storage:     $STORAGE_ENABLED"
-          echo "  Services:    $SERVICES_ENABLED"
-          echo "  Sites:       $SITES_ENABLED"
-          echo "  Monitoring:  $MONITORING_ENABLED"
-
-      # ----------------------------------------
-      # STORAGE
-      # ----------------------------------------
-      - name: Deploy Storage
-        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.storage_enabled == 'true'
+      - name: Deploy ${{ matrix.component }}
+        if: github.event.inputs.dry_run != 'true'
         working-directory: deploy/helm
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
-          VALUES_FILE="storage-${ENV}.yaml"
+          COMPONENT="${{ matrix.component }}"
+          CHART="${{ matrix.chart }}"
+          NAMESPACE="${{ needs.setup.outputs.namespace }}"
+          VALUES_FILE="${COMPONENT}-${ENV}.yaml"
+          VERSION="${{ needs.setup.outputs.version }}"
+          HAS_STATEFULSET="${{ matrix.has_statefulset }}"
+          
+          echo "🚀 Deploying $COMPONENT ($VALUES_FILE)..."
+          
+          # Check if values file exists
+          if [ ! -f "values/${VALUES_FILE}" ]; then
+            echo "⚠️ Values file values/${VALUES_FILE} not found, skipping..."
+            exit 0
+          fi
+          
+          # Build helm command
+          HELM_CMD="helm upgrade --install yousoon-${COMPONENT} ./charts/${CHART} -f values/${VALUES_FILE} -n ${NAMESPACE} --wait --timeout 10m"
+          
+          # Add image tag for services and sites
+          if [ "$COMPONENT" == "services" ] || [ "$COMPONENT" == "sites" ]; then
+            HELM_CMD="$HELM_CMD --set global.image.tag=${VERSION}"
+          fi
+          
+          # Try to deploy
+          if ! eval $HELM_CMD 2>&1; then
+            if [ "$HAS_STATEFULSET" == "true" ]; then
+              echo "⚠️ Upgrade failed, attempting to recreate StatefulSet..."
+              kubectl delete statefulset yousoon-${COMPONENT} -n $NAMESPACE --cascade=orphan 2>/dev/null || true
+              eval $HELM_CMD
+            else
+              echo "❌ Deployment failed for $COMPONENT"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ $COMPONENT deployed successfully!"
+
+  # ============================================
+  # DEPLOY VERIFY - Vérifie le déploiement après la matrice
+  # ============================================
+  deploy-verify:
+    name: 🔍 Verify Deployment
+    needs: [setup, deploy]
+    if: always() && needs.deploy.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Verify Deployment
+        run: |
           NAMESPACE="${{ needs.setup.outputs.namespace }}"
           
-          echo "🚀 Deploying Storage ($VALUES_FILE)..."
-          
-          # Try to upgrade, if it fails due to StatefulSet immutable fields, delete and recreate
-          if ! helm upgrade --install yousoon-storage ./charts/yousoon-storage \
-            -f values/${VALUES_FILE} \
-            -n $NAMESPACE \
-            --wait --timeout 10m 2>&1; then
-            
-            echo "⚠️ Upgrade failed, attempting to recreate StatefulSet..."
-            
-            # Delete StatefulSet with orphan cascade (keeps pods and PVCs)
-            kubectl delete statefulset yousoon-storage -n $NAMESPACE --cascade=orphan 2>/dev/null || true
-            
-            # Retry the deployment
-            helm upgrade --install yousoon-storage ./charts/yousoon-storage \
-              -f values/${VALUES_FILE} \
-              -n $NAMESPACE \
-              --wait --timeout 10m
-          fi
-
-      - name: Uninstall Storage
-        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.storage_enabled == 'false'
-        run: |
-          echo "🗑️ Uninstalling Storage (disabled)..."
-          helm uninstall yousoon-storage -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Storage not installed"
-
-      # ----------------------------------------
-      # SERVICES (Backend)
-      # ----------------------------------------
-      - name: Deploy Services
-        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.services_enabled == 'true'
-        working-directory: deploy/helm
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          VALUES_FILE="services-${ENV}.yaml"
-          echo "🚀 Deploying Services ($VALUES_FILE)..."
-          helm upgrade --install yousoon-services ./charts/yousoon-services \
-            -f values/${VALUES_FILE} \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --set global.image.tag=${{ needs.setup.outputs.version }} \
-            --wait --timeout 10m || echo "Services chart not ready yet"
-
-      - name: Uninstall Services
-        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.services_enabled == 'false'
-        run: |
-          echo "🗑️ Uninstalling Services (disabled)..."
-          helm uninstall yousoon-services -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Services not installed"
-
-      # ----------------------------------------
-      # SITES (Website, Admin, Partners)
-      # ----------------------------------------
-      - name: Deploy Sites
-        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.sites_enabled == 'true'
-        working-directory: deploy/helm
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          VALUES_FILE="sites-${ENV}.yaml"
-          echo "🚀 Deploying Sites ($VALUES_FILE)..."
-          helm upgrade --install yousoon-sites ./charts/yousoon-sites \
-            -f values/${VALUES_FILE} \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --set global.image.tag=${{ needs.setup.outputs.version }} \
-            --wait --timeout 10m
-
-      - name: Uninstall Sites
-        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.sites_enabled == 'false'
-        run: |
-          echo "🗑️ Uninstalling Sites (disabled)..."
-          helm uninstall yousoon-sites -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Sites not installed"
-
-      # ----------------------------------------
-      # MONITORING
-      # ----------------------------------------
-      - name: Deploy Monitoring
-        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.monitoring_enabled == 'true'
-        working-directory: deploy/helm
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          VALUES_FILE="monitoring-${ENV}.yaml"
-          echo "🚀 Deploying Monitoring ($VALUES_FILE)..."
-          helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
-            -f values/${VALUES_FILE} \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --wait --timeout 10m
-
-      - name: Uninstall Monitoring
-        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.monitoring_enabled == 'false'
-        run: |
-          echo "🗑️ Uninstalling Monitoring (disabled)..."
-          helm uninstall yousoon-monitoring -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Monitoring not installed"
-
-      # ----------------------------------------
-      # VERIFICATION
-      # ----------------------------------------
-      - name: Verify Deployment
-        if: github.event.inputs.dry_run != 'true'
-        run: |
           echo "### 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Namespace**: ${{ needs.setup.outputs.namespace }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Mode**: ${{ steps.config.outputs.mode }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Namespace**: $NAMESPACE" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment**: ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Enabled | Action |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|---------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Storage | ${{ steps.config.outputs.storage_enabled }} | $([ '${{ steps.config.outputs.storage_enabled }}' == 'true' ] && echo '✅ Deployed' || echo '🗑️ Uninstalled') |" >> $GITHUB_STEP_SUMMARY
-          echo "| Services | ${{ steps.config.outputs.services_enabled }} | $([ '${{ steps.config.outputs.services_enabled }}' == 'true' ] && echo '✅ Deployed' || echo '🗑️ Uninstalled') |" >> $GITHUB_STEP_SUMMARY
-          echo "| Sites | ${{ steps.config.outputs.sites_enabled }} | $([ '${{ steps.config.outputs.sites_enabled }}' == 'true' ] && echo '✅ Deployed' || echo '🗑️ Uninstalled') |" >> $GITHUB_STEP_SUMMARY
-          echo "| Monitoring | ${{ steps.config.outputs.monitoring_enabled }} | $([ '${{ steps.config.outputs.monitoring_enabled }}' == 'true' ] && echo '✅ Deployed' || echo '🗑️ Uninstalled') |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          
           echo "**Helm Releases**:" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          helm list -n ${{ needs.setup.outputs.namespace }} >> $GITHUB_STEP_SUMMARY 2>&1 || echo "No releases" >> $GITHUB_STEP_SUMMARY
+          helm list -n $NAMESPACE >> $GITHUB_STEP_SUMMARY 2>&1 || echo "No releases" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          
           echo "**Pods**:" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} >> $GITHUB_STEP_SUMMARY 2>&1 || echo "No pods" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n $NAMESPACE >> $GITHUB_STEP_SUMMARY 2>&1 || echo "No pods" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   # ============================================
@@ -838,12 +775,12 @@ jobs:
   # ============================================
   publish-stores:
     name: 📲 Publish to Stores
-    needs: [setup, deploy, build-mobile-android, build-mobile-ios]
+    needs: [setup, deploy-verify, build-mobile-android, build-mobile-ios]
     if: |
       always() &&
       github.event_name != 'pull_request' &&
       github.event.inputs.publish_stores == 'true' &&
-      needs.deploy.result == 'success' &&
+      needs.deploy-verify.result == 'success' &&
       needs.build-mobile-android.result == 'success' &&
       needs.build-mobile-ios.result == 'success'
     runs-on: ubuntu-latest
@@ -858,7 +795,7 @@ jobs:
           echo "| Version | ${{ needs.setup.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Android Build | ${{ needs.build-mobile-android.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| iOS Build | ${{ needs.build-mobile-ios.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Deploy Status | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy Status | ${{ needs.deploy-verify.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⏳ Publishing to stores..." >> $GITHUB_STEP_SUMMARY
 
@@ -923,7 +860,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring, build-mobile-android, build-mobile-ios, deploy, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-verify, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -950,5 +887,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 🚀 Deploy | ${{ needs.deploy.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Deploy (matrix) | ${{ needs.deploy.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Deploy Verify | ${{ needs.deploy-verify.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📲 Stores | ${{ needs.publish-stores.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
