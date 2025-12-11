@@ -1,0 +1,169 @@
+{{/*
+# =============================================================================
+# Yousoon Sites - CLASSIC MODE
+# =============================================================================
+# Each site in its own Pod
+# =============================================================================
+*/}}
+{{- if eq .Values.global.infra "classic" }}
+
+# =============================================================================
+# Admin Backoffice Deployment
+# =============================================================================
+{{- if .Values.admin.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-admin
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+    app.kubernetes.io/component: admin
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: admin
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: admin
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: admin
+          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.admin.image.repository "tag" .Values.admin.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.admin.port }}
+              protocol: TCP
+          env:
+            {{- range .Values.admin.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.admin.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.admin.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.admin.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+# =============================================================================
+# Partners Portal Deployment
+# =============================================================================
+{{- if .Values.partners.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-partners
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+    app.kubernetes.io/component: partners
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: partners
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: partners
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: partners
+          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.partners.image.repository "tag" .Values.partners.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.partners.port }}
+              protocol: TCP
+          env:
+            {{- range .Values.partners.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.partners.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.partners.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.partners.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+# =============================================================================
+# Site Vitrine Deployment
+# =============================================================================
+{{- if .Values.siteweb.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-siteweb
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+    app.kubernetes.io/component: siteweb
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: siteweb
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: siteweb
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: siteweb
+          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.siteweb.image.repository "tag" .Values.siteweb.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.siteweb.port }}
+              protocol: TCP
+          env:
+            {{- range .Values.siteweb.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.siteweb.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.siteweb.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.siteweb.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+{{- end }}

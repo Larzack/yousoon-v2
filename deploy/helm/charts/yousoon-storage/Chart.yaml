@@ -1,0 +1,14 @@
+# =============================================================================
+# Yousoon Storage Chart
+# =============================================================================
+# Déploie MongoDB, Redis, NATS, Elasticsearch
+# Mode sidecar: Tous dans un seul Pod
+# Mode classic: Un Pod par service
+# =============================================================================
+
+apiVersion: v2
+name: yousoon-storage
+description: Yousoon Storage Stack (MongoDB, Redis, NATS, Elasticsearch)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

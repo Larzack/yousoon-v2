@@ -1,0 +1,117 @@
+{{- if and (eq (include "yousoon-storage.mode" .) "classic") .Values.nats.enabled }}
+# =============================================================================
+# CLASSIC MODE: NATS in its own StatefulSet
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}-nats
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  serviceName: {{ include "yousoon-storage.fullname" . }}-nats
+  replicas: {{ .Values.nats.classic.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "yousoon-storage.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: nats
+  template:
+    metadata:
+      labels:
+        {{- include "yousoon-storage.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nats
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "yousoon-storage.serviceAccountName" . }}
+      containers:
+        - name: nats
+          image: "{{ .Values.nats.image.repository }}:{{ .Values.nats.image.tag }}"
+          imagePullPolicy: {{ .Values.nats.image.pullPolicy }}
+          ports:
+            - name: client
+              containerPort: 4222
+              protocol: TCP
+            - name: monitor
+              containerPort: 8222
+              protocol: TCP
+          args:
+            - --config
+            - /etc/nats/nats.conf
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/nats/nats.conf
+              subPath: nats.conf
+          resources:
+            {{- toYaml .Values.nats.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "yousoon-storage.fullname" . }}-config
+      {{- with .Values.nats.classic.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nats.classic.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nats.classic.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.nats.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: {{ .Values.nats.persistence.accessModes }}
+        {{- if .Values.nats.persistence.storageClass }}
+        storageClassName: {{ .Values.nats.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.nats.persistence.size }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}-nats
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  type: {{ .Values.nats.service.type }}
+  selector:
+    {{- include "yousoon-storage.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+  ports:
+    - name: client
+      port: {{ .Values.nats.service.port }}
+      targetPort: client
+      protocol: TCP
+    - name: monitor
+      port: {{ .Values.nats.service.monitorPort }}
+      targetPort: monitor
+      protocol: TCP
+{{- end }}

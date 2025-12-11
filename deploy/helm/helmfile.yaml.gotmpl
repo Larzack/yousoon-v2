@@ -1,0 +1,76 @@
+# =============================================================================
+# HELMFILE - Yousoon Platform Deployment
+# =============================================================================
+# Déploie la plateforme Yousoon complète via Helm charts personnalisés
+# 
+# MODES DE DÉPLOIEMENT:
+# - staging branch  → sidecar mode (multi-container pods)
+# - prod branch     → classic mode (un container par pod)
+#
+# NAMESPACES:
+# - staging → yousoon-staging
+# - prod    → yousoon-prod
+#
+# USAGE:
+#   Staging (sidecar):
+#     helmfile sync -e staging
+#
+#   Production (classic):
+#     helmfile sync -e prod
+# =============================================================================
+
+# =============================================================================
+# ENVIRONNEMENTS
+# =============================================================================
+environments:
+  default:
+    values:
+      - global:
+          infra: "sidecar"
+          namespace: "yousoon-staging"
+          environment: "staging"
+  staging:
+    values:
+      - global:
+          infra: "sidecar"
+          namespace: "yousoon-staging"
+          environment: "staging"
+  prod:
+    values:
+      - global:
+          infra: "classic"
+          namespace: "yousoon-prod"
+          environment: "prod"
+
+---
+# Default values
+helmDefaults:
+  wait: true
+  timeout: 900
+  createNamespace: true
+  atomic: false
+
+# =============================================================================
+# RELEASES - YOUSOON CUSTOM CHARTS
+# =============================================================================
+releases:
+  # ===========================================================================
+  # YOUSOON PLATFORM (Umbrella Chart)
+  # ===========================================================================
+  - name: yousoon
+    namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
+    chart: ./charts/yousoon
+    values:
+      - global:
+          infra: {{ .Values | get "global.infra" "sidecar" | quote }}
+          namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
+          environment: {{ .Values | get "global.environment" "staging" }}
+      # Sub-chart activation (images not yet built for services/sites)
+      - storage:
+          enabled: true
+      - services:
+          enabled: false  # Disabled until Docker images are built
+      - sites:
+          enabled: false  # Disabled until Docker images are built
+      - monitoring:
+          enabled: true

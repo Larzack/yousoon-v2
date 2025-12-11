@@ -1,0 +1,50 @@
+# Prometheus Stack - Production overrides
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    retentionSize: 50GB
+    
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+        memory: 4Gi
+        cpu: 2000m
+    
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 100Gi
+    
+    externalLabels:
+      cluster: yousoon-production
+      env: production
+
+grafana:
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 200m
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+  
+  persistence:
+    size: 10Gi
+    storageClassName: gp3
+
+alertmanager:
+  enabled: true
+  
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 5Gi

@@ -1,0 +1,238 @@
+{{/*
+# =============================================================================
+# Yousoon Monitoring - SIDECAR MODE
+# =============================================================================
+# All monitoring tools in a single Pod with multiple containers
+# Note: Promtail is deployed separately as DaemonSet
+# =============================================================================
+*/}}
+{{- if eq .Values.global.infra "sidecar" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "yousoon-monitoring.fullname" . }}
+  labels:
+    {{- include "yousoon-monitoring.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "yousoon-monitoring.fullname" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "yousoon-monitoring.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "yousoon-monitoring.selectorLabels" . | nindent 8 }}
+      {{- with .Values.pod.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "yousoon-monitoring.fullname" . }}
+      {{- with .Values.pod.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.pod.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      containers:
+        # =====================================================================
+        # Prometheus
+        # =====================================================================
+        {{- if .Values.prometheus.enabled }}
+        - name: prometheus
+          image: {{ .Values.prometheus.image }}
+          ports:
+            - name: prometheus
+              containerPort: {{ .Values.prometheus.port }}
+              protocol: TCP
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time={{ .Values.prometheus.retention }}"
+            - "--storage.tsdb.retention.size={{ .Values.prometheus.retentionSize }}"
+            - "--web.enable-lifecycle"
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+            - name: prometheus-data
+              mountPath: /prometheus
+          resources:
+            {{- toYaml .Values.prometheus.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: {{ .Values.prometheus.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: {{ .Values.prometheus.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Grafana
+        # =====================================================================
+        {{- if .Values.grafana.enabled }}
+        - name: grafana
+          image: {{ .Values.grafana.image }}
+          ports:
+            - name: grafana
+              containerPort: {{ .Values.grafana.port }}
+              protocol: TCP
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: {{ .Values.grafana.adminUser | quote }}
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "yousoon-monitoring.fullname" . }}-secrets
+                  key: grafana-admin-password
+            - name: GF_PATHS_PROVISIONING
+              value: /etc/grafana/provisioning
+          volumeMounts:
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+            - name: grafana-provisioning
+              mountPath: /etc/grafana/provisioning
+          resources:
+            {{- toYaml .Values.grafana.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.grafana.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.grafana.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Loki
+        # =====================================================================
+        {{- if .Values.loki.enabled }}
+        - name: loki
+          image: {{ .Values.loki.image }}
+          ports:
+            - name: loki
+              containerPort: {{ .Values.loki.port }}
+              protocol: TCP
+          args:
+            - "-config.file=/etc/loki/loki-config.yaml"
+          volumeMounts:
+            - name: loki-config
+              mountPath: /etc/loki
+            - name: loki-data
+              mountPath: /loki
+          resources:
+            {{- toYaml .Values.loki.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.loki.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.loki.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Jaeger
+        # =====================================================================
+        {{- if .Values.jaeger.enabled }}
+        - name: jaeger
+          image: {{ .Values.jaeger.image }}
+          ports:
+            - name: jaeger-query
+              containerPort: {{ .Values.jaeger.ports.query }}
+              protocol: TCP
+            - name: jaeger-collect
+              containerPort: {{ .Values.jaeger.ports.collector }}
+              protocol: TCP
+            - name: jaeger-agent
+              containerPort: {{ .Values.jaeger.ports.agent }}
+              protocol: UDP
+          env:
+            - name: COLLECTOR_ZIPKIN_HOST_PORT
+              value: ":9411"
+          resources:
+            {{- toYaml .Values.jaeger.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.jaeger.ports.query }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.jaeger.ports.query }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: {{ include "yousoon-monitoring.fullname" . }}-prometheus-config
+        - name: grafana-provisioning
+          configMap:
+            name: {{ include "yousoon-monitoring.fullname" . }}-grafana-provisioning
+        - name: loki-config
+          configMap:
+            name: {{ include "yousoon-monitoring.fullname" . }}-loki-config
+
+  volumeClaimTemplates:
+    {{- if and .Values.prometheus.enabled .Values.prometheus.persistence.enabled }}
+    - metadata:
+        name: prometheus-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.prometheus.persistence.storageClass }}
+        storageClassName: {{ .Values.prometheus.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.prometheus.persistence.size }}
+    {{- end }}
+    
+    {{- if and .Values.grafana.enabled .Values.grafana.persistence.enabled }}
+    - metadata:
+        name: grafana-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.grafana.persistence.storageClass }}
+        storageClassName: {{ .Values.grafana.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.grafana.persistence.size }}
+    {{- end }}
+    
+    {{- if and .Values.loki.enabled .Values.loki.persistence.enabled }}
+    - metadata:
+        name: loki-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.loki.persistence.storageClass }}
+        storageClassName: {{ .Values.loki.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.loki.persistence.size }}
+    {{- end }}
+{{- end }}

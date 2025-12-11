@@ -1,0 +1,28 @@
+# Loki - Production overrides
+loki:
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+  
+  persistence:
+    size: 100Gi
+    storageClassName: gp3
+  
+  config:
+    limits_config:
+      reject_old_samples_max_age: 336h  # 14 jours
+      ingestion_rate_mb: 32
+      ingestion_burst_size_mb: 64
+
+promtail:
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 200m

@@ -156,6 +156,7 @@ GraphQL: urql (Partner Portal uniquement)
 Cloud: AWS (EKS)
 Région: Europe (Irlande) - RGPD
 CI/CD: GitHub Actions
+IaC: Helm + Helmfile
 Storage: AWS S3 + CloudFront
 Search: Elasticsearch
 Observability: OpenTelemetry + Jaeger + Prometheus + Loki + Grafana
@@ -163,6 +164,40 @@ Crash Reporting: Sentry (self-hosted)
 Analytics: Amplitude
 Notifications: OneSignal (Push) + AWS SNS (Email/SMS)
 ```
+
+### Déploiement Infrastructure (Helmfile)
+
+L'infrastructure est déployée via **Helmfile** :
+
+```
+deploy/helm/
+├── helmfile.yaml                    # Orchestration principale
+├── secrets-README.md                # Instructions secrets
+└── values/
+    ├── mongodb.yaml
+    ├── redis.yaml
+    ├── nats.yaml
+    ├── elasticsearch.yaml
+    ├── prometheus-stack.yaml
+    ├── loki.yaml
+    └── jaeger.yaml
+```
+
+**Composants déployés** :
+| Composant | Chart Helm | Usage |
+|-----------|-----------|-------|
+| MongoDB | bitnami/mongodb | Base de données principale |
+| Redis | bitnami/redis | Cache et sessions |
+| NATS | nats/nats | Messaging (events) |
+| Elasticsearch | elastic/elasticsearch | Recherche full-text |
+| Prometheus + Grafana | prometheus-community/kube-prometheus-stack | Monitoring |
+| Loki | grafana/loki-stack | Agrégation de logs |
+| Jaeger | jaegertracing/jaeger | Tracing distribué |
+
+**Workflow CI/CD** : `.github/workflows/helmfile-deploy.yml`
+- Branche `staging` → Namespace `yousoon-staging` → Mode `sidecar` (4 pods)
+- Branche `prod` → Namespace `yousoon-prod` → Mode `classic` (~18 pods)
+- Déploiement automatique sur push dans `deploy/helm/`
 
 ---
 
@@ -283,9 +318,11 @@ Engagement:  Favorite, Review
 ## 📁 Structure des Fichiers
 
 ```
-yousoon-client/
+yousoon-v2/
 ├── .github/
-│   └── copilot-instructions.md     # CE FICHIER
+│   ├── copilot-instructions.md     # CE FICHIER
+│   └── workflows/
+│       └── helmfile-deploy.yml     # CI/CD Infrastructure
 ├── docs/
 │   └── prompts/
 │       ├── DATA_MODEL.md           # Schémas MongoDB
@@ -294,10 +331,17 @@ yousoon-client/
 │       │   └── PROMPT.md           # Specs Flutter
 │       ├── site-partenaires/
 │       │   └── PROMPT.md           # Specs React
+│       ├── site-vitrine/
+│       │   └── PROMPT.md           # Specs Next.js
 │       ├── admin/
 │       │   └── PROMPT.md           # Specs Admin
 │       └── backend/
 │           └── ARCHITECTURE.md     # Architecture DDD détaillée
+├── deploy/
+│   └── helm/                       # Helmfile + values
+│       ├── helmfile.yaml
+│       ├── secrets-README.md
+│       └── values/
 └── apps/
     ├── mobile/                     # Flutter App
     ├── partners/                   # React Partner Site (business.yousoon.com)

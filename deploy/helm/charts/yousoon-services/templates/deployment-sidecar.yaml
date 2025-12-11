@@ -1,0 +1,304 @@
+{{/*
+# =============================================================================
+# Yousoon Services - SIDECAR MODE
+# =============================================================================
+# All backend services in a single Pod with multiple containers
+# =============================================================================
+*/}}
+{{- if eq .Values.global.infra "sidecar" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      {{- include "yousoon-services.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "yousoon-services.selectorLabels" . | nindent 8 }}
+      {{- with .Values.pod.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.pod.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.pod.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.pod.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      containers:
+        # =====================================================================
+        # Identity Service
+        # =====================================================================
+        {{- if .Values.identity.enabled }}
+        - name: identity
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.identity.image.repository "tag" .Values.identity.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-identity
+              containerPort: {{ .Values.identity.port }}
+              protocol: TCP
+            - name: grpc-identity
+              containerPort: {{ .Values.identity.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.identity.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.identity.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.identity.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.identity.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Partner Service
+        # =====================================================================
+        {{- if .Values.partner.enabled }}
+        - name: partner
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.partner.image.repository "tag" .Values.partner.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-partner
+              containerPort: {{ .Values.partner.port }}
+              protocol: TCP
+            - name: grpc-partner
+              containerPort: {{ .Values.partner.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.partner.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.partner.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.partner.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.partner.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Discovery Service
+        # =====================================================================
+        {{- if .Values.discovery.enabled }}
+        - name: discovery
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.discovery.image.repository "tag" .Values.discovery.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-discovery
+              containerPort: {{ .Values.discovery.port }}
+              protocol: TCP
+            - name: grpc-discovery
+              containerPort: {{ .Values.discovery.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.discovery.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.discovery.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.discovery.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.discovery.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Booking Service
+        # =====================================================================
+        {{- if .Values.booking.enabled }}
+        - name: booking
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.booking.image.repository "tag" .Values.booking.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-booking
+              containerPort: {{ .Values.booking.port }}
+              protocol: TCP
+            - name: grpc-booking
+              containerPort: {{ .Values.booking.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.booking.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.booking.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.booking.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.booking.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Engagement Service
+        # =====================================================================
+        {{- if .Values.engagement.enabled }}
+        - name: engagement
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.engagement.image.repository "tag" .Values.engagement.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-engage
+              containerPort: {{ .Values.engagement.port }}
+              protocol: TCP
+            - name: grpc-engage
+              containerPort: {{ .Values.engagement.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.engagement.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.engagement.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.engagement.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.engagement.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Notification Service
+        # =====================================================================
+        {{- if .Values.notification.enabled }}
+        - name: notification
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.notification.image.repository "tag" .Values.notification.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-notif
+              containerPort: {{ .Values.notification.port }}
+              protocol: TCP
+            - name: grpc-notif
+              containerPort: {{ .Values.notification.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.notification.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.notification.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.notification.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.notification.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Apollo Router (GraphQL Gateway)
+        # =====================================================================
+        {{- if .Values.router.enabled }}
+        - name: router
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.router.image.repository "tag" .Values.router.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-router
+              containerPort: {{ .Values.router.port }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.router.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            # Subgraph URLs pointing to localhost (sidecar mode)
+            - name: IDENTITY_SERVICE_URL
+              value: "http://localhost:{{ .Values.identity.port }}/graphql"
+            - name: PARTNER_SERVICE_URL
+              value: "http://localhost:{{ .Values.partner.port }}/graphql"
+            - name: DISCOVERY_SERVICE_URL
+              value: "http://localhost:{{ .Values.discovery.port }}/graphql"
+            - name: BOOKING_SERVICE_URL
+              value: "http://localhost:{{ .Values.booking.port }}/graphql"
+            - name: ENGAGEMENT_SERVICE_URL
+              value: "http://localhost:{{ .Values.engagement.port }}/graphql"
+            - name: NOTIFICATION_SERVICE_URL
+              value: "http://localhost:{{ .Values.notification.port }}/graphql"
+          resources:
+            {{- toYaml .Values.router.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.router.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.router.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+{{- end }}

@@ -1,0 +1,129 @@
+# =============================================================================
+# Yousoon Monitoring - Default Values
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+
+# =============================================================================
+# Prometheus
+# =============================================================================
+prometheus:
+  enabled: true
+  image: prom/prometheus:v2.48.0
+  port: 9090
+  
+  # Retention
+  retention: 7d
+  retentionSize: 5GB
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+# =============================================================================
+# Grafana
+# =============================================================================
+grafana:
+  enabled: true
+  image: grafana/grafana:10.2.0
+  port: 3000
+  
+  # Admin credentials (change in production!)
+  adminUser: admin
+  # adminPassword: Set via secret
+  
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+  
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+
+  ingress:
+    enabled: false
+    host: grafana.yousoon.com
+
+# =============================================================================
+# Loki (Logs)
+# =============================================================================
+loki:
+  enabled: true
+  image: grafana/loki:2.9.2
+  port: 3100
+  
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+  
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+
+# =============================================================================
+# Promtail (Log collector)
+# =============================================================================
+promtail:
+  enabled: true
+  image: grafana/promtail:2.9.2
+  
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "25m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+# =============================================================================
+# Jaeger (Tracing)
+# =============================================================================
+jaeger:
+  enabled: true
+  image: jaegertracing/all-in-one:1.52
+  
+  ports:
+    query: 16686
+    collector: 14268
+    agent: 6831
+  
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+  
+  persistence:
+    enabled: false  # In-memory for staging
+
+# =============================================================================
+# Pod Configuration (for sidecar mode)
+# =============================================================================
+pod:
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

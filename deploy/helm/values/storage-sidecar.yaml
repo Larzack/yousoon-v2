@@ -1,0 +1,187 @@
+# =============================================================================
+# Yousoon Storage - Sidecar Mode Values
+# =============================================================================
+# Mode sidecar: Tous les services storage dans un seul Pod
+# Recommandé pour: staging, développement, environnements à ressources limitées
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+  imagePullSecrets: []
+
+# =============================================================================
+# Sidecar Pod Configuration
+# =============================================================================
+sidecar:
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8222"
+  podSecurityContext:
+    fsGroup: 1000
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+
+# =============================================================================
+# ServiceAccount
+# =============================================================================
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# =============================================================================
+# MongoDB Configuration
+# =============================================================================
+mongodb:
+  enabled: true
+  image:
+    repository: mongo
+    tag: "7.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 27017
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  auth:
+    enabled: true
+    rootUsername: admin
+    existingSecret: "yousoon-storage-secrets"
+    secretKeys:
+      rootPassword: mongodb-root-password
+    database: yousoon
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    podSecurityContext: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+# =============================================================================
+# Redis Configuration
+# =============================================================================
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 6379
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  auth:
+    enabled: true
+    existingSecret: "yousoon-storage-secrets"
+    secretKeys:
+      password: redis-password
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    podSecurityContext: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+# =============================================================================
+# NATS Configuration
+# =============================================================================
+nats:
+  enabled: true
+  image:
+    repository: nats
+    tag: "2.10-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 4222
+    monitorPort: 8222
+  jetstream:
+    enabled: true
+    memorySize: 128Mi
+    fileSize: 512Mi
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    podSecurityContext: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+# =============================================================================
+# Elasticsearch Configuration
+# =============================================================================
+elasticsearch:
+  enabled: true
+  image:
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    tag: "8.11.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 9200
+    transportPort: 9300
+  singleNode: true
+  replicas: 1
+  security:
+    enabled: false
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  javaOpts: "-Xms256m -Xmx256m"
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    podSecurityContext: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []

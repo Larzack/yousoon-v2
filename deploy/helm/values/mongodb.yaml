@@ -1,0 +1,22 @@
+# MongoDB - Production overrides
+# Configuration optimisée pour la production
+
+# Passer en ReplicaSet pour HA (optionnel, désactivé pour commencer)
+# architecture: replicaset
+# replicaCount: 3
+
+resources:
+  requests:
+    memory: 1Gi
+    cpu: 500m
+  limits:
+    memory: 4Gi
+    cpu: 2000m
+
+persistence:
+  size: 50Gi
+  storageClass: gp3
+
+# Backup avec Velero ou mongodump
+# backup:
+#   enabled: true

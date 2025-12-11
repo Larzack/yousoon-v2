@@ -1,0 +1,19 @@
+# =============================================================================
+# Yousoon Services Chart
+# =============================================================================
+# Déploie les microservices backend:
+# - identity-service
+# - partner-service
+# - discovery-service
+# - booking-service
+# - engagement-service
+# - notification-service
+# - router (Apollo Router)
+# =============================================================================
+
+apiVersion: v2
+name: yousoon-services
+description: Yousoon Backend Services (Microservices + Apollo Router)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

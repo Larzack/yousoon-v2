@@ -1,0 +1,126 @@
+{{/*
+# =============================================================================
+# Yousoon Sites - Ingress
+# =============================================================================
+*/}}
+
+{{- if eq .Values.global.infra "sidecar" }}
+# =============================================================================
+# SIDECAR MODE: Single Ingress routing to different ports
+# =============================================================================
+
+{{- if or .Values.partners.ingress.enabled .Values.siteweb.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    {{- if .Values.partners.ingress.enabled }}
+    - hosts:
+        - {{ .Values.partners.ingress.host }}
+      secretName: partners-tls
+    {{- end }}
+    {{- if .Values.siteweb.ingress.enabled }}
+    - hosts:
+        - {{ .Values.siteweb.ingress.host }}
+      secretName: siteweb-tls
+    {{- end }}
+  rules:
+    {{- if .Values.partners.ingress.enabled }}
+    - host: {{ .Values.partners.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yousoon-sites.fullname" . }}
+                port:
+                  name: partners
+    {{- end }}
+    {{- if .Values.siteweb.ingress.enabled }}
+    - host: {{ .Values.siteweb.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yousoon-sites.fullname" . }}
+                port:
+                  name: siteweb
+    {{- end }}
+{{- end }}
+
+{{- else }}
+# =============================================================================
+# CLASSIC MODE: Separate Ingress for each site
+# =============================================================================
+
+{{- if and .Values.partners.enabled .Values.partners.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-partners
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+  {{- with .Values.partners.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.partners.ingress.host }}
+      secretName: partners-tls
+  rules:
+    - host: {{ .Values.partners.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yousoon-sites.fullname" . }}-partners
+                port:
+                  name: http
+{{- end }}
+
+{{- if and .Values.siteweb.enabled .Values.siteweb.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-siteweb
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+  {{- with .Values.siteweb.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  tls:
+    - hosts:
+        - {{ .Values.siteweb.ingress.host }}
+      secretName: siteweb-tls
+  rules:
+    - host: {{ .Values.siteweb.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yousoon-sites.fullname" . }}-siteweb
+                port:
+                  name: http
+{{- end }}
+
+{{- end }}

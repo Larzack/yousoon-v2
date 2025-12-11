@@ -1,0 +1,35 @@
+# =============================================================================
+# Yousoon Umbrella Chart
+# =============================================================================
+# Déploie toute la stack Yousoon
+# Mode sidecar: Multi-container pods (économise les Pods)
+# Mode classic: Un container par pod (standard)
+# =============================================================================
+
+apiVersion: v2
+name: yousoon
+description: Yousoon Platform - Complete Stack Deployment
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: yousoon-storage
+    version: "0.1.0"
+    repository: "file://../yousoon-storage"
+    condition: storage.enabled
+
+  - name: yousoon-services
+    version: "0.1.0"
+    repository: "file://../yousoon-services"
+    condition: services.enabled
+
+  - name: yousoon-sites
+    version: "0.1.0"
+    repository: "file://../yousoon-sites"
+    condition: sites.enabled
+
+  - name: yousoon-monitoring
+    version: "0.1.0"
+    repository: "file://../yousoon-monitoring"
+    condition: monitoring.enabled

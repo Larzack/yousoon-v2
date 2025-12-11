@@ -1,0 +1,267 @@
+{{/*
+# =============================================================================
+# Yousoon Services - Kubernetes Services
+# =============================================================================
+*/}}
+
+{{- if eq .Values.global.infra "sidecar" }}
+# =============================================================================
+# SIDECAR MODE: Single Service with multiple ports
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    # Router is the main entry point
+    {{- if .Values.router.enabled }}
+    - name: graphql
+      port: {{ .Values.router.port }}
+      targetPort: http-router
+      protocol: TCP
+    {{- end }}
+    # Individual services (for internal gRPC calls)
+    {{- if .Values.identity.enabled }}
+    - name: identity-http
+      port: {{ .Values.identity.port }}
+      targetPort: http-identity
+      protocol: TCP
+    - name: identity-grpc
+      port: {{ .Values.identity.grpcPort }}
+      targetPort: grpc-identity
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.partner.enabled }}
+    - name: partner-http
+      port: {{ add .Values.partner.port 10 }}
+      targetPort: http-partner
+      protocol: TCP
+    - name: partner-grpc
+      port: {{ add .Values.partner.grpcPort 10 }}
+      targetPort: grpc-partner
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.discovery.enabled }}
+    - name: discovery-http
+      port: {{ add .Values.discovery.port 20 }}
+      targetPort: http-discovery
+      protocol: TCP
+    - name: discovery-grpc
+      port: {{ add .Values.discovery.grpcPort 20 }}
+      targetPort: grpc-discovery
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.booking.enabled }}
+    - name: booking-http
+      port: {{ add .Values.booking.port 30 }}
+      targetPort: http-booking
+      protocol: TCP
+    - name: booking-grpc
+      port: {{ add .Values.booking.grpcPort 30 }}
+      targetPort: grpc-booking
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.engagement.enabled }}
+    - name: engagement-http
+      port: {{ add .Values.engagement.port 40 }}
+      targetPort: http-engage
+      protocol: TCP
+    - name: engagement-grpc
+      port: {{ add .Values.engagement.grpcPort 40 }}
+      targetPort: grpc-engage
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.notification.enabled }}
+    - name: notification-http
+      port: {{ add .Values.notification.port 50 }}
+      targetPort: http-notif
+      protocol: TCP
+    - name: notification-grpc
+      port: {{ add .Values.notification.grpcPort 50 }}
+      targetPort: grpc-notif
+      protocol: TCP
+    {{- end }}
+  selector:
+    {{- include "yousoon-services.selectorLabels" . | nindent 4 }}
+
+{{- else }}
+# =============================================================================
+# CLASSIC MODE: Separate Service for each component
+# =============================================================================
+
+{{- if .Values.identity.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-identity
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: identity
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.identity.port }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.identity.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.partner.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-partner
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: partner
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.partner.port }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.partner.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: partner
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.discovery.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-discovery
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: discovery
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.discovery.port }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.discovery.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: discovery
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.booking.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-booking
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: booking
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.booking.port }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.booking.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: booking
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.engagement.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-engagement
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: engagement
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.engagement.port }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.engagement.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: engagement
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.notification.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-notification
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: notification
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.notification.port }}
+      targetPort: http
+      protocol: TCP
+    - name: grpc
+      port: {{ .Values.notification.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: notification
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.router.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-router
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: router
+spec:
+  type: ClusterIP
+  ports:
+    - name: graphql
+      port: {{ .Values.router.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: router
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- end }}

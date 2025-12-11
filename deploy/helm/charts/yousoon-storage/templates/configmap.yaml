@@ -1,0 +1,129 @@
+{{/*
+# =============================================================================
+# Yousoon Storage - ConfigMaps
+# =============================================================================
+*/}}
+
+# =============================================================================
+# Unified Storage Configuration (for sidecar mode)
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}-config
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+data:
+  {{- if .Values.nats.enabled }}
+  # NATS Configuration
+  nats.conf: |
+    # NATS Server Configuration
+    port: {{ .Values.nats.service.port | default 4222 }}
+    
+    # Cluster
+    cluster {
+      port: 6222
+    }
+    
+    # HTTP Monitoring
+    http_port: {{ .Values.nats.service.monitorPort | default 8222 }}
+    
+    {{- if .Values.nats.jetstream.enabled }}
+    # JetStream
+    jetstream {
+      store_dir: /data/jetstream
+      max_memory_store: {{ .Values.nats.jetstream.memorySize }}
+      max_file_store: {{ .Values.nats.jetstream.fileSize }}
+    }
+    {{- end }}
+    
+    # Logging
+    debug: false
+    trace: false
+    logtime: true
+  {{- end }}
+
+  {{- if .Values.mongodb.enabled }}
+  # MongoDB Init Script
+  mongo-init.js: |
+    // MongoDB Initialization Script
+    // Create application databases and users
+    
+    db = db.getSiblingDB('admin');
+    
+    // Create identity database
+    db = db.getSiblingDB('identity_db');
+    db.createCollection('init');
+    
+    // Create partner database  
+    db = db.getSiblingDB('partner_db');
+    db.createCollection('init');
+    
+    // Create discovery database
+    db = db.getSiblingDB('discovery_db');
+    db.createCollection('init');
+    
+    // Create booking database
+    db = db.getSiblingDB('booking_db');
+    db.createCollection('init');
+    
+    // Create engagement database
+    db = db.getSiblingDB('engagement_db');
+    db.createCollection('init');
+    
+    // Create notification database
+    db = db.getSiblingDB('notification_db');
+    db.createCollection('init');
+    
+    print('MongoDB initialization complete');
+  {{- end }}
+
+  {{- if .Values.elasticsearch.enabled }}
+  # Elasticsearch Configuration
+  elasticsearch.yml: |
+    cluster.name: yousoon-cluster
+    node.name: ${HOSTNAME}
+    network.host: 0.0.0.0
+    discovery.type: single-node
+    xpack.security.enabled: false
+    path.data: /usr/share/elasticsearch/data
+  {{- end }}
+
+---
+# =============================================================================
+# NATS Configuration (for classic mode - separate configmap)
+# =============================================================================
+{{- if .Values.nats.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}-nats-config
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+data:
+  nats.conf: |
+    # NATS Server Configuration
+    port: {{ .Values.nats.port }}
+    
+    # Cluster
+    cluster {
+      port: {{ .Values.nats.clusterPort }}
+    }
+    
+    # HTTP Monitoring
+    http_port: {{ .Values.nats.monitorPort }}
+    
+    {{- if .Values.nats.jetstream.enabled }}
+    # JetStream
+    jetstream {
+      store_dir: /data/jetstream
+      max_memory_store: {{ .Values.nats.jetstream.memorySize }}
+      max_file_store: {{ .Values.nats.jetstream.fileSize }}
+    }
+    {{- end }}
+    
+    # Logging
+    debug: false
+    trace: false
+    logtime: true
+{{- end }}

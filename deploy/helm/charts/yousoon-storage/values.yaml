@@ -1,0 +1,201 @@
+# =============================================================================
+# Yousoon Storage - Default Values
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+  imagePullSecrets: []
+
+# =============================================================================
+# Sidecar Mode Pod Configuration
+# =============================================================================
+sidecar:
+  podAnnotations: {}
+  podSecurityContext: {}
+  nodeSelector: {}
+  affinity: {}
+  tolerations: []
+
+# =============================================================================
+# ServiceAccount Configuration
+# =============================================================================
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# =============================================================================
+# MongoDB Configuration
+# =============================================================================
+mongodb:
+  enabled: true
+  image:
+    repository: mongo
+    tag: "7.0"
+    pullPolicy: IfNotPresent
+  
+  # Service
+  service:
+    type: ClusterIP
+    port: 27017
+  
+  # Resources
+  resources: {}
+  
+  # Persistence
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  
+  # Auth
+  auth:
+    enabled: true
+    rootUsername: admin
+    existingSecret: ""
+    secretKeys:
+      rootPassword: mongodb-root-password
+    database: yousoon
+  
+  # Classic mode specific
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    podSecurityContext: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+# =============================================================================
+# Redis Configuration
+# =============================================================================
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+  
+  # Service
+  service:
+    type: ClusterIP
+    port: 6379
+  
+  # Resources
+  resources: {}
+  
+  # Persistence
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  
+  # Auth
+  auth:
+    enabled: true
+    existingSecret: ""
+    secretKeys:
+      password: redis-password
+  
+  # Classic mode specific
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    podSecurityContext: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+# =============================================================================
+# NATS Configuration
+# =============================================================================
+nats:
+  enabled: true
+  image:
+    repository: nats
+    tag: "2.10-alpine"
+    pullPolicy: IfNotPresent
+  
+  # Service
+  service:
+    type: ClusterIP
+    port: 4222
+    monitorPort: 8222
+  
+  # JetStream
+  jetstream:
+    enabled: true
+    memorySize: 256Mi
+    fileSize: 1Gi
+  
+  # Resources
+  resources: {}
+  
+  # Persistence
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  
+  # Classic mode specific
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    podSecurityContext: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+# =============================================================================
+# Elasticsearch Configuration
+# =============================================================================
+elasticsearch:
+  enabled: true
+  image:
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    tag: "8.11.0"
+    pullPolicy: IfNotPresent
+  
+  # Service
+  service:
+    type: ClusterIP
+    httpPort: 9200
+    transportPort: 9300
+  
+  # Single node mode
+  singleNode: true
+  replicas: 1
+  
+  # Disable security for simplicity (enable in production)
+  security:
+    enabled: false
+  
+  # Resources
+  resources: {}
+  
+  # Persistence
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  
+  # JVM Heap
+  javaOpts: "-Xms256m -Xmx256m"
+  
+  # Classic mode specific
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    podSecurityContext: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []

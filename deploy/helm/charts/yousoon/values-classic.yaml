@@ -1,0 +1,44 @@
+# =============================================================================
+# Yousoon Platform - CLASSIC MODE Values
+# =============================================================================
+# Use this values file for classic deployment mode.
+# Each component runs in its own dedicated pod.
+#
+# Usage:
+#   helm install yousoon ./charts/yousoon -f values-classic.yaml
+# =============================================================================
+
+global:
+  infra: "classic"
+  namespace: yousoon-staging
+  environment: staging
+
+# Enable all components
+storage:
+  enabled: true
+
+services:
+  enabled: true
+
+sites:
+  enabled: true
+
+monitoring:
+  enabled: true
+
+# Pass infra mode to all sub-charts
+yousoon-storage:
+  global:
+    infra: "classic"
+
+yousoon-services:
+  global:
+    infra: "classic"
+
+yousoon-sites:
+  global:
+    infra: "classic"
+
+yousoon-monitoring:
+  global:
+    infra: "classic"

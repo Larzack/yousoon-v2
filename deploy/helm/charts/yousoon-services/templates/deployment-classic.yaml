@@ -1,0 +1,419 @@
+{{/*
+# =============================================================================
+# Yousoon Services - CLASSIC MODE
+# =============================================================================
+# Each service in its own Pod (standard Kubernetes pattern)
+# =============================================================================
+*/}}
+{{- if eq .Values.global.infra "classic" }}
+
+# =============================================================================
+# Identity Service Deployment
+# =============================================================================
+{{- if .Values.identity.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-identity
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: identity
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: identity
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: identity
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: identity
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.identity.image.repository "tag" .Values.identity.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.identity.port }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.identity.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.identity.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.identity.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.identity.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.identity.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+# =============================================================================
+# Partner Service Deployment
+# =============================================================================
+{{- if .Values.partner.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-partner
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: partner
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: partner
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: partner
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: partner
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.partner.image.repository "tag" .Values.partner.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.partner.port }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.partner.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.partner.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.partner.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.partner.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.partner.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+# =============================================================================
+# Discovery Service Deployment
+# =============================================================================
+{{- if .Values.discovery.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-discovery
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: discovery
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: discovery
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: discovery
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: discovery
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.discovery.image.repository "tag" .Values.discovery.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.discovery.port }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.discovery.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.discovery.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.discovery.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.discovery.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.discovery.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+# =============================================================================
+# Booking Service Deployment
+# =============================================================================
+{{- if .Values.booking.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-booking
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: booking
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: booking
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: booking
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: booking
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.booking.image.repository "tag" .Values.booking.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.booking.port }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.booking.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.booking.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.booking.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.booking.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.booking.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+# =============================================================================
+# Engagement Service Deployment
+# =============================================================================
+{{- if .Values.engagement.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-engagement
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: engagement
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: engagement
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: engagement
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: engagement
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.engagement.image.repository "tag" .Values.engagement.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.engagement.port }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.engagement.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.engagement.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.engagement.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.engagement.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.engagement.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+# =============================================================================
+# Notification Service Deployment
+# =============================================================================
+{{- if .Values.notification.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-notification
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: notification
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: notification
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: notification
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: notification
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.notification.image.repository "tag" .Values.notification.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.notification.port }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.notification.grpcPort }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.notification.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.notification.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.notification.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.notification.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+# =============================================================================
+# Apollo Router Deployment
+# =============================================================================
+{{- if .Values.router.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-router
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: router
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: router
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: router
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: router
+          image: {{ include "yousoon-services.image" (dict "Values" .Values "repository" .Values.router.image.repository "tag" .Values.router.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.router.port }}
+              protocol: TCP
+          env:
+            {{- include "yousoon-services.commonEnv" . | nindent 12 }}
+            {{- range .Values.router.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            # Subgraph URLs pointing to service names (classic mode)
+            - name: IDENTITY_SERVICE_URL
+              value: "http://{{ include "yousoon-services.fullname" . }}-identity:{{ .Values.identity.port }}/graphql"
+            - name: PARTNER_SERVICE_URL
+              value: "http://{{ include "yousoon-services.fullname" . }}-partner:{{ .Values.partner.port }}/graphql"
+            - name: DISCOVERY_SERVICE_URL
+              value: "http://{{ include "yousoon-services.fullname" . }}-discovery:{{ .Values.discovery.port }}/graphql"
+            - name: BOOKING_SERVICE_URL
+              value: "http://{{ include "yousoon-services.fullname" . }}-booking:{{ .Values.booking.port }}/graphql"
+            - name: ENGAGEMENT_SERVICE_URL
+              value: "http://{{ include "yousoon-services.fullname" . }}-engagement:{{ .Values.engagement.port }}/graphql"
+            - name: NOTIFICATION_SERVICE_URL
+              value: "http://{{ include "yousoon-services.fullname" . }}-notification:{{ .Values.notification.port }}/graphql"
+          resources:
+            {{- toYaml .Values.router.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.router.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.router.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+{{- end }}
+
+{{- end }}

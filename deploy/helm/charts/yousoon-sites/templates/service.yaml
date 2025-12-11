@@ -1,0 +1,109 @@
+{{/*
+# =============================================================================
+# Yousoon Sites - Kubernetes Services
+# =============================================================================
+*/}}
+
+{{- if eq .Values.global.infra "sidecar" }}
+# =============================================================================
+# SIDECAR MODE: Single Service with multiple ports
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    {{- if .Values.admin.enabled }}
+    - name: admin
+      port: 8081
+      targetPort: http-admin
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.partners.enabled }}
+    - name: partners
+      port: 8082
+      targetPort: http-partners
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.siteweb.enabled }}
+    - name: siteweb
+      port: 8083
+      targetPort: http-siteweb
+      protocol: TCP
+    {{- end }}
+  selector:
+    {{- include "yousoon-sites.selectorLabels" . | nindent 4 }}
+
+{{- else }}
+# =============================================================================
+# CLASSIC MODE: Separate Service for each site
+# =============================================================================
+
+{{- if .Values.admin.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-admin
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+    app.kubernetes.io/component: admin
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.admin.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: admin
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.partners.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-partners
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+    app.kubernetes.io/component: partners
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.partners.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: partners
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- if .Values.siteweb.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-siteweb
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+    app.kubernetes.io/component: siteweb
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.siteweb.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: siteweb
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{- end }}

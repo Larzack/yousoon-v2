@@ -1,0 +1,138 @@
+{{/*
+# =============================================================================
+# Yousoon Sites - SIDECAR MODE
+# =============================================================================
+# All web sites in a single Pod with multiple containers
+# =============================================================================
+*/}}
+{{- if eq .Values.global.infra "sidecar" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.common.replicas }}
+  selector:
+    matchLabels:
+      {{- include "yousoon-sites.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "yousoon-sites.selectorLabels" . | nindent 8 }}
+      {{- with .Values.pod.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.pod.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.pod.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.pod.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      containers:
+        # =====================================================================
+        # Admin Backoffice
+        # =====================================================================
+        {{- if .Values.admin.enabled }}
+        - name: admin
+          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.admin.image.repository "tag" .Values.admin.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-admin
+              containerPort: {{ .Values.admin.port }}
+              protocol: TCP
+          env:
+            {{- range .Values.admin.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.admin.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.admin.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.admin.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Partners Portal
+        # =====================================================================
+        {{- if .Values.partners.enabled }}
+        - name: partners
+          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.partners.image.repository "tag" .Values.partners.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-partners
+              containerPort: {{ .Values.partners.port }}
+              protocol: TCP
+          env:
+            {{- range .Values.partners.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.partners.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.partners.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.partners.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Site Vitrine
+        # =====================================================================
+        {{- if .Values.siteweb.enabled }}
+        - name: siteweb
+          image: {{ include "yousoon-sites.image" (dict "Values" .Values "repository" .Values.siteweb.image.repository "tag" .Values.siteweb.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http-siteweb
+              containerPort: {{ .Values.siteweb.port }}
+              protocol: TCP
+          env:
+            {{- range .Values.siteweb.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.siteweb.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.siteweb.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.siteweb.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+{{- end }}

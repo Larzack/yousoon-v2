@@ -1,0 +1,44 @@
+# =============================================================================
+# Yousoon Platform - SIDECAR MODE Values
+# =============================================================================
+# Use this values file for sidecar deployment mode.
+# All related components are grouped in single pods.
+#
+# Usage:
+#   helm install yousoon ./charts/yousoon -f values-sidecar.yaml
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+  environment: staging
+
+# Enable all components
+storage:
+  enabled: true
+
+services:
+  enabled: true
+
+sites:
+  enabled: true
+
+monitoring:
+  enabled: true
+
+# Pass infra mode to all sub-charts
+yousoon-storage:
+  global:
+    infra: "sidecar"
+
+yousoon-services:
+  global:
+    infra: "sidecar"
+
+yousoon-sites:
+  global:
+    infra: "sidecar"
+
+yousoon-monitoring:
+  global:
+    infra: "sidecar"

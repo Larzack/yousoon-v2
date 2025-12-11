@@ -1,0 +1,310 @@
+{{- if eq (include "yousoon-storage.mode" .) "sidecar" }}
+# =============================================================================
+# SIDECAR MODE: All storage containers in a single pod
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  serviceName: {{ include "yousoon-storage.fullname" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "yousoon-storage.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: storage
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.sidecar.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "yousoon-storage.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: storage
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "yousoon-storage.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.sidecar.podSecurityContext | nindent 8 }}
+      
+      initContainers:
+        # Fix permissions for Elasticsearch
+        - name: fix-permissions
+          image: busybox:1.36
+          command: ['sh', '-c', 'chown -R 1000:1000 /data/elasticsearch']
+          volumeMounts:
+            - name: elasticsearch-data
+              mountPath: /data/elasticsearch
+          securityContext:
+            runAsUser: 0
+      
+      containers:
+        # =====================================================================
+        # MongoDB Container
+        # =====================================================================
+        {{- if .Values.mongodb.enabled }}
+        - name: mongodb
+          image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
+          imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          ports:
+            - name: mongodb
+              containerPort: 27017
+              protocol: TCP
+          env:
+            {{- if .Values.mongodb.auth.enabled }}
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: {{ .Values.mongodb.auth.rootUsername | quote }}
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mongodb.auth.existingSecret | default (printf "%s-secrets" (include "yousoon-storage.fullname" .)) }}
+                  key: {{ .Values.mongodb.auth.secretKeys.rootPassword }}
+            {{- end }}
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
+            - name: config
+              mountPath: /docker-entrypoint-initdb.d/mongo-init.js
+              subPath: mongo-init.js
+          resources:
+            {{- toYaml .Values.mongodb.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+        {{- end }}
+
+        # =====================================================================
+        # Redis Container
+        # =====================================================================
+        {{- if .Values.redis.enabled }}
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          command:
+            - redis-server
+            - /etc/redis/redis.conf
+            {{- if .Values.redis.auth.enabled }}
+            - --requirepass
+            - $(REDIS_PASSWORD)
+            {{- end }}
+          env:
+            {{- if .Values.redis.auth.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.redis.auth.existingSecret | default (printf "%s-secrets" (include "yousoon-storage.fullname" .)) }}
+                  key: {{ .Values.redis.auth.secretKeys.password }}
+            {{- end }}
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/redis/redis.conf
+              subPath: redis.conf
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 3
+        {{- end }}
+
+        # =====================================================================
+        # NATS Container
+        # =====================================================================
+        {{- if .Values.nats.enabled }}
+        - name: nats
+          image: "{{ .Values.nats.image.repository }}:{{ .Values.nats.image.tag }}"
+          imagePullPolicy: {{ .Values.nats.image.pullPolicy }}
+          ports:
+            - name: client
+              containerPort: 4222
+              protocol: TCP
+            - name: monitor
+              containerPort: 8222
+              protocol: TCP
+          args:
+            - --config
+            - /etc/nats/nats.conf
+          volumeMounts:
+            - name: nats-data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/nats/nats.conf
+              subPath: nats.conf
+          resources:
+            {{- toYaml .Values.nats.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
+
+        # =====================================================================
+        # Elasticsearch Container
+        # =====================================================================
+        {{- if .Values.elasticsearch.enabled }}
+        - name: elasticsearch
+          image: "{{ .Values.elasticsearch.image.repository }}:{{ .Values.elasticsearch.image.tag }}"
+          imagePullPolicy: {{ .Values.elasticsearch.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+            - name: transport
+              containerPort: 9300
+              protocol: TCP
+          env:
+            - name: ES_JAVA_OPTS
+              value: {{ .Values.elasticsearch.javaOpts | quote }}
+            {{- if .Values.elasticsearch.singleNode }}
+            - name: discovery.type
+              value: single-node
+            {{- end }}
+            {{- if not .Values.elasticsearch.security.enabled }}
+            - name: xpack.security.enabled
+              value: "false"
+            {{- end }}
+          volumeMounts:
+            - name: elasticsearch-data
+              mountPath: /usr/share/elasticsearch/data
+            - name: config
+              mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+              subPath: elasticsearch.yml
+          resources:
+            {{- toYaml .Values.elasticsearch.resources | nindent 12 }}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+          livenessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?wait_for_status=yellow
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 5
+        {{- end }}
+
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "yousoon-storage.fullname" . }}-config
+
+      {{- with .Values.sidecar.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sidecar.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.sidecar.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+  volumeClaimTemplates:
+    {{- if .Values.mongodb.enabled }}
+    - metadata:
+        name: mongodb-data
+      spec:
+        accessModes: {{ .Values.mongodb.persistence.accessModes }}
+        {{- if .Values.mongodb.persistence.storageClass }}
+        storageClassName: {{ .Values.mongodb.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.mongodb.persistence.size }}
+    {{- end }}
+    
+    {{- if .Values.redis.enabled }}
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: {{ .Values.redis.persistence.accessModes }}
+        {{- if .Values.redis.persistence.storageClass }}
+        storageClassName: {{ .Values.redis.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.redis.persistence.size }}
+    {{- end }}
+    
+    {{- if .Values.nats.enabled }}
+    - metadata:
+        name: nats-data
+      spec:
+        accessModes: {{ .Values.nats.persistence.accessModes }}
+        {{- if .Values.nats.persistence.storageClass }}
+        storageClassName: {{ .Values.nats.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.nats.persistence.size }}
+    {{- end }}
+    
+    {{- if .Values.elasticsearch.enabled }}
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes: {{ .Values.elasticsearch.persistence.accessModes }}
+        {{- if .Values.elasticsearch.persistence.storageClass }}
+        storageClassName: {{ .Values.elasticsearch.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.elasticsearch.persistence.size }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,90 @@
+# =============================================================================
+# Yousoon Sites - Default Values
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+  imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
+  imagePullPolicy: IfNotPresent
+
+# =============================================================================
+# Common Configuration
+# =============================================================================
+common:
+  replicas: 1
+
+# =============================================================================
+# Admin Backoffice
+# =============================================================================
+admin:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/admin
+    tag: latest
+  port: 80
+  
+  resources: {}
+
+  env:
+    - name: VITE_API_URL
+      value: "http://yousoon-services:4000/graphql"
+
+  # No ingress by default (access via port-forward only)
+  ingress:
+    enabled: false
+
+# =============================================================================
+# Partners Portal
+# =============================================================================
+partners:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/partners
+    tag: latest
+  port: 80
+  
+  resources: {}
+
+  env:
+    - name: VITE_API_URL
+      value: "http://yousoon-services:4000/graphql"
+
+  ingress:
+    enabled: true
+    host: business.yousoon.com
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+# =============================================================================
+# Site Vitrine (Next.js)
+# =============================================================================
+siteweb:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/siteweb
+    tag: latest
+  port: 3000
+  
+  resources: {}
+
+  env:
+    - name: NODE_ENV
+      value: production
+
+  ingress:
+    enabled: true
+    host: www.yousoon.com
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+# =============================================================================
+# Pod Configuration (for sidecar mode)
+# =============================================================================
+pod:
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

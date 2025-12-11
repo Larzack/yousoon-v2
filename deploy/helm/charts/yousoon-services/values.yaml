@@ -1,0 +1,177 @@
+# =============================================================================
+# Yousoon Services - Default Values
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+  imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
+  imagePullPolicy: IfNotPresent
+
+# =============================================================================
+# Common Service Configuration
+# =============================================================================
+common:
+  replicas: 1
+  
+  # Environment variables shared by all services
+  env:
+    - name: ENVIRONMENT
+      value: staging
+    - name: LOG_LEVEL
+      value: info
+
+# =============================================================================
+# Identity Service
+# =============================================================================
+identity:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/identity-service
+    tag: latest
+  port: 8080
+  grpcPort: 9090
+  
+  resources: {}
+
+  env:
+    - name: SERVICE_NAME
+      value: identity-service
+    - name: MONGODB_DATABASE
+      value: identity_db
+
+# =============================================================================
+# Partner Service
+# =============================================================================
+partner:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/partner-service
+    tag: latest
+  port: 8080
+  grpcPort: 9090
+  
+  resources: {}
+
+  env:
+    - name: SERVICE_NAME
+      value: partner-service
+    - name: MONGODB_DATABASE
+      value: partner_db
+
+# =============================================================================
+# Discovery Service
+# =============================================================================
+discovery:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/discovery-service
+    tag: latest
+  port: 8080
+  grpcPort: 9090
+  
+  resources: {}
+
+  env:
+    - name: SERVICE_NAME
+      value: discovery-service
+    - name: MONGODB_DATABASE
+      value: discovery_db
+
+# =============================================================================
+# Booking Service
+# =============================================================================
+booking:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/booking-service
+    tag: latest
+  port: 8080
+  grpcPort: 9090
+  
+  resources: {}
+
+  env:
+    - name: SERVICE_NAME
+      value: booking-service
+    - name: MONGODB_DATABASE
+      value: booking_db
+
+# =============================================================================
+# Engagement Service
+# =============================================================================
+engagement:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/engagement-service
+    tag: latest
+  port: 8080
+  grpcPort: 9090
+  
+  resources: {}
+
+  env:
+    - name: SERVICE_NAME
+      value: engagement-service
+    - name: MONGODB_DATABASE
+      value: engagement_db
+
+# =============================================================================
+# Notification Service
+# =============================================================================
+notification:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/notification-service
+    tag: latest
+  port: 8080
+  grpcPort: 9090
+  
+  resources: {}
+
+  env:
+    - name: SERVICE_NAME
+      value: notification-service
+    - name: MONGODB_DATABASE
+      value: notification_db
+
+# =============================================================================
+# Apollo Router (GraphQL Gateway)
+# =============================================================================
+router:
+  enabled: false  # Disabled until image is built
+  image:
+    repository: yousoon/router
+    tag: latest
+  port: 4000
+  
+  resources: {}
+
+  env:
+    - name: SERVICE_NAME
+      value: router
+    - name: APOLLO_ROUTER_SUPERGRAPH_PATH
+      value: /etc/apollo/supergraph.graphql
+
+# =============================================================================
+# Pod Configuration (for sidecar mode)
+# =============================================================================
+pod:
+  annotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# =============================================================================
+# Storage Connection (from yousoon-storage)
+# =============================================================================
+storageConnection:
+  # These will be overridden based on deployment mode
+  mongodbHost: yousoon-storage
+  mongodbPort: 27017
+  redisHost: yousoon-storage
+  redisPort: 6379
+  natsHost: yousoon-storage
+  natsPort: 4222
+  elasticsearchHost: yousoon-storage
+  elasticsearchPort: 9200

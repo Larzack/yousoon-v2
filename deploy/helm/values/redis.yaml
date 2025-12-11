@@ -1,0 +1,19 @@
+# Redis - Production overrides
+master:
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+  
+  persistence:
+    size: 10Gi
+    storageClass: gp3
+    
+  configuration: |
+    maxmemory 512mb
+    maxmemory-policy allkeys-lru
+    appendonly yes
+    appendfsync everysec

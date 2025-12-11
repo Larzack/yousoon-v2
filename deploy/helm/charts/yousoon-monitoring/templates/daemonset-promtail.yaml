@@ -1,0 +1,109 @@
+{{/*
+# =============================================================================
+# Promtail DaemonSet (Log Collector)
+# =============================================================================
+# Promtail runs on every node to collect logs
+# It's always deployed as DaemonSet regardless of sidecar/classic mode
+# =============================================================================
+*/}}
+{{- if .Values.promtail.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "yousoon-monitoring.fullname" . }}-promtail
+  labels:
+    {{- include "yousoon-monitoring.labels" . | nindent 4 }}
+    app.kubernetes.io/component: promtail
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: promtail
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: promtail
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ include "yousoon-monitoring.fullname" . }}
+      containers:
+        - name: promtail
+          image: {{ .Values.promtail.image }}
+          args:
+            - "-config.file=/etc/promtail/promtail-config.yaml"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/promtail
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+          resources:
+            {{- toYaml .Values.promtail.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "yousoon-monitoring.fullname" . }}-promtail-config
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yousoon-monitoring.fullname" . }}-promtail-config
+  labels:
+    {{- include "yousoon-monitoring.labels" . | nindent 4 }}
+data:
+  promtail-config.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    clients:
+      {{- if eq .Values.global.infra "sidecar" }}
+      - url: http://{{ include "yousoon-monitoring.fullname" . }}:{{ .Values.loki.port }}/loki/api/v1/push
+      {{- else }}
+      - url: http://{{ include "yousoon-monitoring.fullname" . }}-loki:{{ .Values.loki.port }}/loki/api/v1/push
+      {{- end }}
+
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - {{ .Values.global.namespace }}
+        pipeline_stages:
+          - docker: {}
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_node_name
+            target_label: __host__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - action: replace
+            replacement: /var/log/pods/*$1/*.log
+            separator: /
+            source_labels:
+              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+          - source_labels:
+              - __meta_kubernetes_namespace
+            target_label: namespace
+          - source_labels:
+              - __meta_kubernetes_pod_name
+            target_label: pod
+          - source_labels:
+              - __meta_kubernetes_pod_container_name
+            target_label: container
+{{- end }}

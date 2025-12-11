@@ -1,8 +1,0 @@
-# Namespace Yousoon - Tout-en-un pour commencer
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: yousoon
-  labels:
-    app.kubernetes.io/name: yousoon
-    app.kubernetes.io/part-of: yousoon-platform

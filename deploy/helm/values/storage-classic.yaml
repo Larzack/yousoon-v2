@@ -1,0 +1,216 @@
+# =============================================================================
+# Yousoon Storage - Classic Mode Values
+# =============================================================================
+# Mode classic: Un Pod séparé par service storage
+# Recommandé pour: production, haute disponibilité, scaling indépendant
+# =============================================================================
+
+global:
+  infra: "classic"
+
+# =============================================================================
+# ServiceAccount
+# =============================================================================
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# =============================================================================
+# MongoDB Configuration
+# =============================================================================
+mongodb:
+  enabled: true
+  image:
+    repository: mongo
+    tag: "7.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 27017
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  auth:
+    enabled: true
+    rootUsername: admin
+    existingSecret: "yousoon-storage-secrets"
+    secretKeys:
+      rootPassword: mongodb-root-password
+    database: yousoon
+  classic:
+    replicaCount: 1
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9216"
+    podSecurityContext:
+      fsGroup: 1000
+    nodeSelector: {}
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: mongodb
+              topologyKey: kubernetes.io/hostname
+    tolerations: []
+
+# =============================================================================
+# Redis Configuration
+# =============================================================================
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 6379
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  auth:
+    enabled: true
+    existingSecret: "yousoon-storage-secrets"
+    secretKeys:
+      password: redis-password
+  classic:
+    replicaCount: 1
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9121"
+    podSecurityContext:
+      fsGroup: 1000
+    nodeSelector: {}
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: redis
+              topologyKey: kubernetes.io/hostname
+    tolerations: []
+
+# =============================================================================
+# NATS Configuration
+# =============================================================================
+nats:
+  enabled: true
+  image:
+    repository: nats
+    tag: "2.10-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 4222
+    monitorPort: 8222
+  jetstream:
+    enabled: true
+    memorySize: 256Mi
+    fileSize: 2Gi
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  classic:
+    replicaCount: 1
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "8222"
+    podSecurityContext:
+      fsGroup: 1000
+    nodeSelector: {}
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: nats
+              topologyKey: kubernetes.io/hostname
+    tolerations: []
+
+# =============================================================================
+# Elasticsearch Configuration
+# =============================================================================
+elasticsearch:
+  enabled: true
+  image:
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    tag: "8.11.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    httpPort: 9200
+    transportPort: 9300
+  singleNode: true
+  replicas: 1
+  security:
+    enabled: false
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  javaOpts: "-Xms512m -Xmx512m"
+  classic:
+    replicaCount: 1
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9114"
+    podSecurityContext:
+      fsGroup: 1000
+    nodeSelector: {}
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: elasticsearch
+              topologyKey: kubernetes.io/hostname
+    tolerations: []

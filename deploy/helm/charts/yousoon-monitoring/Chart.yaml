@@ -1,0 +1,17 @@
+# =============================================================================
+# Yousoon Monitoring Chart
+# =============================================================================
+# Déploie la stack d'observabilité:
+# - Prometheus (métriques)
+# - Grafana (dashboards)
+# - Loki (logs)
+# - Promtail (collecte logs)
+# - Jaeger (tracing)
+# =============================================================================
+
+apiVersion: v2
+name: yousoon-monitoring
+description: Yousoon Monitoring Stack (Prometheus, Grafana, Loki, Jaeger)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

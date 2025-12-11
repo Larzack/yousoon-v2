@@ -1,0 +1,228 @@
+# =============================================================================
+# Yousoon Platform - Production Values
+# =============================================================================
+# Production configuration with classic mode and enhanced resources.
+#
+# Usage:
+#   helm install yousoon ./charts/yousoon -f values-production.yaml
+# =============================================================================
+
+global:
+  infra: "classic"
+  namespace: yousoon-production
+  environment: production
+  domain: yousoon.com
+
+# Enable all components
+storage:
+  enabled: true
+
+services:
+  enabled: true
+
+sites:
+  enabled: true
+
+monitoring:
+  enabled: true
+
+# =============================================================================
+# Storage - Production Settings
+# =============================================================================
+yousoon-storage:
+  global:
+    infra: "classic"
+    namespace: yousoon-production
+
+  mongodb:
+    enabled: true
+    replicaCount: 3
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+    persistence:
+      size: 50Gi
+
+  redis:
+    enabled: true
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+    persistence:
+      size: 10Gi
+
+  nats:
+    enabled: true
+    jetstream:
+      fileStorage:
+        size: 10Gi
+
+  elasticsearch:
+    enabled: true
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "500m"
+      limits:
+        memory: "4Gi"
+        cpu: "1000m"
+    persistence:
+      size: 50Gi
+
+# =============================================================================
+# Services - Production Settings
+# =============================================================================
+yousoon-services:
+  global:
+    infra: "classic"
+    namespace: yousoon-production
+
+  # Each service with proper replicas
+  identity:
+    enabled: true
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+  partner:
+    enabled: true
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+  discovery:
+    enabled: true
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+  booking:
+    enabled: true
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+  engagement:
+    enabled: true
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+  notification:
+    enabled: true
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+  router:
+    enabled: true
+    replicaCount: 2
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+
+# =============================================================================
+# Sites - Production Settings
+# =============================================================================
+yousoon-sites:
+  global:
+    infra: "classic"
+    namespace: yousoon-production
+
+  admin:
+    enabled: true
+    replicaCount: 2
+    ingress:
+      enabled: false  # Access via port-forward only
+
+  partners:
+    enabled: true
+    replicaCount: 2
+    ingress:
+      enabled: true
+      host: business.yousoon.com
+
+  siteweb:
+    enabled: true
+    replicaCount: 2
+    ingress:
+      enabled: true
+      host: www.yousoon.com
+
+# =============================================================================
+# Monitoring - Production Settings
+# =============================================================================
+yousoon-monitoring:
+  global:
+    infra: "classic"
+    namespace: yousoon-production
+
+  prometheus:
+    enabled: true
+    retention: 30d
+    retentionSize: 50GB
+    persistence:
+      size: 100Gi
+
+  grafana:
+    enabled: true
+    persistence:
+      size: 10Gi
+    ingress:
+      enabled: true
+      host: grafana.yousoon.com
+
+  loki:
+    enabled: true
+    persistence:
+      size: 50Gi
+
+  jaeger:
+    enabled: true
+    persistence:
+      enabled: true
+
+  promtail:
+    enabled: true

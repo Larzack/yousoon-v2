@@ -1,0 +1,152 @@
+{{- if eq (include "yousoon-storage.mode" .) "sidecar" }}
+# =============================================================================
+# SIDECAR MODE: Services pointing to the single storage pod
+# =============================================================================
+
+# Headless service for StatefulSet
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "yousoon-storage.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+  ports:
+    {{- if .Values.mongodb.enabled }}
+    - name: mongodb
+      port: {{ .Values.mongodb.service.port }}
+      targetPort: mongodb
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.redis.enabled }}
+    - name: redis
+      port: {{ .Values.redis.service.port }}
+      targetPort: redis
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.nats.enabled }}
+    - name: nats
+      port: {{ .Values.nats.service.port }}
+      targetPort: client
+      protocol: TCP
+    - name: nats-monitor
+      port: {{ .Values.nats.service.monitorPort }}
+      targetPort: monitor
+      protocol: TCP
+    {{- end }}
+    {{- if .Values.elasticsearch.enabled }}
+    - name: elasticsearch
+      port: {{ .Values.elasticsearch.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+    - name: es-transport
+      port: {{ .Values.elasticsearch.service.transportPort }}
+      targetPort: transport
+      protocol: TCP
+    {{- end }}
+
+# Individual services for each component (for compatibility with classic mode naming)
+{{- if .Values.mongodb.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}-mongodb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mongodb
+spec:
+  type: {{ .Values.mongodb.service.type }}
+  selector:
+    {{- include "yousoon-storage.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+  ports:
+    - name: mongodb
+      port: {{ .Values.mongodb.service.port }}
+      targetPort: mongodb
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.redis.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}-redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: {{ .Values.redis.service.type }}
+  selector:
+    {{- include "yousoon-storage.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+  ports:
+    - name: redis
+      port: {{ .Values.redis.service.port }}
+      targetPort: redis
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.nats.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}-nats
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nats
+spec:
+  type: {{ .Values.nats.service.type }}
+  selector:
+    {{- include "yousoon-storage.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+  ports:
+    - name: client
+      port: {{ .Values.nats.service.port }}
+      targetPort: client
+      protocol: TCP
+    - name: monitor
+      port: {{ .Values.nats.service.monitorPort }}
+      targetPort: monitor
+      protocol: TCP
+{{- end }}
+
+{{- if .Values.elasticsearch.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "yousoon-storage.fullname" . }}-elasticsearch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yousoon-storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: elasticsearch
+spec:
+  type: {{ .Values.elasticsearch.service.type }}
+  selector:
+    {{- include "yousoon-storage.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+  ports:
+    - name: http
+      port: {{ .Values.elasticsearch.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+    - name: transport
+      port: {{ .Values.elasticsearch.service.transportPort }}
+      targetPort: transport
+      protocol: TCP
+{{- end }}
+{{- end }}

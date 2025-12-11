@@ -1,0 +1,15 @@
+dependencies:
+- name: yousoon-storage
+  repository: file://../yousoon-storage
+  version: 0.1.0
+- name: yousoon-services
+  repository: file://../yousoon-services
+  version: 0.1.0
+- name: yousoon-sites
+  repository: file://../yousoon-sites
+  version: 0.1.0
+- name: yousoon-monitoring
+  repository: file://../yousoon-monitoring
+  version: 0.1.0
+digest: sha256:effb1827f6cb47db2586368f0a8cf5de1ed34c389cf95751685a923858650110
+generated: "2025-12-11T12:38:15.824143+01:00"

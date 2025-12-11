@@ -1,0 +1,174 @@
+{{/*
+# =============================================================================
+# Yousoon Monitoring - ConfigMaps
+# =============================================================================
+*/}}
+
+# =============================================================================
+# Prometheus Configuration
+# =============================================================================
+{{- if .Values.prometheus.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yousoon-monitoring.fullname" . }}-prometheus-config
+  labels:
+    {{- include "yousoon-monitoring.labels" . | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      # Prometheus self-monitoring
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:{{ .Values.prometheus.port }}']
+
+      # Kubernetes pods with prometheus annotations
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - {{ .Values.global.namespace }}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+      # Kubernetes services
+      - job_name: 'kubernetes-services'
+        kubernetes_sd_configs:
+          - role: service
+            namespaces:
+              names:
+                - {{ .Values.global.namespace }}
+        metrics_path: /metrics
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+{{- end }}
+
+# =============================================================================
+# Grafana Provisioning
+# =============================================================================
+{{- if .Values.grafana.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yousoon-monitoring.fullname" . }}-grafana-provisioning
+  labels:
+    {{- include "yousoon-monitoring.labels" . | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        {{- if eq .Values.global.infra "sidecar" }}
+        url: http://localhost:{{ .Values.prometheus.port }}
+        {{- else }}
+        url: http://{{ include "yousoon-monitoring.fullname" . }}-prometheus:{{ .Values.prometheus.port }}
+        {{- end }}
+        isDefault: true
+      {{- if .Values.loki.enabled }}
+      - name: Loki
+        type: loki
+        access: proxy
+        {{- if eq .Values.global.infra "sidecar" }}
+        url: http://localhost:{{ .Values.loki.port }}
+        {{- else }}
+        url: http://{{ include "yousoon-monitoring.fullname" . }}-loki:{{ .Values.loki.port }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.jaeger.enabled }}
+      - name: Jaeger
+        type: jaeger
+        access: proxy
+        {{- if eq .Values.global.infra "sidecar" }}
+        url: http://localhost:{{ .Values.jaeger.ports.query }}
+        {{- else }}
+        url: http://{{ include "yousoon-monitoring.fullname" . }}-jaeger:{{ .Values.jaeger.ports.query }}
+        {{- end }}
+      {{- end }}
+{{- end }}
+
+# =============================================================================
+# Loki Configuration
+# =============================================================================
+{{- if .Values.loki.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yousoon-monitoring.fullname" . }}-loki-config
+  labels:
+    {{- include "yousoon-monitoring.labels" . | nindent 4 }}
+data:
+  loki-config.yaml: |
+    auth_enabled: false
+
+    server:
+      http_listen_port: {{ .Values.loki.port }}
+
+    common:
+      path_prefix: /loki
+      storage:
+        filesystem:
+          chunks_directory: /loki/chunks
+          rules_directory: /loki/rules
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+
+    schema_config:
+      configs:
+        - from: 2020-10-24
+          store: boltdb-shipper
+          object_store: filesystem
+          schema: v11
+          index:
+            prefix: index_
+            period: 24h
+
+    storage_config:
+      boltdb_shipper:
+        active_index_directory: /loki/boltdb-shipper-active
+        cache_location: /loki/boltdb-shipper-cache
+        cache_ttl: 24h
+        shared_store: filesystem
+      filesystem:
+        directory: /loki/chunks
+
+    compactor:
+      working_directory: /loki/boltdb-shipper-compactor
+      shared_store: filesystem
+
+    limits_config:
+      reject_old_samples: true
+      reject_old_samples_max_age: 168h
+{{- end }}

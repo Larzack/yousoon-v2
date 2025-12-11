@@ -1,0 +1,15 @@
+# =============================================================================
+# Yousoon Sites Chart
+# =============================================================================
+# Déploie les sites web:
+# - admin (backoffice)
+# - partners (portail partenaires)
+# - siteweb (site vitrine)
+# =============================================================================
+
+apiVersion: v2
+name: yousoon-sites
+description: Yousoon Web Sites (Admin, Partners, Vitrine)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
