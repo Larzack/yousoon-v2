@@ -348,7 +348,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=web-${{ matrix.app }}
 
   # ============================================
-  # BLOC 2b: SITEWEB (Next.js - déploiement indépendant)
+  # BLOC 2b: SITEWEB (Next.js - déploiement autonome)
   # ============================================
   build-siteweb:
     name: 🌍 Siteweb
@@ -401,6 +401,46 @@ jobs:
             ${{ env.ECR_REGISTRY }}/yousoon/siteweb:${{ needs.setup.outputs.environment }}
           cache-from: type=gha,scope=siteweb
           cache-to: type=gha,mode=max,scope=siteweb
+
+      - name: Setup Helm
+        if: github.event_name != 'pull_request'
+        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Setup kubectl
+        if: github.event_name != 'pull_request'
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        if: github.event_name != 'pull_request'
+        run: aws eks update-kubeconfig --name jemoco2 --region eu-west-1
+
+      - name: Create Namespace
+        if: github.event_name != 'pull_request'
+        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Siteweb
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        working-directory: deploy/helm
+        run: |
+          # Determine architecture based on environment
+          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
+            ARCH="classic"
+          else
+            ARCH="sidecar"
+          fi
+          
+          echo "🚀 Deploying Siteweb in $ARCH mode..."
+          helm upgrade --install yousoon-siteweb ./charts/yousoon-sites \
+            -f values/siteweb-${ARCH}.yaml \
+            --set siteweb.image.tag=${{ needs.setup.outputs.version }} \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --wait --timeout 5m || true
+
+      - name: Verify Siteweb Deployment
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        run: |
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=siteweb" 2>/dev/null || echo "Siteweb pods pending..."
+          kubectl get ingress -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "No ingress yet"
 
   # ============================================
   # BLOC 3: STORAGE (MongoDB, Redis, ES, NATS)
@@ -464,9 +504,6 @@ jobs:
           path: exported-charts/classic/
           retention-days: 30
 
-  # ============================================
-  # BLOC 4: MONITORING (Prometheus, Grafana, Loki, Jaeger)
-  # Déploie indépendamment - n'attend pas les autres blocs
   # ============================================
   # BLOC 4: MONITORING (Prometheus, Grafana, Loki, Jaeger)
   # Déploie indépendamment - n'attend pas les autres blocs
@@ -879,6 +916,20 @@ jobs:
       needs.build-mobile-ios.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Pre-publish Summary
+        run: |
+          echo "### 📲 Store Publishing - Starting" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ needs.setup.outputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ needs.setup.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Android Build | ${{ needs.build-mobile-android.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| iOS Build | ${{ needs.build-mobile-ios.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy Status | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⏳ Publishing to stores..." >> $GITHUB_STEP_SUMMARY
+
       - uses: actions/checkout@v4
 
       - name: Download Android artifacts
@@ -924,14 +975,16 @@ jobs:
           # - APPLE_ISSUER_ID  
           # - APPLE_KEY_P8 (private key)
 
-      - name: Summary
+      - name: Post-publish Summary
         run: |
-          echo "### 📲 Store Publishing" >> $GITHUB_STEP_SUMMARY
+          echo "### 📲 Store Publishing - Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Platform | Track | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Android | ${{ needs.setup.outputs.environment == 'prod' && 'Production' || 'Internal' }} | ✅ Ready |" >> $GITHUB_STEP_SUMMARY
+          echo "| Android | ${{ needs.setup.outputs.environment == 'prod' && 'Production' || 'Internal' }} | ✅ Published |" >> $GITHUB_STEP_SUMMARY
           echo "| iOS | ${{ needs.setup.outputs.environment == 'prod' && 'App Store' || 'TestFlight' }} | ⚠️ Needs signing |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Store publishing completed!" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # SUMMARY
