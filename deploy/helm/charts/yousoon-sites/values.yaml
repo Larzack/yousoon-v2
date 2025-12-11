@@ -28,11 +28,13 @@ admin:
 
   env:
     - name: VITE_API_URL
-      value: "http://yousoon-services:4000/graphql"
+      value: "https://api.yousoon.com/graphql"
 
-  # No ingress by default (access via port-forward only)
+  # Ingress for admin (public access with HTTPS)
   ingress:
-    enabled: false
+    enabled: true
+    host: admin.yousoon.com
+    annotations: {}
 
 # =============================================================================
 # Partners Portal

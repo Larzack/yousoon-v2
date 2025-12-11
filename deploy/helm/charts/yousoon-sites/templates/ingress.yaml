@@ -9,7 +9,7 @@
 # SIDECAR MODE: Single Ingress routing to different ports
 # =============================================================================
 
-{{- if or .Values.partners.ingress.enabled .Values.website.ingress.enabled }}
+{{- if or .Values.partners.ingress.enabled .Values.website.ingress.enabled .Values.admin.ingress.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -33,6 +33,11 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
+    {{- if .Values.admin.ingress.enabled }}
+    - hosts:
+        - {{ .Values.admin.ingress.host }}
+      secretName: admin-tls
+    {{- end }}
     {{- if .Values.partners.ingress.enabled }}
     - hosts:
         - {{ .Values.partners.ingress.host }}
@@ -44,6 +49,18 @@ spec:
       secretName: website-tls
     {{- end }}
   rules:
+    {{- if .Values.admin.ingress.enabled }}
+    - host: {{ .Values.admin.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yousoon-sites.fullname" . }}
+                port:
+                  name: admin
+    {{- end }}
     {{- if .Values.partners.ingress.enabled }}
     - host: {{ .Values.partners.ingress.host }}
       http:
@@ -159,6 +176,50 @@ spec:
             backend:
               service:
                 name: {{ include "yousoon-sites.fullname" . }}-website
+                port:
+                  name: http
+{{- end }}
+
+{{- if and .Values.admin.enabled .Values.admin.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "yousoon-sites.fullname" . }}-admin
+  labels:
+    {{- include "yousoon-sites.labels" . | nindent 4 }}
+  annotations:
+    # Ingress class
+    kubernetes.io/ingress.class: nginx
+    # TLS with Let's Encrypt
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    {{- with .Values.admin.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.admin.ingress.host }}
+      secretName: admin-tls
+  rules:
+    - host: {{ .Values.admin.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yousoon-sites.fullname" . }}-admin
                 port:
                   name: http
 {{- end }}
