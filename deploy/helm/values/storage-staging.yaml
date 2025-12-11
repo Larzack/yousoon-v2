@@ -47,7 +47,7 @@ mongodb:
   persistence:
     enabled: true
     size: 5Gi
-    storageClass: ""
+    storageClass: "aws-ebs"
     accessModes:
       - ReadWriteOnce
   auth:
