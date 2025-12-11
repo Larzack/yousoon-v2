@@ -513,11 +513,12 @@ jobs:
   # ============================================
   # BLOC 4: MONITORING (Prometheus, Grafana, Loki, Jaeger)
   # Déploie indépendamment - n'attend pas les autres blocs
-  # Si monitoring=false, déploie en mode "disabled" (replicas=0)
+  # Ne s'exécute QUE si monitoring=true
   # ============================================
   build-monitoring:
-    name: 📊 Monitoring
+    name: 🚀 Deploy - Monitoring
     needs: setup
+    if: needs.setup.outputs.monitoring == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -529,14 +530,9 @@ jobs:
       - name: Determine Monitoring Mode
         id: mode
         run: |
-          MONITORING_ENABLED="${{ needs.setup.outputs.monitoring }}"
           ENV="${{ needs.setup.outputs.environment }}"
           
-          if [ "$MONITORING_ENABLED" == "false" ]; then
-            # Monitoring disabled => deploy with all components disabled
-            echo "mode=disabled" >> $GITHUB_OUTPUT
-            echo "📊 Monitoring DISABLED - will deploy empty resources"
-          elif [ "$ENV" == "prod" ]; then
+          if [ "$ENV" == "prod" ]; then
             echo "mode=classic" >> $GITHUB_OUTPUT
             echo "📊 Monitoring in CLASSIC mode (production)"
           else
@@ -545,7 +541,6 @@ jobs:
           fi
 
       - name: Validate Helm Charts
-        if: needs.setup.outputs.monitoring == 'true'
         run: |
           # Lint monitoring chart
           helm lint deploy/helm/charts/yousoon-monitoring || true
@@ -557,7 +552,6 @@ jobs:
             -f deploy/helm/values/monitoring-classic.yaml || true
 
       - name: Export Helm Charts
-        if: needs.setup.outputs.monitoring == 'true'
         run: |
           mkdir -p exported-charts/monitoring-sidecar exported-charts/monitoring-classic
           
@@ -580,7 +574,6 @@ jobs:
           csplit -f 'resource-' -b '%02d.yaml' monitoring-classic.yaml '/^---$/' '{*}' 2>/dev/null || true
 
       - name: Upload Monitoring Sidecar Charts
-        if: needs.setup.outputs.monitoring == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: helm-charts-monitoring-sidecar
@@ -588,7 +581,6 @@ jobs:
           retention-days: 30
 
       - name: Upload Monitoring Classic Charts
-        if: needs.setup.outputs.monitoring == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: helm-charts-monitoring-classic
@@ -620,39 +612,17 @@ jobs:
         working-directory: deploy/helm
         run: |
           MODE="${{ steps.mode.outputs.mode }}"
-          
-          if [ "$MODE" == "disabled" ]; then
-            echo "🚀 Deploying Monitoring in DISABLED mode (empty resources)..."
-            # Use sidecar values but override to disabled + all components off
-            helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
-              -f values/monitoring-sidecar.yaml \
-              --set global.infra=disabled \
-              --set prometheus.enabled=false \
-              --set grafana.enabled=false \
-              --set loki.enabled=false \
-              --set promtail.enabled=false \
-              --set jaeger.enabled=false \
-              -n ${{ needs.setup.outputs.namespace }} \
-              --wait --timeout 10m || true
-          else
-            echo "🚀 Deploying Monitoring in $MODE mode..."
-            helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
-              -f values/monitoring-${MODE}.yaml \
-              -n ${{ needs.setup.outputs.namespace }} \
-              --wait --timeout 10m || true
-          fi
+          echo "🚀 Deploying Monitoring in $MODE mode..."
+          helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
+            -f values/monitoring-${MODE}.yaml \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --wait --timeout 10m || true
 
       - name: Verify Monitoring Deployment
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
         run: |
-          MODE="${{ steps.mode.outputs.mode }}"
-          
-          if [ "$MODE" == "disabled" ]; then
-            echo "📊 Monitoring is DISABLED - no pods expected"
-            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "No monitoring pods (expected)"
-          else
-            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "Monitoring pods pending..."
-          fi
+          echo "📊 Verifying Monitoring deployment..."
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "Monitoring pods pending..."
 
   # ============================================
   # BLOC 5: MOBILE (iOS + Android en parallèle)
@@ -997,7 +967,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-storage, build-mobile-android, build-mobile-ios, deploy, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-storage, build-monitoring, build-mobile-android, build-mobile-ios, deploy, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1016,6 +986,7 @@ jobs:
           echo "| 🔧 Backend (6 services) | ${{ needs.build-backend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🌐 Web (3 apps) | ${{ needs.build-webapp.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 💾 Storage | ${{ needs.build-storage.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Monitoring | ${{ needs.build-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 Android | ${{ needs.build-mobile-android.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 iOS | ${{ needs.build-mobile-ios.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
