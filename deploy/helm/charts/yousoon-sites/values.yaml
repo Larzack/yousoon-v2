@@ -53,9 +53,7 @@ partners:
   ingress:
     enabled: true
     host: business.yousoon.com
-    annotations:
-      kubernetes.io/ingress.class: nginx
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+    annotations: {}
 
 # =============================================================================
 # Site Vitrine (Next.js)
@@ -76,9 +74,7 @@ website:
   ingress:
     enabled: true
     host: www.yousoon.com
-    annotations:
-      kubernetes.io/ingress.class: nginx
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+    annotations: {}
 
 # =============================================================================
 # Pod Configuration (for sidecar mode)

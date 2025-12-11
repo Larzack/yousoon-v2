@@ -1,0 +1,124 @@
+{{/*
+# =============================================================================
+# Yousoon Services - Ingress for API Gateway (Apollo Router)
+# =============================================================================
+# Exposes the GraphQL API at api.yousoon.com (HTTPS only)
+*/}}
+
+{{- if eq .Values.global.infra "sidecar" }}
+# =============================================================================
+# SIDECAR MODE: Single Ingress for the Router
+# =============================================================================
+
+{{- if and .Values.router.enabled .Values.router.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-api
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+  annotations:
+    # Ingress class
+    kubernetes.io/ingress.class: nginx
+    # TLS with Let's Encrypt
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # CORS configuration for GraphQL
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://www.yousoon.com, https://business.yousoon.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Apollo-Require-Preflight"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    # WebSocket support for GraphQL Subscriptions
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: {{ include "yousoon-services.fullname" . }}
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    # Body size for GraphQL queries
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    {{- with .Values.router.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.router.ingress.host }}
+      secretName: api-tls
+  rules:
+    - host: {{ .Values.router.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yousoon-services.fullname" . }}
+                port:
+                  name: graphql
+{{- end }}
+
+{{- else }}
+# =============================================================================
+# CLASSIC MODE: Separate Ingress for Router
+# =============================================================================
+
+{{- if and .Values.router.enabled .Values.router.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "yousoon-services.fullname" . }}-router
+  labels:
+    {{- include "yousoon-services.labels" . | nindent 4 }}
+    app.kubernetes.io/component: router
+  annotations:
+    # Ingress class
+    kubernetes.io/ingress.class: nginx
+    # TLS with Let's Encrypt
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # CORS configuration for GraphQL
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://www.yousoon.com, https://business.yousoon.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Apollo-Require-Preflight"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    # WebSocket support for GraphQL Subscriptions
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: {{ include "yousoon-services.fullname" . }}-router
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    # Body size for GraphQL queries
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    {{- with .Values.router.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.router.ingress.host }}
+      secretName: api-tls
+  rules:
+    - host: {{ .Values.router.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "yousoon-services.fullname" . }}-router
+                port:
+                  name: http
+{{- end }}
+
+{{- end }}

@@ -138,6 +138,8 @@ notification:
 # =============================================================================
 # Apollo Router (GraphQL Gateway)
 # =============================================================================
+# Apollo Router (GraphQL Gateway)
+# =============================================================================
 router:
   enabled: false  # Disabled until image is built
   image:
@@ -152,6 +154,12 @@ router:
       value: router
     - name: APOLLO_ROUTER_SUPERGRAPH_PATH
       value: /etc/apollo/supergraph.graphql
+
+  # Ingress for API Gateway (api.yousoon.com)
+  ingress:
+    enabled: true
+    host: api.yousoon.com
+    annotations: {}
 
 # =============================================================================
 # Pod Configuration (for sidecar mode)
