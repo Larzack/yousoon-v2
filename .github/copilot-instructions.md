@@ -29,6 +29,36 @@
 - **Backend** : Go avec microservices DDD
 - **Admin Backoffice** : React TypeScript (accès restreint)
 
+### ⚠️ Règle d'Accès aux Données
+
+**Tous les frontends (App Mobile, Site Partenaires, Admin Backoffice) communiquent UNIQUEMENT via l'API GraphQL.**
+
+- ❌ **Jamais** d'accès direct à MongoDB depuis les frontends
+- ✅ Toutes les données passent par l'API GraphQL (`api.yousoon.com`)
+- ✅ Apollo Router fédère les requêtes vers les microservices
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│          FRONTENDS (Mobile, Partenaires, Admin)             │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ GraphQL (HTTPS)
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    API GraphQL (Apollo Router)               │
+│                      api.yousoon.com                         │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ Federation
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                 Microservices (Go + gqlgen)                  │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    MongoDB / Redis / NATS                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ### 🌐 URLs des Sites
 
 | Site | URL | Description |
@@ -114,10 +144,12 @@ Theme: Dark Mode natif
 ### Sites Web (React/Next.js)
 ```yaml
 Partner Portal: React 18 + TypeScript + Vite
-Vitrine: Next.js 14 + next-intl
+Vitrine: Next.js 14 + next-intl + MySQL
 UI: TailwindCSS + shadcn/ui
-GraphQL: urql
+GraphQL: urql (Partner Portal uniquement)
 ```
+
+> **Note** : Le Site Vitrine utilise **MySQL** pour son propre contenu (blog, FAQ, pages). Il n'utilise PAS l'API GraphQL backend.
 
 ### Infrastructure
 ```yaml
@@ -356,6 +388,7 @@ Pour plus de détails, voir :
 - **Specs Flutter** : [docs/prompts/app-mobile/PROMPT.md](../docs/prompts/app-mobile/PROMPT.md)
 - **Specs Partenaires** : [docs/prompts/site-partenaires/PROMPT.md](../docs/prompts/site-partenaires/PROMPT.md)
 - **Specs Admin** : [docs/prompts/admin/PROMPT.md](../docs/prompts/admin/PROMPT.md)
+- **Specs Site Vitrine** : [docs/prompts/site-vitrine/PROMPT.md](../docs/prompts/site-vitrine/PROMPT.md)
 - **Design Figma** : [Figma Yousoon-Test2](https://www.figma.com/design/1GXJECHtsYzq46OYbSHiaj/Yousoon-Test2?node-id=121-114)
 
 ---

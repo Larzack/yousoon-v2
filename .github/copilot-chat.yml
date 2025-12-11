@@ -1,0 +1,24 @@
+# Configuration Copilot Chat pour Yousoon
+# Ce fichier définit les fichiers de contexte automatiquement inclus
+
+version: 1
+
+# Fichiers de contexte automatiquement attachés à chaque conversation
+context:
+  # Instructions principales
+  - .github/copilot-instructions.md
+  
+  # Documentation technique
+  - docs/prompts/DATA_MODEL.md
+  - docs/prompts/DESIGN_SYSTEM.md
+  
+  # Architecture Backend
+  - docs/prompts/backend/ARCHITECTURE.md
+  - docs/prompts/backend/PROMPT.md
+  
+  # Prompts par module
+  - docs/prompts/app-mobile/PROMPT.md
+  - docs/prompts/app-mobile/COMPONENTS.md
+  - docs/prompts/site-partenaires/PROMPT.md
+  - docs/prompts/site-vitrine/PROMPT.md
+  - docs/prompts/admin/PROMPT.md
