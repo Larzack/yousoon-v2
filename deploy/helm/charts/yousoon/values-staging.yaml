@@ -34,7 +34,7 @@ sites:
   enabled: true
 
 monitoring:
-  enabled: true
+  enabled: false
 
 # =============================================================================
 # Storage - Staging Settings (Sidecar Mode)
@@ -129,39 +129,3 @@ yousoon-sites:
     ingress:
       enabled: true
       host: staging.yousoon.com
-
-# =============================================================================
-# Monitoring - Staging Settings (Sidecar Mode)
-# =============================================================================
-yousoon-monitoring:
-  global:
-    infra: "sidecar"
-    namespace: yousoon-staging
-
-  prometheus:
-    enabled: true
-    retention: 7d
-    retentionSize: 10GB
-    persistence:
-      size: 20Gi
-
-  grafana:
-    enabled: true
-    persistence:
-      size: 2Gi
-    ingress:
-      enabled: true
-      host: grafana.staging.yousoon.com
-
-  loki:
-    enabled: true
-    persistence:
-      size: 10Gi
-
-  jaeger:
-    enabled: true
-    persistence:
-      enabled: false  # No persistence in staging
-
-  promtail:
-    enabled: true

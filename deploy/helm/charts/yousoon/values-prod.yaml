@@ -34,7 +34,7 @@ sites:
   enabled: true
 
 monitoring:
-  enabled: true
+  enabled: false
 
 # =============================================================================
 # Storage - Production Settings (Classic Mode)
@@ -129,39 +129,3 @@ yousoon-sites:
     ingress:
       enabled: true
       host: www.yousoon.com
-
-# =============================================================================
-# Monitoring - Production Settings (Classic Mode)
-# =============================================================================
-yousoon-monitoring:
-  global:
-    infra: "classic"
-    namespace: yousoon-production
-
-  prometheus:
-    enabled: true
-    retention: 30d
-    retentionSize: 50GB
-    persistence:
-      size: 100Gi
-
-  grafana:
-    enabled: true
-    persistence:
-      size: 10Gi
-    ingress:
-      enabled: true
-      host: grafana.yousoon.com
-
-  loki:
-    enabled: true
-    persistence:
-      size: 50Gi
-
-  jaeger:
-    enabled: true
-    persistence:
-      enabled: true
-
-  promtail:
-    enabled: true
