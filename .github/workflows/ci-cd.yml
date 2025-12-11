@@ -469,57 +469,51 @@ jobs:
       - name: Setup Helm
         run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      - name: Add Helm Repositories
+      - name: Validate Helm Charts
         run: |
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo add grafana https://grafana.github.io/helm-charts
-          helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
-          helm repo update
+          # Lint monitoring chart
+          helm lint deploy/helm/charts/yousoon-monitoring || true
+          
+          # Template validation
+          helm template test deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-sidecar.yaml || true
+          helm template test deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-classic.yaml || true
 
-      - name: Validate Monitoring Values
+      - name: Export Helm Charts
         run: |
-          echo "📊 Validating Prometheus Stack values..."
-          helm show values prometheus-community/kube-prometheus-stack > /dev/null
+          mkdir -p exported-charts/monitoring-sidecar exported-charts/monitoring-classic
           
-          echo "📊 Validating Loki values..."
-          helm show values grafana/loki-stack > /dev/null
+          echo "📦 Exporting Sidecar mode chart..."
+          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-sidecar.yaml \
+            --namespace yousoon-staging \
+            > exported-charts/monitoring-sidecar/monitoring-sidecar.yaml
           
-          echo "📊 Validating Jaeger values..."
-          helm show values jaegertracing/jaeger > /dev/null
+          echo "📦 Exporting Classic mode chart..."
+          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-classic.yaml \
+            --namespace yousoon-prod \
+            > exported-charts/monitoring-classic/monitoring-classic.yaml
+          
+          # Split by resource type for easier review
+          cd exported-charts/monitoring-sidecar
+          csplit -f 'resource-' -b '%02d.yaml' monitoring-sidecar.yaml '/^---$/' '{*}' 2>/dev/null || true
+          cd ../monitoring-classic
+          csplit -f 'resource-' -b '%02d.yaml' monitoring-classic.yaml '/^---$/' '{*}' 2>/dev/null || true
 
-      - name: Export Monitoring Charts
-        run: |
-          mkdir -p exported-charts/monitoring
-          
-          echo "📦 Exporting Prometheus Stack chart..."
-          helm template yousoon-prometheus prometheus-community/kube-prometheus-stack \
-            -f deploy/helm/values/prometheus-stack.yaml \
-            --namespace ${{ needs.setup.outputs.namespace }} \
-            > exported-charts/monitoring/prometheus-stack.yaml 2>/dev/null || echo "Template generation completed with warnings"
-          
-          echo "📦 Exporting Loki Stack chart..."
-          helm template yousoon-loki grafana/loki-stack \
-            -f deploy/helm/values/loki.yaml \
-            --namespace ${{ needs.setup.outputs.namespace }} \
-            > exported-charts/monitoring/loki-stack.yaml 2>/dev/null || echo "Template generation completed with warnings"
-          
-          echo "📦 Exporting Jaeger chart..."
-          helm template yousoon-jaeger jaegertracing/jaeger \
-            -f deploy/helm/values/jaeger.yaml \
-            --namespace ${{ needs.setup.outputs.namespace }} \
-            > exported-charts/monitoring/jaeger.yaml 2>/dev/null || echo "Template generation completed with warnings"
-          
-          echo "### 📊 Monitoring Charts Exported" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          ls -la exported-charts/monitoring/ >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload Monitoring Charts
+      - name: Upload Monitoring Sidecar Charts
         uses: actions/upload-artifact@v4
         with:
-          name: helm-charts-monitoring
-          path: exported-charts/monitoring/
+          name: helm-charts-monitoring-sidecar
+          path: exported-charts/monitoring-sidecar/
+          retention-days: 30
+
+      - name: Upload Monitoring Classic Charts
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-charts-monitoring-classic
+          path: exported-charts/monitoring-classic/
           retention-days: 30
 
       - name: Configure AWS credentials
@@ -542,44 +536,27 @@ jobs:
         if: github.event_name != 'pull_request'
         run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy Prometheus Stack
+      - name: Deploy Monitoring
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        working-directory: deploy/helm
         run: |
-          echo "🚀 Deploying Prometheus Stack..."
-          helm upgrade --install yousoon-prometheus prometheus-community/kube-prometheus-stack \
-            -f deploy/helm/values/prometheus-stack.yaml \
+          # Determine architecture based on environment
+          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
+            ARCH="classic"
+          else
+            ARCH="sidecar"
+          fi
+          
+          echo "🚀 Deploying Monitoring in $ARCH mode..."
+          helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
+            -f values/monitoring-${ARCH}.yaml \
             -n ${{ needs.setup.outputs.namespace }} \
             --wait --timeout 10m || true
-
-      - name: Deploy Loki Stack
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
-        run: |
-          echo "🚀 Deploying Loki Stack..."
-          helm upgrade --install yousoon-loki grafana/loki-stack \
-            -f deploy/helm/values/loki.yaml \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --wait --timeout 5m || true
-
-      - name: Deploy Jaeger
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
-        run: |
-          echo "🚀 Deploying Jaeger..."
-          helm upgrade --install yousoon-jaeger jaegertracing/jaeger \
-            -f deploy/helm/values/jaeger.yaml \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --wait --timeout 5m || true
 
       - name: Verify Monitoring Deployment
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
         run: |
-          echo "### 📊 Monitoring Deployment Status" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Pods:**" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/part-of=kube-prometheus-stack" 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "Prometheus pods pending..." >> $GITHUB_STEP_SUMMARY
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app=loki" 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "Loki pods pending..." >> $GITHUB_STEP_SUMMARY
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=jaeger" 2>/dev/null >> $GITHUB_STEP_SUMMARY || echo "Jaeger pods pending..." >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "Monitoring pods pending..."
 
   # ============================================
   # BLOC 5: MOBILE (iOS + Android en parallèle)

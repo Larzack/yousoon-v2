@@ -1,0 +1,188 @@
+# =============================================================================
+# Yousoon Monitoring - Classic Mode Values
+# =============================================================================
+# Mode classic: Un Pod séparé par outil monitoring
+# Recommandé pour: production, haute disponibilité, scaling indépendant
+# =============================================================================
+
+global:
+  infra: "classic"
+  namespace: yousoon-prod
+  imagePullSecrets: []
+
+# =============================================================================
+# Prometheus
+# =============================================================================
+prometheus:
+  enabled: true
+  image: prom/prometheus:v2.47.0
+  port: 9090
+  
+  retention: 30d
+  retentionSize: 50GB
+  
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: "gp3"
+  
+  classic:
+    replicaCount: 1
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9090"
+    nodeSelector: {}
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: prometheus
+              topologyKey: kubernetes.io/hostname
+    tolerations: []
+
+# =============================================================================
+# Grafana
+# =============================================================================
+grafana:
+  enabled: true
+  image: grafana/grafana:10.2.0
+  port: 3000
+  
+  adminUser: admin
+  # adminPassword via secret: yousoon-monitoring-secrets
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: "gp3"
+
+  ingress:
+    enabled: true
+    host: grafana.yousoon.com
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
+
+# =============================================================================
+# Loki (Logs)
+# =============================================================================
+loki:
+  enabled: true
+  image: grafana/loki:2.9.2
+  port: 3100
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: "gp3"
+  
+  config:
+    limits_config:
+      reject_old_samples_max_age: 336h  # 14 jours
+      ingestion_rate_mb: 32
+      ingestion_burst_size_mb: 64
+
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    nodeSelector: {}
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: loki
+              topologyKey: kubernetes.io/hostname
+    tolerations: []
+
+# =============================================================================
+# Promtail (Log collector - DaemonSet)
+# =============================================================================
+promtail:
+  enabled: true
+  image: grafana/promtail:2.9.2
+  
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+# =============================================================================
+# Jaeger (Tracing)
+# =============================================================================
+jaeger:
+  enabled: true
+  image: jaegertracing/all-in-one:1.51
+  
+  ports:
+    query: 16686
+    collector: 14268
+    agent: 6831
+    otlpGrpc: 4317
+    otlpHttp: 4318
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: "gp3"
+  
+  # Pour production avec beaucoup de traces, utiliser Elasticsearch
+  # storage:
+  #   type: elasticsearch
+  #   elasticsearch:
+  #     host: elasticsearch
+  #     port: 9200
+
+  classic:
+    replicaCount: 1
+    podAnnotations: {}
+    nodeSelector: {}
+    affinity: {}
+    tolerations: []
