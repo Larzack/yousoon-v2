@@ -408,41 +408,6 @@ jobs:
           cache-from: type=gha,scope=website
           cache-to: type=gha,mode=max,scope=website
 
-      - name: Setup Helm
-        if: github.event_name != 'pull_request'
-        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-      - name: Setup kubectl
-        if: github.event_name != 'pull_request'
-        uses: azure/setup-kubectl@v4
-
-      - name: Update kubeconfig
-        if: github.event_name != 'pull_request'
-        run: aws eks update-kubeconfig --name jemoco2 --region eu-west-1
-
-      - name: Create Namespace
-        if: github.event_name != 'pull_request'
-        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Deploy Website
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
-        working-directory: deploy/helm
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          
-          echo "🚀 Deploying Sites (all 3) for $ENV..."
-          helm upgrade --install yousoon-sites ./charts/yousoon-sites \
-            -f values/sites-${ENV}.yaml \
-            --set global.image.tag=${{ needs.setup.outputs.version }} \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --wait --timeout 5m || true
-
-      - name: Verify Website Deployment
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
-        run: |
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=website" 2>/dev/null || echo "Website pods pending..."
-          kubectl get ingress -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "No ingress yet"
-
   # ============================================
   # BLOC 3: STORAGE (MongoDB, Redis, ES, NATS)
   # ============================================
