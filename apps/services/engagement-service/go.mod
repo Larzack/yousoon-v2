@@ -4,6 +4,7 @@ go 1.23
 
 require (
 	github.com/99designs/gqlgen v0.17.45
+	github.com/google/uuid v1.6.0
 	github.com/yousoon/shared v0.0.0
 	go.mongodb.org/mongo-driver v1.14.0
 )
@@ -11,7 +12,6 @@ require (
 require (
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/klauspost/compress v1.17.7 // indirect

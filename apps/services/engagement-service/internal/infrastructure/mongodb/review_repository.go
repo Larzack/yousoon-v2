@@ -18,7 +18,7 @@ type ReviewDocument struct {
 	OfferID            string             `bson:"offerId"`
 	PartnerID          string             `bson:"partnerId"`
 	EstablishmentID    string             `bson:"establishmentId"`
-	OutingID           string             `bson:"outingId,omitempty"`
+	BookingID          string             `bson:"bookingId,omitempty"`
 	Rating             int                `bson:"rating"`
 	Title              string             `bson:"title,omitempty"`
 	Content            string             `bson:"content"`
@@ -26,9 +26,10 @@ type ReviewDocument struct {
 	HelpfulCount       int                `bson:"helpfulCount"`
 	IsVerifiedPurchase bool               `bson:"isVerifiedPurchase"`
 	Moderation         ModerationDocument `bson:"moderation"`
-	User               UserSnapshotDoc    `bson:"_user"`
-	Offer              OfferSnapshotDoc   `bson:"_offer"`
-	Partner            PartnerSnapshotDoc `bson:"_partner"`
+	UserFirstName      string             `bson:"userFirstName,omitempty"`
+	UserAvatar         string             `bson:"userAvatar,omitempty"`
+	OfferTitle         string             `bson:"offerTitle,omitempty"`
+	PartnerName        string             `bson:"partnerName,omitempty"`
 	CreatedAt          time.Time          `bson:"createdAt"`
 	UpdatedAt          time.Time          `bson:"updatedAt"`
 }
@@ -44,7 +45,7 @@ type ModerationDocument struct {
 type ReportDocument struct {
 	UserID     string    `bson:"userId"`
 	Reason     string    `bson:"reason"`
-	ReportedAt time.Time `bson:"reportedAt"
+	ReportedAt time.Time `bson:"reportedAt"`
 }
 
 // ReviewRepository implémentation MongoDB
@@ -90,7 +91,7 @@ func NewReviewRepository(db *mongo.Database) *ReviewRepository {
 func (r *ReviewRepository) Create(ctx context.Context, review *domain.Review) error {
 	doc := r.toDocument(review)
 
-	result, err := r.collection.InsertOne(ctx, doc)
+	_, err := r.collection.InsertOne(ctx, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return domain.ErrReviewAlreadyExists
@@ -98,7 +99,6 @@ func (r *ReviewRepository) Create(ctx context.Context, review *domain.Review) er
 		return err
 	}
 
-	review.ID = result.InsertedID.(primitive.ObjectID).Hex()
 	return nil
 }
 
