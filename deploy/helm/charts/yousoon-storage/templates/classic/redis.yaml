@@ -48,7 +48,7 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.redis.auth.existingSecret | default (printf "%s-secrets" (include "yousoon-storage.fullname" .)) }}
+                  name: {{ .Values.redis.auth.existingSecret | default "yousoon-storage-secrets" }}
                   key: {{ .Values.redis.auth.secretKeys.password }}
             {{- end }}
           volumeMounts:

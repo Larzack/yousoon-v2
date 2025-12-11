@@ -36,15 +36,15 @@ spec:
         {{- toYaml .Values.sidecar.podSecurityContext | nindent 8 }}
       
       initContainers:
-        # Fix permissions for Elasticsearch
+        # Fix permissions for Elasticsearch and MongoDB
         - name: fix-permissions
           image: busybox:1.36
-          command: ['sh', '-c', 'chown -R 1000:1000 /data/elasticsearch && chown -R 999:999 /data/mongodb']
+          command: ['sh', '-c', 'chown -R 1000:1000 /data/elasticsearch && chown -R 999:999 /data/db']
           volumeMounts:
             - name: elasticsearch-data
               mountPath: /data/elasticsearch
             - name: mongodb-data
-              mountPath: /data/mongodb
+              mountPath: /data/db
           securityContext:
             runAsUser: 0
       
@@ -56,6 +56,9 @@ spec:
         - name: mongodb
           image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
           imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
           ports:
             - name: mongodb
               containerPort: 27017
@@ -67,7 +70,7 @@ spec:
             - name: MONGO_INITDB_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.mongodb.auth.existingSecret | default (printf "%s-secrets" (include "yousoon-storage.fullname" .)) }}
+                  name: {{ .Values.mongodb.auth.existingSecret | default "yousoon-storage-secrets" }}
                   key: {{ .Values.mongodb.auth.secretKeys.rootPassword }}
             {{- end }}
           volumeMounts:
@@ -121,7 +124,7 @@ spec:
             - name: REDIS_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.redis.auth.existingSecret | default (printf "%s-secrets" (include "yousoon-storage.fullname" .)) }}
+                  name: {{ .Values.redis.auth.existingSecret | default "yousoon-storage-secrets" }}
                   key: {{ .Values.redis.auth.secretKeys.password }}
             {{- end }}
           volumeMounts:
