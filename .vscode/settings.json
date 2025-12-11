@@ -1,3 +1,12 @@
 {
-    "chat.agent.maxRequests": 100000
+    "chat.agent.maxRequests": 100000,
+    
+    // Disable YAML schema validation for Helm values files
+    // These are custom charts and don't follow standard schemas
+    "yaml.schemas": {
+        "": "deploy/helm/values/*.yaml"
+    },
+    "yaml.customTags": [
+        "!reference sequence"
+    ]
 }
