@@ -63,6 +63,17 @@ on:
   pull_request:
     branches: [staging, prod]
 
+# =============================================================================
+# CONCURRENCY: Cancel previous runs when new deployment arrives
+# =============================================================================
+# - Groups runs by branch/environment
+# - Automatically cancels in-progress runs when a new one starts
+# - Allows the most recent code to deploy faster
+# =============================================================================
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # Versions
   NODE_VERSION: '20'
