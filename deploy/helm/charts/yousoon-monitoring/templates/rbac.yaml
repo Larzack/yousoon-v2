@@ -2,7 +2,9 @@
 # =============================================================================
 # Yousoon Monitoring - ServiceAccount & RBAC
 # =============================================================================
+# Skip all RBAC if monitoring is disabled
 */}}
+{{- if ne .Values.global.infra "disabled" }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -46,3 +48,4 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "yousoon-monitoring.fullname" . }}
     namespace: {{ .Values.global.namespace }}
+{{- end }} {{/* end if ne .Values.global.infra "disabled" */}}
