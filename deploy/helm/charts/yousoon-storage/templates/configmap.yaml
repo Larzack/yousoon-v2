@@ -18,12 +18,8 @@ data:
   # NATS Configuration
   nats.conf: |
     # NATS Server Configuration
+    server_name: {{ include "yousoon-storage.fullname" . }}-nats
     port: {{ .Values.nats.service.port | default 4222 }}
-    
-    # Cluster
-    cluster {
-      port: 6222
-    }
     
     # HTTP Monitoring
     http_port: {{ .Values.nats.service.monitorPort | default 8222 }}
@@ -124,12 +120,8 @@ metadata:
 data:
   nats.conf: |
     # NATS Server Configuration
+    server_name: {{ include "yousoon-storage.fullname" . }}-nats
     port: {{ .Values.nats.service.port }}
-    
-    # Cluster
-    cluster {
-      port: {{ .Values.nats.service.clusterPort | default 6222 }}
-    }
     
     # HTTP Monitoring
     http_port: {{ .Values.nats.service.monitorPort }}
