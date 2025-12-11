@@ -1,7 +1,8 @@
 # =============================================================================
 # Yousoon Platform - Production Values
 # =============================================================================
-# Production configuration with classic mode and enhanced resources.
+# Production environment with CLASSIC mode (each component in its own pod)
+# This provides better isolation, scaling and resilience.
 #
 # Usage:
 #   helm install yousoon ./charts/yousoon -f values-production.yaml
@@ -12,6 +13,13 @@ global:
   namespace: yousoon-production
   environment: production
   domain: yousoon.com
+  imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
+  imagePullPolicy: IfNotPresent
+
+  labels:
+    app.kubernetes.io/part-of: yousoon
+    app.kubernetes.io/managed-by: helm
+    environment: production
 
 # Enable all components
 storage:

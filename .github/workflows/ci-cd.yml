@@ -470,44 +470,44 @@ jobs:
           
           # Template validation
           helm template test deploy/helm/charts/yousoon-storage \
-            -f deploy/helm/values/storage-sidecar.yaml || true
+            -f deploy/helm/values/storage-staging.yaml || true
           helm template test deploy/helm/charts/yousoon-storage \
-            -f deploy/helm/values/storage-classic.yaml || true
+            -f deploy/helm/values/storage-prod.yaml || true
 
       - name: Export Helm Charts
         run: |
-          mkdir -p exported-charts/sidecar exported-charts/classic
+          mkdir -p exported-charts/staging exported-charts/prod
           
-          echo "📦 Exporting Sidecar mode chart..."
+          echo "📦 Exporting Staging (sidecar) mode chart..."
           helm template yousoon-storage deploy/helm/charts/yousoon-storage \
-            -f deploy/helm/values/storage-sidecar.yaml \
+            -f deploy/helm/values/storage-staging.yaml \
             --namespace yousoon-staging \
-            > exported-charts/sidecar/storage-sidecar.yaml
+            > exported-charts/staging/storage-staging.yaml
           
-          echo "📦 Exporting Classic mode chart..."
+          echo "📦 Exporting Production (classic) mode chart..."
           helm template yousoon-storage deploy/helm/charts/yousoon-storage \
-            -f deploy/helm/values/storage-classic.yaml \
+            -f deploy/helm/values/storage-prod.yaml \
             --namespace yousoon-prod \
-            > exported-charts/classic/storage-classic.yaml
+            > exported-charts/prod/storage-prod.yaml
           
           # Split by resource type for easier review
-          cd exported-charts/sidecar
-          csplit -f 'resource-' -b '%02d.yaml' storage-sidecar.yaml '/^---$/' '{*}' 2>/dev/null || true
-          cd ../classic
-          csplit -f 'resource-' -b '%02d.yaml' storage-classic.yaml '/^---$/' '{*}' 2>/dev/null || true
+          cd exported-charts/staging
+          csplit -f 'resource-' -b '%02d.yaml' storage-staging.yaml '/^---$/' '{*}' 2>/dev/null || true
+          cd ../prod
+          csplit -f 'resource-' -b '%02d.yaml' storage-prod.yaml '/^---$/' '{*}' 2>/dev/null || true
 
-      - name: Upload Sidecar Charts
+      - name: Upload Staging Charts
         uses: actions/upload-artifact@v4
         with:
-          name: helm-charts-sidecar
-          path: exported-charts/sidecar/
+          name: helm-charts-staging
+          path: exported-charts/staging/
           retention-days: 30
 
-      - name: Upload Classic Charts
+      - name: Upload Production Charts
         uses: actions/upload-artifact@v4
         with:
-          name: helm-charts-classic
-          path: exported-charts/classic/
+          name: helm-charts-prod
+          path: exported-charts/prod/
           retention-days: 30
 
   # ============================================
@@ -646,37 +646,44 @@ jobs:
       - name: Create Namespace
         run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Read enabled states from values.yaml
+      - name: Read enabled states from values file
         id: config
         working-directory: deploy/helm/charts/yousoon
         run: |
-          echo "📋 Reading enabled states from values.yaml..."
+          ENV="${{ needs.setup.outputs.environment }}"
           
-          STORAGE_ENABLED=$(grep -A1 "^storage:" values.yaml | grep "enabled:" | awk '{print $2}')
-          SERVICES_ENABLED=$(grep -A1 "^services:" values.yaml | grep "enabled:" | awk '{print $2}')
-          SITES_ENABLED=$(grep -A1 "^sites:" values.yaml | grep "enabled:" | awk '{print $2}')
-          MONITORING_ENABLED=$(grep -A1 "^monitoring:" values.yaml | grep "enabled:" | awk '{print $2}')
+          # Select values file based on environment
+          if [ "$ENV" == "prod" ]; then
+            VALUES_FILE="values-production.yaml"
+            MODE="classic"
+          else
+            VALUES_FILE="values-staging.yaml"
+            MODE="sidecar"
+          fi
           
+          echo "📋 Reading enabled states from $VALUES_FILE..."
+          
+          STORAGE_ENABLED=$(grep -A1 "^storage:" $VALUES_FILE | grep "enabled:" | awk '{print $2}')
+          SERVICES_ENABLED=$(grep -A1 "^services:" $VALUES_FILE | grep "enabled:" | awk '{print $2}')
+          SITES_ENABLED=$(grep -A1 "^sites:" $VALUES_FILE | grep "enabled:" | awk '{print $2}')
+          MONITORING_ENABLED=$(grep -A1 "^monitoring:" $VALUES_FILE | grep "enabled:" | awk '{print $2}')
+          
+          echo "values_file=$VALUES_FILE" >> $GITHUB_OUTPUT
           echo "storage_enabled=$STORAGE_ENABLED" >> $GITHUB_OUTPUT
           echo "services_enabled=$SERVICES_ENABLED" >> $GITHUB_OUTPUT
           echo "sites_enabled=$SITES_ENABLED" >> $GITHUB_OUTPUT
           echo "monitoring_enabled=$MONITORING_ENABLED" >> $GITHUB_OUTPUT
-          
-          # Determine architecture mode
-          ENV="${{ needs.setup.outputs.environment }}"
-          if [ "$ENV" == "prod" ]; then
-            echo "mode=classic" >> $GITHUB_OUTPUT
-          else
-            echo "mode=sidecar" >> $GITHUB_OUTPUT
-          fi
+          echo "mode=$MODE" >> $GITHUB_OUTPUT
           
           echo ""
           echo "📊 Configuration Summary:"
-          echo "  Storage:    $STORAGE_ENABLED"
-          echo "  Services:   $SERVICES_ENABLED"
-          echo "  Sites:      $SITES_ENABLED"
-          echo "  Monitoring: $MONITORING_ENABLED"
-          echo "  Mode:       $ENV → $([ "$ENV" == "prod" ] && echo "classic" || echo "sidecar")"
+          echo "  Environment: $ENV"
+          echo "  Values File: $VALUES_FILE"
+          echo "  Mode:        $MODE"
+          echo "  Storage:     $STORAGE_ENABLED"
+          echo "  Services:    $SERVICES_ENABLED"
+          echo "  Sites:       $SITES_ENABLED"
+          echo "  Monitoring:  $MONITORING_ENABLED"
 
       # ----------------------------------------
       # STORAGE
@@ -685,10 +692,11 @@ jobs:
         if: github.event.inputs.dry_run != 'true' && steps.config.outputs.storage_enabled == 'true'
         working-directory: deploy/helm
         run: |
-          MODE="${{ steps.config.outputs.mode }}"
-          echo "🚀 Deploying Storage in $MODE mode..."
+          ENV="${{ needs.setup.outputs.environment }}"
+          VALUES_FILE="storage-${ENV}.yaml"
+          echo "🚀 Deploying Storage ($VALUES_FILE)..."
           helm upgrade --install yousoon-storage ./charts/yousoon-storage \
-            -f values/storage-${MODE}.yaml \
+            -f values/${VALUES_FILE} \
             -n ${{ needs.setup.outputs.namespace }} \
             --wait --timeout 10m
 
@@ -705,10 +713,11 @@ jobs:
         if: github.event.inputs.dry_run != 'true' && steps.config.outputs.services_enabled == 'true'
         working-directory: deploy/helm
         run: |
-          MODE="${{ steps.config.outputs.mode }}"
-          echo "🚀 Deploying Services in $MODE mode..."
+          ENV="${{ needs.setup.outputs.environment }}"
+          VALUES_FILE="services-${ENV}.yaml"
+          echo "🚀 Deploying Services ($VALUES_FILE)..."
           helm upgrade --install yousoon-services ./charts/yousoon-services \
-            -f values/services-${MODE}.yaml \
+            -f values/${VALUES_FILE} \
             -n ${{ needs.setup.outputs.namespace }} \
             --set global.image.tag=${{ needs.setup.outputs.version }} \
             --wait --timeout 10m || echo "Services chart not ready yet"
@@ -726,10 +735,11 @@ jobs:
         if: github.event.inputs.dry_run != 'true' && steps.config.outputs.sites_enabled == 'true'
         working-directory: deploy/helm
         run: |
-          MODE="${{ steps.config.outputs.mode }}"
-          echo "🚀 Deploying Sites in $MODE mode..."
+          ENV="${{ needs.setup.outputs.environment }}"
+          VALUES_FILE="website-${ENV}.yaml"
+          echo "🚀 Deploying Sites ($VALUES_FILE)..."
           helm upgrade --install yousoon-sites ./charts/yousoon-sites \
-            -f values/website-${MODE}.yaml \
+            -f values/${VALUES_FILE} \
             -n ${{ needs.setup.outputs.namespace }} \
             --set global.image.tag=${{ needs.setup.outputs.version }} \
             --wait --timeout 10m
@@ -747,10 +757,11 @@ jobs:
         if: github.event.inputs.dry_run != 'true' && steps.config.outputs.monitoring_enabled == 'true'
         working-directory: deploy/helm
         run: |
-          MODE="${{ steps.config.outputs.mode }}"
-          echo "🚀 Deploying Monitoring in $MODE mode..."
+          ENV="${{ needs.setup.outputs.environment }}"
+          VALUES_FILE="monitoring-${ENV}.yaml"
+          echo "🚀 Deploying Monitoring ($VALUES_FILE)..."
           helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
-            -f values/monitoring-${MODE}.yaml \
+            -f values/${VALUES_FILE} \
             -n ${{ needs.setup.outputs.namespace }} \
             --wait --timeout 10m
 

@@ -1,0 +1,238 @@
+# =============================================================================
+# Yousoon Platform - Staging Values
+# =============================================================================
+# Staging environment with SIDECAR mode (components grouped in single pods)
+# This saves resources and is ideal for development/staging.
+#
+# Usage:
+#   helm install yousoon ./charts/yousoon -f values-staging.yaml
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+  environment: staging
+  domain: staging.yousoon.com
+  imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
+  imagePullPolicy: Always
+
+  labels:
+    app.kubernetes.io/part-of: yousoon
+    app.kubernetes.io/managed-by: helm
+    environment: staging
+
+# =============================================================================
+# Enable Components
+# =============================================================================
+storage:
+  enabled: true
+
+services:
+  enabled: true
+
+sites:
+  enabled: true
+
+monitoring:
+  enabled: true
+
+# =============================================================================
+# Storage - Staging Settings (Sidecar Mode)
+# =============================================================================
+yousoon-storage:
+  global:
+    infra: "sidecar"
+    namespace: yousoon-staging
+
+  mongodb:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "300m"
+    persistence:
+      size: 10Gi
+
+  redis:
+    enabled: true
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "100m"
+    persistence:
+      size: 2Gi
+
+  nats:
+    enabled: true
+    jetstream:
+      fileStorage:
+        size: 2Gi
+
+  elasticsearch:
+    enabled: true
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+    persistence:
+      size: 10Gi
+
+# =============================================================================
+# Services - Staging Settings (Sidecar Mode)
+# =============================================================================
+yousoon-services:
+  global:
+    infra: "sidecar"
+    namespace: yousoon-staging
+
+  # All services run together in sidecar mode
+  identity:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+  partner:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+  discovery:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+  booking:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+  engagement:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+  notification:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+  router:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "300m"
+
+# =============================================================================
+# Sites - Staging Settings (Sidecar Mode)
+# =============================================================================
+yousoon-sites:
+  global:
+    infra: "sidecar"
+    namespace: yousoon-staging
+
+  admin:
+    enabled: true
+    replicaCount: 1
+    ingress:
+      enabled: false  # Access via port-forward only
+
+  partners:
+    enabled: true
+    replicaCount: 1
+    ingress:
+      enabled: true
+      host: business.staging.yousoon.com
+
+  siteweb:
+    enabled: true
+    replicaCount: 1
+    ingress:
+      enabled: true
+      host: staging.yousoon.com
+
+# =============================================================================
+# Monitoring - Staging Settings (Sidecar Mode)
+# =============================================================================
+yousoon-monitoring:
+  global:
+    infra: "sidecar"
+    namespace: yousoon-staging
+
+  prometheus:
+    enabled: true
+    retention: 7d
+    retentionSize: 10GB
+    persistence:
+      size: 20Gi
+
+  grafana:
+    enabled: true
+    persistence:
+      size: 2Gi
+    ingress:
+      enabled: true
+      host: grafana.staging.yousoon.com
+
+  loki:
+    enabled: true
+    persistence:
+      size: 10Gi
+
+  jaeger:
+    enabled: true
+    persistence:
+      enabled: false  # No persistence in staging
+
+  promtail:
+    enabled: true
