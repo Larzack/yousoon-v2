@@ -13,10 +13,13 @@ import (
 
 // FavoriteDocument représente un favori en MongoDB
 type FavoriteDocument struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	UserID    string             `bson:"userId"`
-	OfferID   string             `bson:"offerId"`
-	CreatedAt time.Time          `bson:"createdAt"`
+	ID            primitive.ObjectID `bson:"_id,omitempty"`
+	UserID        string             `bson:"userId"`
+	OfferID       string             `bson:"offerId"`
+	OfferTitle    string             `bson:"offerTitle,omitempty"`
+	OfferImageURL string             `bson:"offerImageUrl,omitempty"`
+	PartnerName   string             `bson:"partnerName,omitempty"`
+	CreatedAt     time.Time          `bson:"createdAt"`
 }
 
 // FavoriteRepository implémentation MongoDB
@@ -53,12 +56,21 @@ func NewFavoriteRepository(db *mongo.Database) *FavoriteRepository {
 // Create ajoute un favori
 func (r *FavoriteRepository) Create(ctx context.Context, favorite *domain.Favorite) error {
 	doc := &FavoriteDocument{
-		UserID:    favorite.UserID,
-		OfferID:   favorite.OfferID,
-		CreatedAt: favorite.CreatedAt,
+		UserID:        favorite.UserID(),
+		OfferID:       favorite.OfferID(),
+		OfferTitle:    favorite.OfferTitle(),
+		OfferImageURL: favorite.OfferImageURL(),
+		PartnerName:   favorite.PartnerName(),
+		CreatedAt:     favorite.CreatedAt(),
 	}
 
-	result, err := r.collection.InsertOne(ctx, doc)
+	if favorite.ID() != "" {
+		if id, err := primitive.ObjectIDFromHex(favorite.ID()); err == nil {
+			doc.ID = id
+		}
+	}
+
+	_, err := r.collection.InsertOne(ctx, doc)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return domain.ErrFavoriteAlreadyExists
@@ -66,7 +78,6 @@ func (r *FavoriteRepository) Create(ctx context.Context, favorite *domain.Favori
 		return err
 	}
 
-	favorite.ID = result.InsertedID.(primitive.ObjectID).Hex()
 	return nil
 }
 
@@ -135,10 +146,13 @@ func (r *FavoriteRepository) CountByOfferID(ctx context.Context, offerID string)
 }
 
 func (r *FavoriteRepository) toDomain(doc *FavoriteDocument) *domain.Favorite {
-	return &domain.Favorite{
-		ID:        doc.ID.Hex(),
-		UserID:    doc.UserID,
-		OfferID:   doc.OfferID,
-		CreatedAt: doc.CreatedAt,
-	}
+	return domain.ReconstructFavorite(
+		doc.ID.Hex(),
+		doc.UserID,
+		doc.OfferID,
+		doc.OfferTitle,
+		doc.OfferImageURL,
+		doc.PartnerName,
+		doc.CreatedAt,
+	)
 }

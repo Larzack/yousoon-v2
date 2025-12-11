@@ -102,43 +102,56 @@ func (h *EventHandler) handleBookingEvents(msg *nats.Msg) {
 	}
 
 	var notification *domain.Notification
+	var err error
 
 	switch event.Type {
 	case "OutingCreated":
-		notification = &domain.Notification{
-			UserID:      event.UserID,
-			Type:        domain.NotificationTypeBookingConfirmed,
-			Channel:     domain.NotificationChannelPush,
-			Title:       "Réservation confirmée !",
-			Body:        "Votre sortie a été réservée. Présentez le QR code pour valider.",
-			RelatedType: "outing",
-			RelatedID:   event.OutingID,
-			Status:      domain.NotificationStatusPending,
-		}
+		relatedID := event.OutingID
+		notification, err = domain.NewNotification(
+			event.UserID,
+			domain.ChannelPush,
+			domain.TypeBookingConfirmed,
+			"Réservation confirmée !",
+			"Votre sortie a été réservée. Présentez le QR code pour valider.",
+			nil,
+			nil,
+			"outing",
+			&relatedID,
+		)
 
 	case "OutingCheckedIn":
-		notification = &domain.Notification{
-			UserID:      event.UserID,
-			Type:        domain.NotificationTypeCheckInSuccess,
-			Channel:     domain.NotificationChannelPush,
-			Title:       "Check-in réussi !",
-			Body:        "Profitez bien de votre sortie !",
-			RelatedType: "outing",
-			RelatedID:   event.OutingID,
-			Status:      domain.NotificationStatusPending,
-		}
+		relatedID := event.OutingID
+		notification, err = domain.NewNotification(
+			event.UserID,
+			domain.ChannelPush,
+			domain.TypeCheckInConfirmed,
+			"Check-in réussi !",
+			"Profitez bien de votre sortie !",
+			nil,
+			nil,
+			"outing",
+			&relatedID,
+		)
 
 	case "OutingCancelled":
-		notification = &domain.Notification{
-			UserID:      event.UserID,
-			Type:        domain.NotificationTypeBookingCancelled,
-			Channel:     domain.NotificationChannelPush,
-			Title:       "Réservation annulée",
-			Body:        "Votre réservation a été annulée.",
-			RelatedType: "outing",
-			RelatedID:   event.OutingID,
-			Status:      domain.NotificationStatusPending,
-		}
+		relatedID := event.OutingID
+		notification, err = domain.NewNotification(
+			event.UserID,
+			domain.ChannelPush,
+			domain.TypeBookingReminder, // Using closest available type
+			"Réservation annulée",
+			"Votre réservation a été annulée.",
+			nil,
+			nil,
+			"outing",
+			&relatedID,
+		)
+	}
+
+	if err != nil {
+		log.Printf("Error creating notification: %v", err)
+		msg.Nak()
+		return
 	}
 
 	if notification != nil {
@@ -153,8 +166,6 @@ func (h *EventHandler) handleBookingEvents(msg *nats.Msg) {
 }
 
 func (h *EventHandler) handleOfferEvents(msg *nats.Msg) {
-	ctx := context.Background()
-
 	var event struct {
 		Type    string  `json:"type"`
 		OfferID string  `json:"offerId"`
@@ -196,30 +207,38 @@ func (h *EventHandler) handleUserEvents(msg *nats.Msg) {
 	switch event.Type {
 	case "UserRegistered":
 		// Envoyer un email de bienvenue
-		notification := &domain.Notification{
-			UserID:  event.UserID,
-			Type:    domain.NotificationTypeSystem,
-			Channel: domain.NotificationChannelEmail,
-			Title:   "Bienvenue sur Yousoon !",
-			Body:    "Découvrez les meilleures sorties à prix réduit près de chez vous.",
-			Status:  domain.NotificationStatusPending,
-		}
-
-		if err := h.sendNotification(ctx, notification); err != nil {
+		notification, err := domain.NewNotification(
+			event.UserID,
+			domain.ChannelEmail,
+			domain.TypeWelcome,
+			"Bienvenue sur Yousoon !",
+			"Découvrez les meilleures sorties à prix réduit près de chez vous.",
+			nil,
+			nil,
+			"",
+			nil,
+		)
+		if err != nil {
+			log.Printf("Error creating welcome notification: %v", err)
+		} else if err := h.sendNotification(ctx, notification); err != nil {
 			log.Printf("Error sending welcome email: %v", err)
 		}
 
 	case "UserIdentityVerified":
-		notification := &domain.Notification{
-			UserID:  event.UserID,
-			Type:    domain.NotificationTypeSystem,
-			Channel: domain.NotificationChannelPush,
-			Title:   "Identité vérifiée !",
-			Body:    "Votre identité a été vérifiée. Vous pouvez maintenant réserver des sorties.",
-			Status:  domain.NotificationStatusPending,
-		}
-
-		if err := h.sendNotification(ctx, notification); err != nil {
+		notification, err := domain.NewNotification(
+			event.UserID,
+			domain.ChannelPush,
+			domain.TypeIdentityVerified,
+			"Identité vérifiée !",
+			"Votre identité a été vérifiée. Vous pouvez maintenant réserver des sorties.",
+			nil,
+			nil,
+			"",
+			nil,
+		)
+		if err != nil {
+			log.Printf("Error creating verification notification: %v", err)
+		} else if err := h.sendNotification(ctx, notification); err != nil {
 			log.Printf("Error sending verification notification: %v", err)
 		}
 	}
@@ -235,22 +254,21 @@ func (h *EventHandler) sendNotification(ctx context.Context, notification *domai
 
 	// Envoyer selon le channel
 	var err error
-	switch notification.Channel {
-	case domain.NotificationChannelPush:
-		err = h.notificationService.pushSender.SendToUser(ctx, notification, notification.UserID)
-	case domain.NotificationChannelEmail:
+	switch notification.Channel() {
+	case domain.ChannelPush:
+		err = h.notificationService.pushSender.SendToUser(ctx, notification, notification.UserID())
+	case domain.ChannelEmail:
 		// TODO: Récupérer l'email de l'utilisateur via gRPC
 		// err = h.notificationService.emailSender.SendEmail(ctx, notification, userEmail)
-	case domain.NotificationChannelSMS:
+	case domain.ChannelSMS:
 		// TODO: Récupérer le téléphone de l'utilisateur via gRPC
 		// err = h.notificationService.smsSender.SendSMS(ctx, notification, userPhone)
 	}
 
 	if err != nil {
-		notification.Status = domain.NotificationStatusFailed
-		notification.Error = err.Error()
+		notification.MarkAsFailed(err.Error())
 	} else {
-		notification.Status = domain.NotificationStatusSent
+		notification.MarkAsSent()
 	}
 
 	return h.notificationRepo.Update(ctx, notification)

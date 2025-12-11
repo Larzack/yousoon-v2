@@ -48,6 +48,19 @@ type PushTokenRepository interface {
 }
 
 // =============================================================================
+// DEVICE TOKEN REPOSITORY
+// =============================================================================
+
+type DeviceTokenRepository interface {
+	Create(ctx context.Context, token *DeviceToken) error
+	UpdateUserID(ctx context.Context, token, userID string) error
+	Delete(ctx context.Context, token string) error
+	Deactivate(ctx context.Context, token string) error
+	FindByUserID(ctx context.Context, userID string) ([]*DeviceToken, error)
+	FindByToken(ctx context.Context, token string) (*DeviceToken, error)
+}
+
+// =============================================================================
 // TEMPLATE REPOSITORY
 // =============================================================================
 

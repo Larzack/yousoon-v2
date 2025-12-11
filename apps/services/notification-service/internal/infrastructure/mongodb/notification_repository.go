@@ -2,6 +2,7 @@ package mongodb
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/yousoon/apps/services/notification-service/internal/domain"
@@ -68,18 +69,17 @@ func NewNotificationRepository(db *mongo.Database) *NotificationRepository {
 func (r *NotificationRepository) Create(ctx context.Context, notification *domain.Notification) error {
 	doc := r.toDocument(notification)
 
-	result, err := r.collection.InsertOne(ctx, doc)
+	_, err := r.collection.InsertOne(ctx, doc)
 	if err != nil {
 		return err
 	}
 
-	notification.ID = result.InsertedID.(primitive.ObjectID).Hex()
 	return nil
 }
 
 // Update met à jour une notification
 func (r *NotificationRepository) Update(ctx context.Context, notification *domain.Notification) error {
-	id, err := primitive.ObjectIDFromHex(notification.ID)
+	id, err := primitive.ObjectIDFromHex(notification.ID())
 	if err != nil {
 		return domain.ErrNotificationNotFound
 	}
@@ -216,26 +216,50 @@ func (r *NotificationRepository) FindPending(ctx context.Context, limit int) ([]
 }
 
 func (r *NotificationRepository) toDocument(n *domain.Notification) *NotificationDocument {
-	doc := &NotificationDocument{
-		UserID:      n.UserID,
-		Type:        string(n.Type),
-		Channel:     string(n.Channel),
-		Title:       n.Title,
-		Body:        n.Body,
-		Image:       n.Image,
-		Data:        n.Data,
-		RelatedType: n.RelatedType,
-		RelatedID:   n.RelatedID,
-		Status:      string(n.Status),
-		SentAt:      n.SentAt,
-		DeliveredAt: n.DeliveredAt,
-		ReadAt:      n.ReadAt,
-		Error:       n.Error,
-		CreatedAt:   n.CreatedAt,
+	// Serialize Data map to JSON string
+	var dataStr string
+	if n.Data() != nil {
+		if bytes, err := json.Marshal(n.Data()); err == nil {
+			dataStr = string(bytes)
+		}
 	}
 
-	if n.ID != "" {
-		if id, err := primitive.ObjectIDFromHex(n.ID); err == nil {
+	// Handle optional string pointers
+	var imageURL string
+	if n.ImageURL() != nil {
+		imageURL = *n.ImageURL()
+	}
+
+	var relatedID string
+	if n.RelatedID() != nil {
+		relatedID = *n.RelatedID()
+	}
+
+	var errMsg string
+	if n.Error() != nil {
+		errMsg = *n.Error()
+	}
+
+	doc := &NotificationDocument{
+		UserID:      n.UserID(),
+		Type:        string(n.Type()),
+		Channel:     string(n.Channel()),
+		Title:       n.Title(),
+		Body:        n.Body(),
+		Image:       imageURL,
+		Data:        dataStr,
+		RelatedType: n.RelatedType(),
+		RelatedID:   relatedID,
+		Status:      string(n.Status()),
+		SentAt:      n.SentAt(),
+		DeliveredAt: n.DeliveredAt(),
+		ReadAt:      n.ReadAt(),
+		Error:       errMsg,
+		CreatedAt:   n.CreatedAt(),
+	}
+
+	if n.ID() != "" {
+		if id, err := primitive.ObjectIDFromHex(n.ID()); err == nil {
 			doc.ID = id
 		}
 	}
@@ -244,22 +268,44 @@ func (r *NotificationRepository) toDocument(n *domain.Notification) *Notificatio
 }
 
 func (r *NotificationRepository) toDomain(doc *NotificationDocument) *domain.Notification {
-	return &domain.Notification{
-		ID:          doc.ID.Hex(),
-		UserID:      doc.UserID,
-		Type:        domain.NotificationType(doc.Type),
-		Channel:     domain.NotificationChannel(doc.Channel),
-		Title:       doc.Title,
-		Body:        doc.Body,
-		Image:       doc.Image,
-		Data:        doc.Data,
-		RelatedType: doc.RelatedType,
-		RelatedID:   doc.RelatedID,
-		Status:      domain.NotificationStatus(doc.Status),
-		SentAt:      doc.SentAt,
-		DeliveredAt: doc.DeliveredAt,
-		ReadAt:      doc.ReadAt,
-		Error:       doc.Error,
-		CreatedAt:   doc.CreatedAt,
+	// Deserialize Data JSON string to map
+	var data map[string]interface{}
+	if doc.Data != "" {
+		json.Unmarshal([]byte(doc.Data), &data)
 	}
+
+	// Handle optional string pointers
+	var imageURL *string
+	if doc.Image != "" {
+		imageURL = &doc.Image
+	}
+
+	var relatedID *string
+	if doc.RelatedID != "" {
+		relatedID = &doc.RelatedID
+	}
+
+	var errMsg *string
+	if doc.Error != "" {
+		errMsg = &doc.Error
+	}
+
+	return domain.ReconstructNotification(
+		doc.ID.Hex(),
+		doc.UserID,
+		domain.NotificationChannel(doc.Channel),
+		domain.NotificationType(doc.Type),
+		doc.Title,
+		doc.Body,
+		imageURL,
+		data,
+		domain.NotificationStatus(doc.Status),
+		doc.SentAt,
+		doc.DeliveredAt,
+		doc.ReadAt,
+		errMsg,
+		doc.RelatedType,
+		relatedID,
+		doc.CreatedAt,
+	)
 }

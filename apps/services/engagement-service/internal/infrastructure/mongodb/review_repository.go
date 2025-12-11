@@ -44,20 +44,7 @@ type ModerationDocument struct {
 type ReportDocument struct {
 	UserID     string    `bson:"userId"`
 	Reason     string    `bson:"reason"`
-	ReportedAt time.Time `bson:"reportedAt"`
-}
-
-type UserSnapshotDoc struct {
-	FirstName string `bson:"firstName"`
-	Avatar    string `bson:"avatar,omitempty"`
-}
-
-type OfferSnapshotDoc struct {
-	Title string `bson:"title"`
-}
-
-type PartnerSnapshotDoc struct {
-	Name string `bson:"name"`
+	ReportedAt time.Time `bson:"reportedAt"
 }
 
 // ReviewRepository implémentation MongoDB
@@ -117,7 +104,7 @@ func (r *ReviewRepository) Create(ctx context.Context, review *domain.Review) er
 
 // Update met à jour un avis
 func (r *ReviewRepository) Update(ctx context.Context, review *domain.Review) error {
-	id, err := primitive.ObjectIDFromHex(review.ID)
+	id, err := primitive.ObjectIDFromHex(review.ID())
 	if err != nil {
 		return domain.ErrReviewNotFound
 	}
@@ -305,37 +292,61 @@ func (r *ReviewRepository) Exists(ctx context.Context, userID, offerID string) (
 }
 
 func (r *ReviewRepository) toDocument(review *domain.Review) *ReviewDocument {
-	doc := &ReviewDocument{
-		UserID:             review.UserID,
-		OfferID:            review.OfferID,
-		PartnerID:          review.PartnerID,
-		EstablishmentID:    review.EstablishmentID,
-		OutingID:           review.OutingID,
-		Rating:             review.Rating,
-		Title:              review.Title,
-		Content:            review.Content,
-		Images:             review.Images,
-		HelpfulCount:       review.HelpfulCount,
-		IsVerifiedPurchase: review.IsVerifiedPurchase,
-		Moderation: ModerationDocument{
-			Status: string(review.Moderation.Status),
-		},
-		User: UserSnapshotDoc{
-			FirstName: review.User.FirstName,
-			Avatar:    review.User.Avatar,
-		},
-		Offer: OfferSnapshotDoc{
-			Title: review.Offer.Title,
-		},
-		Partner: PartnerSnapshotDoc{
-			Name: review.Partner.Name,
-		},
-		CreatedAt: review.CreatedAt,
-		UpdatedAt: review.UpdatedAt,
+	// Handle optional bookingID pointer
+	var bookingID string
+	if review.BookingID() != nil {
+		bookingID = *review.BookingID()
 	}
 
-	if review.ID != "" {
-		if id, err := primitive.ObjectIDFromHex(review.ID); err == nil {
+	// Convert domain reports to document reports
+	reports := make([]ReportDocument, len(review.Reports()))
+	for i, report := range review.Reports() {
+		reports[i] = ReportDocument{
+			UserID:     report.UserID,
+			Reason:     report.Reason,
+			ReportedAt: report.ReportedAt,
+		}
+	}
+
+	// Handle optional moderation fields
+	var moderatedBy string
+	if review.ModeratedBy() != nil {
+		moderatedBy = *review.ModeratedBy()
+	}
+	var rejectReason string
+	if review.RejectReason() != nil {
+		rejectReason = *review.RejectReason()
+	}
+
+	doc := &ReviewDocument{
+		UserID:             review.UserID(),
+		OfferID:            review.OfferID(),
+		PartnerID:          review.PartnerID(),
+		EstablishmentID:    review.EstablishmentID(),
+		BookingID:          bookingID,
+		Rating:             review.Rating(),
+		Title:              review.Title(),
+		Content:            review.Content(),
+		Images:             review.Images(),
+		UserFirstName:      review.UserFirstName(),
+		UserAvatar:         review.UserAvatar(),
+		OfferTitle:         review.OfferTitle(),
+		PartnerName:        review.PartnerName(),
+		HelpfulCount:       review.HelpfulCount(),
+		IsVerifiedPurchase: review.IsVerifiedPurchase(),
+		Moderation: ModerationDocument{
+			Status:       string(review.Status()),
+			Reports:      reports,
+			ReviewedBy:   moderatedBy,
+			ReviewedAt:   review.ModeratedAt(),
+			RejectReason: rejectReason,
+		},
+		CreatedAt: review.CreatedAt(),
+		UpdatedAt: review.UpdatedAt(),
+	}
+
+	if review.ID() != "" {
+		if id, err := primitive.ObjectIDFromHex(review.ID()); err == nil {
 			doc.ID = id
 		}
 	}
@@ -344,33 +355,55 @@ func (r *ReviewRepository) toDocument(review *domain.Review) *ReviewDocument {
 }
 
 func (r *ReviewRepository) toDomain(doc *ReviewDocument) *domain.Review {
-	return &domain.Review{
-		ID:                 doc.ID.Hex(),
-		UserID:             doc.UserID,
-		OfferID:            doc.OfferID,
-		PartnerID:          doc.PartnerID,
-		EstablishmentID:    doc.EstablishmentID,
-		OutingID:           doc.OutingID,
-		Rating:             doc.Rating,
-		Title:              doc.Title,
-		Content:            doc.Content,
-		Images:             doc.Images,
-		HelpfulCount:       doc.HelpfulCount,
-		IsVerifiedPurchase: doc.IsVerifiedPurchase,
-		Moderation: domain.Moderation{
-			Status: domain.ModerationStatus(doc.Moderation.Status),
-		},
-		User: domain.UserSnapshot{
-			FirstName: doc.User.FirstName,
-			Avatar:    doc.User.Avatar,
-		},
-		Offer: domain.OfferSnapshot{
-			Title: doc.Offer.Title,
-		},
-		Partner: domain.PartnerSnapshot{
-			Name: doc.Partner.Name,
-		},
-		CreatedAt: doc.CreatedAt,
-		UpdatedAt: doc.UpdatedAt,
+	// Handle optional bookingID
+	var bookingID *string
+	if doc.BookingID != "" {
+		bookingID = &doc.BookingID
 	}
+
+	// Convert document reports to domain reports
+	reports := make([]domain.ReviewReport, len(doc.Moderation.Reports))
+	for i, report := range doc.Moderation.Reports {
+		reports[i] = domain.ReviewReport{
+			UserID:     report.UserID,
+			Reason:     report.Reason,
+			ReportedAt: report.ReportedAt,
+		}
+	}
+
+	// Handle optional moderation fields
+	var moderatedBy *string
+	if doc.Moderation.ReviewedBy != "" {
+		moderatedBy = &doc.Moderation.ReviewedBy
+	}
+	var rejectReason *string
+	if doc.Moderation.RejectReason != "" {
+		rejectReason = &doc.Moderation.RejectReason
+	}
+
+	return domain.ReconstructReview(
+		doc.ID.Hex(),
+		doc.UserID,
+		doc.OfferID,
+		doc.PartnerID,
+		doc.EstablishmentID,
+		bookingID,
+		doc.Rating,
+		doc.Title,
+		doc.Content,
+		doc.Images,
+		doc.UserFirstName,
+		doc.UserAvatar,
+		doc.OfferTitle,
+		doc.PartnerName,
+		domain.ReviewStatus(doc.Moderation.Status),
+		reports,
+		moderatedBy,
+		doc.Moderation.ReviewedAt,
+		rejectReason,
+		doc.HelpfulCount,
+		doc.IsVerifiedPurchase,
+		doc.CreatedAt,
+		doc.UpdatedAt,
+	)
 }

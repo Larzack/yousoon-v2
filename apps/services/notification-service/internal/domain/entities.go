@@ -16,6 +16,7 @@ var (
 	ErrInvalidChannel       = errors.New("invalid notification channel")
 	ErrTemplateNotFound     = errors.New("notification template not found")
 	ErrPushTokenNotFound    = errors.New("push token not found")
+	ErrDeviceTokenNotFound  = errors.New("device token not found")
 	ErrSendFailed           = errors.New("notification send failed")
 )
 
@@ -79,6 +80,55 @@ const (
 
 func (t NotificationType) String() string {
 	return string(t)
+}
+
+// =============================================================================
+// ENUM: Platform
+// =============================================================================
+
+type Platform string
+
+const (
+	PlatformIOS     Platform = "ios"
+	PlatformAndroid Platform = "android"
+)
+
+func (p Platform) String() string {
+	return string(p)
+}
+
+func (p Platform) IsValid() bool {
+	switch p {
+	case PlatformIOS, PlatformAndroid:
+		return true
+	}
+	return false
+}
+
+// =============================================================================
+// ENTITY: DeviceToken
+// =============================================================================
+
+type DeviceToken struct {
+	ID        string
+	UserID    string
+	Token     string
+	Platform  Platform
+	IsActive  bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func NewDeviceToken(userID, token string, platform Platform) *DeviceToken {
+	now := time.Now()
+	return &DeviceToken{
+		UserID:    userID,
+		Token:     token,
+		Platform:  platform,
+		IsActive:  true,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
 }
 
 // =============================================================================

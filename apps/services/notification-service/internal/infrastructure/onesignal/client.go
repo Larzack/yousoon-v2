@@ -65,31 +65,31 @@ type NotificationResponse struct {
 func (c *Client) SendPush(ctx context.Context, notification *domain.Notification, tokens []string) error {
 	// Préparer la data
 	data := map[string]interface{}{
-		"type":        string(notification.Type),
-		"relatedType": notification.RelatedType,
-		"relatedId":   notification.RelatedID,
+		"type":        notification.Type().String(),
+		"relatedType": notification.RelatedType(),
+		"relatedId":   notification.RelatedID(),
 	}
 
 	req := NotificationRequest{
 		AppID:            c.appID,
 		IncludePlayerIDs: tokens,
 		Headings: map[string]string{
-			"en": notification.Title,
-			"fr": notification.Title,
+			"en": notification.Title(),
+			"fr": notification.Title(),
 		},
 		Contents: map[string]string{
-			"en": notification.Body,
-			"fr": notification.Body,
+			"en": notification.Body(),
+			"fr": notification.Body(),
 		},
 		Data:     data,
 		TTL:      86400, // 24 heures
 		Priority: 10,
 	}
 
-	if notification.Image != "" {
-		req.BigPicture = notification.Image
+	if imageURL := notification.ImageURL(); imageURL != nil && *imageURL != "" {
+		req.BigPicture = *imageURL
 		req.IOSAttachments = map[string]string{
-			"id": notification.Image,
+			"id": *imageURL,
 		}
 	}
 
@@ -99,9 +99,9 @@ func (c *Client) SendPush(ctx context.Context, notification *domain.Notification
 // SendToUser envoie une notification à un utilisateur via son external_id
 func (c *Client) SendToUser(ctx context.Context, notification *domain.Notification, userID string) error {
 	data := map[string]interface{}{
-		"type":        string(notification.Type),
-		"relatedType": notification.RelatedType,
-		"relatedId":   notification.RelatedID,
+		"type":        notification.Type().String(),
+		"relatedType": notification.RelatedType(),
+		"relatedId":   notification.RelatedID(),
 	}
 
 	req := NotificationRequest{
@@ -111,22 +111,22 @@ func (c *Client) SendToUser(ctx context.Context, notification *domain.Notificati
 		},
 		TargetChannel: "push",
 		Headings: map[string]string{
-			"en": notification.Title,
-			"fr": notification.Title,
+			"en": notification.Title(),
+			"fr": notification.Title(),
 		},
 		Contents: map[string]string{
-			"en": notification.Body,
-			"fr": notification.Body,
+			"en": notification.Body(),
+			"fr": notification.Body(),
 		},
 		Data:     data,
 		TTL:      86400,
 		Priority: 10,
 	}
 
-	if notification.Image != "" {
-		req.BigPicture = notification.Image
+	if imageURL := notification.ImageURL(); imageURL != nil && *imageURL != "" {
+		req.BigPicture = *imageURL
 		req.IOSAttachments = map[string]string{
-			"id": notification.Image,
+			"id": *imageURL,
 		}
 	}
 

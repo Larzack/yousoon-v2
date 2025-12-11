@@ -2,38 +2,49 @@ package resolver
 
 import (
 	"context"
-	"time"
+	"errors"
 
 	"github.com/yousoon/apps/services/engagement-service/internal/domain"
 	"github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model"
 )
+
+var ErrUnauthorized = errors.New("unauthorized")
 
 // CreateReview crée un nouvel avis
 func (r *Resolver) CreateReview(ctx context.Context, input model.CreateReviewInput) (*model.Review, error) {
 	userID := ctx.Value("userID").(string)
 
 	// Vérifier si l'utilisateur a déjà laissé un avis
-	exists, err := r.reviewRepo.Exists(ctx, userID, input.OfferID)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
+	existing, _ := r.reviewRepo.GetByUserAndOffer(ctx, userID, input.OfferID)
+	if existing != nil {
 		return nil, domain.ErrReviewAlreadyExists
 	}
 
-	now := time.Now()
-	review := &domain.Review{
-		UserID:  userID,
-		OfferID: input.OfferID,
-		Rating:  input.Rating,
-		Title:   derefString(input.Title),
-		Content: input.Content,
-		Images:  input.Images,
-		Moderation: domain.Moderation{
-			Status: domain.ModerationStatusPending,
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
+	// TODO: Récupérer les infos de l'offre et de l'utilisateur via gRPC
+	// Pour l'instant, on utilise des valeurs vides
+	title := ""
+	if input.Title != nil {
+		title = *input.Title
+	}
+
+	review, err := domain.NewReview(
+		userID,
+		input.OfferID,
+		"",  // partnerID - TODO: fetch via gRPC
+		"",  // establishmentID - TODO: fetch via gRPC
+		nil, // bookingID - TODO: check via gRPC
+		input.Rating,
+		title,
+		input.Content,
+		input.Images,
+		"",    // userFirstName - TODO: fetch via gRPC
+		"",    // userAvatar - TODO: fetch via gRPC
+		"",    // offerTitle - TODO: fetch via gRPC
+		"",    // partnerName - TODO: fetch via gRPC
+		false, // isVerifiedPurchase - TODO: check via gRPC
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := r.reviewRepo.Create(ctx, review); err != nil {
@@ -47,29 +58,38 @@ func (r *Resolver) CreateReview(ctx context.Context, input model.CreateReviewInp
 func (r *Resolver) UpdateReview(ctx context.Context, id string, input model.UpdateReviewInput) (*model.Review, error) {
 	userID := ctx.Value("userID").(string)
 
-	review, err := r.reviewRepo.FindByID(ctx, id)
+	review, err := r.reviewRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if review.UserID != userID {
-		return nil, domain.ErrUnauthorized
+	if review.UserID() != userID {
+		return nil, ErrUnauthorized
 	}
 
+	rating := review.Rating()
 	if input.Rating != nil {
-		review.Rating = *input.Rating
-	}
-	if input.Title != nil {
-		review.Title = *input.Title
-	}
-	if input.Content != nil {
-		review.Content = *input.Content
-	}
-	if input.Images != nil {
-		review.Images = input.Images
+		rating = *input.Rating
 	}
 
-	review.UpdatedAt = time.Now()
+	title := review.Title()
+	if input.Title != nil {
+		title = *input.Title
+	}
+
+	content := review.Content()
+	if input.Content != nil {
+		content = *input.Content
+	}
+
+	images := review.Images()
+	if input.Images != nil {
+		images = input.Images
+	}
+
+	if err := review.Update(rating, title, content, images); err != nil {
+		return nil, err
+	}
 
 	if err := r.reviewRepo.Update(ctx, review); err != nil {
 		return nil, err
@@ -82,13 +102,13 @@ func (r *Resolver) UpdateReview(ctx context.Context, id string, input model.Upda
 func (r *Resolver) DeleteReview(ctx context.Context, id string) (bool, error) {
 	userID := ctx.Value("userID").(string)
 
-	review, err := r.reviewRepo.FindByID(ctx, id)
+	review, err := r.reviewRepo.GetByID(ctx, id)
 	if err != nil {
 		return false, err
 	}
 
-	if review.UserID != userID {
-		return false, domain.ErrUnauthorized
+	if review.UserID() != userID {
+		return false, ErrUnauthorized
 	}
 
 	if err := r.reviewRepo.Delete(ctx, id); err != nil {
@@ -102,7 +122,16 @@ func (r *Resolver) DeleteReview(ctx context.Context, id string) (bool, error) {
 func (r *Resolver) ReportReview(ctx context.Context, id, reason string) (bool, error) {
 	userID := ctx.Value("userID").(string)
 
-	if err := r.reviewRepo.AddReport(ctx, id, userID, reason); err != nil {
+	review, err := r.reviewRepo.GetByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+
+	if err := review.Report(userID, reason); err != nil {
+		return false, err
+	}
+
+	if err := r.reviewRepo.Update(ctx, review); err != nil {
 		return false, err
 	}
 
@@ -118,7 +147,12 @@ func (r *Resolver) OfferReviews(ctx context.Context, offerID string, first *int,
 
 	offset := 0
 
-	reviews, total, err := r.reviewRepo.FindByOfferID(ctx, offerID, limit, offset)
+	filter := domain.ReviewFilter{
+		Offset: offset,
+		Limit:  limit,
+	}
+
+	reviews, total, err := r.reviewRepo.GetByOfferID(ctx, offerID, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -129,17 +163,17 @@ func (r *Resolver) OfferReviews(ctx context.Context, offerID string, first *int,
 	for i, rev := range reviews {
 		edges[i] = &model.ReviewEdge{
 			Node:   r.toModelReview(rev),
-			Cursor: rev.ID,
+			Cursor: rev.ID(),
 		}
 	}
 
 	return &model.ReviewsConnection{
 		Edges: edges,
 		PageInfo: &model.PageInfo{
-			HasNextPage:     len(reviews) == limit && offset+limit < total,
+			HasNextPage:     len(reviews) == limit && offset+limit < int(total),
 			HasPreviousPage: offset > 0,
 		},
-		TotalCount:    total,
+		TotalCount:    int(total),
 		AverageRating: &avg,
 	}, nil
 }
@@ -155,7 +189,12 @@ func (r *Resolver) MyReviews(ctx context.Context, first *int, after *string) (*m
 
 	offset := 0
 
-	reviews, total, err := r.reviewRepo.FindByUserID(ctx, userID, limit, offset)
+	filter := domain.ReviewFilter{
+		Offset: offset,
+		Limit:  limit,
+	}
+
+	reviews, total, err := r.reviewRepo.GetByUserID(ctx, userID, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -164,17 +203,17 @@ func (r *Resolver) MyReviews(ctx context.Context, first *int, after *string) (*m
 	for i, rev := range reviews {
 		edges[i] = &model.ReviewEdge{
 			Node:   r.toModelReview(rev),
-			Cursor: rev.ID,
+			Cursor: rev.ID(),
 		}
 	}
 
 	return &model.ReviewsConnection{
 		Edges: edges,
 		PageInfo: &model.PageInfo{
-			HasNextPage:     len(reviews) == limit && offset+limit < total,
+			HasNextPage:     len(reviews) == limit && offset+limit < int(total),
 			HasPreviousPage: offset > 0,
 		},
-		TotalCount: total,
+		TotalCount: int(total),
 	}, nil
 }
 
@@ -193,22 +232,23 @@ func (r *Resolver) AverageRating(ctx context.Context, offerID string) (*float64,
 // ReviewCount retourne le nombre d'avis d'une offre
 func (r *Resolver) ReviewCount(ctx context.Context, offerID string) (int, error) {
 	_, count, err := r.reviewRepo.GetAverageRating(ctx, offerID)
-	return count, err
+	return int(count), err
 }
 
 func (r *Resolver) toModelReview(review *domain.Review) *model.Review {
+	title := review.Title()
 	return &model.Review{
-		ID:                 review.ID,
-		UserID:             review.UserID,
-		OfferID:            review.OfferID,
-		Rating:             review.Rating,
-		Title:              &review.Title,
-		Content:            review.Content,
-		Images:             review.Images,
-		HelpfulCount:       review.HelpfulCount,
-		IsVerifiedPurchase: review.IsVerifiedPurchase,
-		CreatedAt:          review.CreatedAt,
-		UpdatedAt:          review.UpdatedAt,
+		ID:                 review.ID(),
+		UserID:             review.UserID(),
+		OfferID:            review.OfferID(),
+		Rating:             review.Rating(),
+		Title:              &title,
+		Content:            review.Content(),
+		Images:             review.Images(),
+		HelpfulCount:       review.HelpfulCount(),
+		IsVerifiedPurchase: review.IsVerifiedPurchase(),
+		CreatedAt:          review.CreatedAt(),
+		UpdatedAt:          review.UpdatedAt(),
 	}
 }
 

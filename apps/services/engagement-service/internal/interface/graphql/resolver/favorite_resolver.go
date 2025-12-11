@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"context"
-	"time"
 
 	"github.com/yousoon/apps/services/engagement-service/internal/domain"
 	"github.com/yousoon/apps/services/engagement-service/internal/interface/graphql/model"
@@ -12,10 +11,11 @@ import (
 func (r *Resolver) AddFavorite(ctx context.Context, offerID string) (*model.Favorite, error) {
 	userID := ctx.Value("userID").(string)
 
-	favorite := &domain.Favorite{
-		UserID:    userID,
-		OfferID:   offerID,
-		CreatedAt: time.Now(),
+	// TODO: Récupérer les infos de l'offre via gRPC pour la dénormalisation
+	// Pour l'instant, on utilise des valeurs vides
+	favorite, err := domain.NewFavorite(userID, offerID, "", "", "")
+	if err != nil {
+		return nil, err
 	}
 
 	if err := r.favoriteRepo.Create(ctx, favorite); err != nil {
@@ -23,10 +23,10 @@ func (r *Resolver) AddFavorite(ctx context.Context, offerID string) (*model.Favo
 	}
 
 	return &model.Favorite{
-		ID:        favorite.ID,
-		UserID:    favorite.UserID,
-		OfferID:   favorite.OfferID,
-		CreatedAt: favorite.CreatedAt,
+		ID:        favorite.ID(),
+		UserID:    favorite.UserID(),
+		OfferID:   favorite.OfferID(),
+		CreatedAt: favorite.CreatedAt(),
 	}, nil
 }
 
@@ -34,7 +34,13 @@ func (r *Resolver) AddFavorite(ctx context.Context, offerID string) (*model.Favo
 func (r *Resolver) RemoveFavorite(ctx context.Context, offerID string) (bool, error) {
 	userID := ctx.Value("userID").(string)
 
-	if err := r.favoriteRepo.Delete(ctx, userID, offerID); err != nil {
+	// Trouver le favori par userID et offerID
+	favorite, err := r.favoriteRepo.GetByUserAndOffer(ctx, userID, offerID)
+	if err != nil {
+		return false, err
+	}
+
+	if err := r.favoriteRepo.Delete(ctx, favorite.ID()); err != nil {
 		return false, err
 	}
 
@@ -53,7 +59,12 @@ func (r *Resolver) MyFavorites(ctx context.Context, first *int, after *string) (
 	offset := 0
 	// TODO: Décoder le cursor after pour la pagination
 
-	favorites, total, err := r.favoriteRepo.FindByUserID(ctx, userID, limit, offset)
+	filter := domain.FavoriteFilter{
+		Offset: offset,
+		Limit:  limit,
+	}
+
+	favorites, total, err := r.favoriteRepo.GetByUserID(ctx, userID, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -62,16 +73,16 @@ func (r *Resolver) MyFavorites(ctx context.Context, first *int, after *string) (
 	for i, f := range favorites {
 		edges[i] = &model.FavoriteEdge{
 			Node: &model.Favorite{
-				ID:        f.ID,
-				UserID:    f.UserID,
-				OfferID:   f.OfferID,
-				CreatedAt: f.CreatedAt,
+				ID:        f.ID(),
+				UserID:    f.UserID(),
+				OfferID:   f.OfferID(),
+				CreatedAt: f.CreatedAt(),
 			},
-			Cursor: f.ID, // Utiliser l'ID comme cursor simple
+			Cursor: f.ID(), // Utiliser l'ID comme cursor simple
 		}
 	}
 
-	hasNext := len(favorites) == limit && offset+limit < total
+	hasNext := len(favorites) == limit && offset+limit < int(total)
 
 	return &model.FavoritesConnection{
 		Edges: edges,
@@ -79,7 +90,7 @@ func (r *Resolver) MyFavorites(ctx context.Context, first *int, after *string) (
 			HasNextPage:     hasNext,
 			HasPreviousPage: offset > 0,
 		},
-		TotalCount: total,
+		TotalCount: int(total),
 	}, nil
 }
 
@@ -90,5 +101,5 @@ func (r *Resolver) IsFavorited(ctx context.Context, offerID string) (bool, error
 		return false, nil
 	}
 
-	return r.favoriteRepo.Exists(ctx, userID, offerID)
+	return r.favoriteRepo.ExistsByUserAndOffer(ctx, userID, offerID)
 }

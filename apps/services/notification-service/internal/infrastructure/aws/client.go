@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/ses/types"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	snstypes "github.com/aws/aws-sdk-go-v2/service/sns/types"
 	"github.com/yousoon/apps/services/notification-service/internal/domain"
 )
 
@@ -47,7 +48,7 @@ func (c *AWSClient) SendEmail(ctx context.Context, notification *domain.Notifica
 		Message: &types.Message{
 			Subject: &types.Content{
 				Charset: aws.String("UTF-8"),
-				Data:    aws.String(notification.Title),
+				Data:    aws.String(notification.Title()),
 			},
 			Body: &types.Body{
 				Html: &types.Content{
@@ -56,7 +57,7 @@ func (c *AWSClient) SendEmail(ctx context.Context, notification *domain.Notifica
 				},
 				Text: &types.Content{
 					Charset: aws.String("UTF-8"),
-					Data:    aws.String(notification.Body),
+					Data:    aws.String(notification.Body()),
 				},
 			},
 		},
@@ -74,7 +75,7 @@ func (c *AWSClient) SendEmail(ctx context.Context, notification *domain.Notifica
 func (c *AWSClient) SendSMS(ctx context.Context, notification *domain.Notification, phoneNumber string) error {
 	input := &sns.PublishInput{
 		PhoneNumber: aws.String(phoneNumber),
-		Message:     aws.String(notification.Body),
+		Message:     aws.String(notification.Body()),
 		MessageAttributes: map[string]snstypes.MessageAttributeValue{
 			"AWS.SNS.SMS.SenderID": {
 				DataType:    aws.String("String"),
@@ -166,10 +167,7 @@ func (c *AWSClient) buildHTMLBody(notification *domain.Notification) string {
     </div>
 </body>
 </html>
-`, notification.Title, notification.Body)
+`, notification.Title(), notification.Body())
 
 	return html
 }
-
-// Type pour les attributs SMS SNS
-type snstypes = sns.types

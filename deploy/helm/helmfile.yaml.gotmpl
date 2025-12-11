@@ -12,11 +12,14 @@
 # - prod    → yousoon-prod
 #
 # USAGE:
-#   Staging (sidecar):
-#     helmfile sync -e staging
+#   Staging (sidecar) - déploiement parallèle:
+#     helmfile sync -e staging --concurrency 4
 #
-#   Production (classic):
-#     helmfile sync -e prod
+#   Production (classic) - déploiement parallèle:
+#     helmfile sync -e prod --concurrency 4
+#
+#   Déployer une seule release:
+#     helmfile sync -e staging -l name=yousoon-storage
 # =============================================================================
 
 # =============================================================================
@@ -46,31 +49,72 @@ environments:
 # Default values
 helmDefaults:
   wait: true
-  timeout: 900
+  timeout: 600
   createNamespace: true
   atomic: false
 
 # =============================================================================
-# RELEASES - YOUSOON CUSTOM CHARTS
+# RELEASES - DÉPLOIEMENTS PARALLÈLES
 # =============================================================================
+# Les releases sont maintenant séparées pour permettre le parallélisme.
+# Storage doit être déployé en premier (needs), puis les autres en parallèle.
+# =============================================================================
+
 releases:
   # ===========================================================================
-  # YOUSOON PLATFORM (Umbrella Chart)
+  # LAYER 1: STORAGE (MongoDB, Redis, NATS, Elasticsearch)
+  # Déployé en premier car les services en dépendent
   # ===========================================================================
-  - name: yousoon
+  - name: yousoon-storage
     namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
-    chart: ./charts/yousoon
+    chart: ./charts/yousoon-storage
     values:
       - global:
           infra: {{ .Values | get "global.infra" "sidecar" | quote }}
           namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
           environment: {{ .Values | get "global.environment" "staging" }}
-      # Sub-chart activation (images not yet built for services/sites)
-      - storage:
-          enabled: true
-      - services:
-          enabled: false  # Disabled until Docker images are built
-      - sites:
-          enabled: false  # Disabled until Docker images are built
-      - monitoring:
-          enabled: true
+
+  # ===========================================================================
+  # LAYER 2: MONITORING (Prometheus, Grafana, Loki, Jaeger)
+  # Peut être déployé en parallèle avec Storage
+  # ===========================================================================
+  - name: yousoon-monitoring
+    namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
+    chart: ./charts/yousoon-monitoring
+    values:
+      - global:
+          infra: {{ .Values | get "global.infra" "sidecar" | quote }}
+          namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
+          environment: {{ .Values | get "global.environment" "staging" }}
+
+  # ===========================================================================
+  # LAYER 3: SERVICES (Identity, Partner, Discovery, Booking, etc.)
+  # Dépend de Storage - attendre que Storage soit Ready
+  # ===========================================================================
+  - name: yousoon-services
+    namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
+    chart: ./charts/yousoon-services
+    installed: false  # Disabled until Docker images are built
+    needs:
+      - {{ .Values | get "global.namespace" "yousoon-staging" }}/yousoon-storage
+    values:
+      - global:
+          infra: {{ .Values | get "global.infra" "sidecar" | quote }}
+          namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
+          environment: {{ .Values | get "global.environment" "staging" }}
+
+  # ===========================================================================
+  # LAYER 4: SITES (Admin, Partners, Siteweb)
+  # Dépend de Services - attendre que Services soit Ready
+  # ===========================================================================
+  - name: yousoon-sites
+    namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
+    chart: ./charts/yousoon-sites
+    installed: false  # Disabled until Docker images are built
+    needs:
+      - {{ .Values | get "global.namespace" "yousoon-staging" }}/yousoon-services
+    values:
+      - global:
+          infra: {{ .Values | get "global.infra" "sidecar" | quote }}
+          namespace: {{ .Values | get "global.namespace" "yousoon-staging" }}
+          environment: {{ .Values | get "global.environment" "staging" }}
