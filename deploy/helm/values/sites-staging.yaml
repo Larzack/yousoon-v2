@@ -24,7 +24,7 @@ admin:
   image:
     repository: yousoon/admin
     tag: staging
-  port: 80
+  port: 8081
 
   resources: {}
 
@@ -33,6 +33,8 @@ admin:
       value: production
     - name: VITE_API_URL
       value: "https://api.yousoon.com/graphql"
+    - name: PORT
+      value: "8081"
 
   ingress:
     enabled: true
@@ -46,7 +48,7 @@ partners:
   image:
     repository: yousoon/partners
     tag: staging
-  port: 80
+  port: 8082
 
   resources: {}
 
@@ -55,6 +57,8 @@ partners:
       value: production
     - name: VITE_API_URL
       value: "https://api.yousoon.com/graphql"
+    - name: PORT
+      value: "8082"
 
   ingress:
     enabled: true
