@@ -25,13 +25,13 @@ global:
 # =============================================================================
 
 storage:
-  enabled: true
+  enabled: false  # Disabled for staging - using external storage
 
 services:
   enabled: false  # Disabled until Docker images are built and pushed to ECR
 
 sites:
-  enabled: false  # Disabled until Docker images are built and pushed to ECR
+  enabled: true   # Sites only for staging
 
 monitoring:
-  enabled: false  # Disabled temporarily for debugging
+  enabled: false  # Disabled for staging

@@ -531,15 +531,27 @@ jobs:
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
           
-          if [ "$ENV" == "prod" ]; then
-            echo "mode=classic" >> $GITHUB_OUTPUT
-            echo "📊 Monitoring in CLASSIC mode (production)"
+          # Lire l'état enabled depuis le values.yaml du chart umbrella
+          MONITORING_ENABLED=$(grep -A1 "^monitoring:" deploy/helm/charts/yousoon/values.yaml | grep "enabled:" | awk '{print $2}')
+          echo "monitoring_enabled=$MONITORING_ENABLED" >> $GITHUB_OUTPUT
+          
+          if [ "$MONITORING_ENABLED" == "false" ]; then
+            echo "📊 Monitoring is DISABLED - will uninstall if exists"
+            echo "action=uninstall" >> $GITHUB_OUTPUT
           else
-            echo "mode=sidecar" >> $GITHUB_OUTPUT
-            echo "📊 Monitoring in SIDECAR mode (staging)"
+            echo "📊 Monitoring is ENABLED"
+            echo "action=install" >> $GITHUB_OUTPUT
+            if [ "$ENV" == "prod" ]; then
+              echo "mode=classic" >> $GITHUB_OUTPUT
+              echo "📊 Monitoring in CLASSIC mode (production)"
+            else
+              echo "mode=sidecar" >> $GITHUB_OUTPUT
+              echo "📊 Monitoring in SIDECAR mode (staging)"
+            fi
           fi
 
       - name: Validate Helm Charts
+        if: steps.mode.outputs.action == 'install'
         run: |
           # Lint monitoring chart
           helm lint deploy/helm/charts/yousoon-monitoring || true
@@ -551,6 +563,7 @@ jobs:
             -f deploy/helm/values/monitoring-classic.yaml || true
 
       - name: Export Helm Charts
+        if: steps.mode.outputs.action == 'install'
         run: |
           mkdir -p exported-charts/monitoring-sidecar exported-charts/monitoring-classic
           
@@ -573,6 +586,7 @@ jobs:
           csplit -f 'resource-' -b '%02d.yaml' monitoring-classic.yaml '/^---$/' '{*}' 2>/dev/null || true
 
       - name: Upload Monitoring Sidecar Charts
+        if: steps.mode.outputs.action == 'install'
         uses: actions/upload-artifact@v4
         with:
           name: helm-charts-monitoring-sidecar
@@ -580,6 +594,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Monitoring Classic Charts
+        if: steps.mode.outputs.action == 'install'
         uses: actions/upload-artifact@v4
         with:
           name: helm-charts-monitoring-classic
@@ -607,7 +622,7 @@ jobs:
         run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy Monitoring
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && steps.mode.outputs.action == 'install'
         working-directory: deploy/helm
         run: |
           MODE="${{ steps.mode.outputs.mode }}"
@@ -617,11 +632,29 @@ jobs:
             -n ${{ needs.setup.outputs.namespace }} \
             --wait --timeout 10m || true
 
+      - name: Uninstall Monitoring
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && steps.mode.outputs.action == 'uninstall'
+        run: |
+          echo "🗑️ Uninstalling Monitoring (disabled in values)..."
+          helm uninstall yousoon-monitoring -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Monitoring release not found (already uninstalled)"
+          echo "✅ Monitoring uninstalled"
+
       - name: Verify Monitoring Deployment
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
         run: |
-          echo "📊 Verifying Monitoring deployment..."
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "Monitoring pods pending..."
+          ACTION="${{ steps.mode.outputs.action }}"
+          if [ "$ACTION" == "install" ]; then
+            echo "📊 Verifying Monitoring deployment..."
+            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "Monitoring pods pending..."
+          else
+            echo "📊 Monitoring is DISABLED - verifying removal..."
+            PODS=$(kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" --no-headers 2>/dev/null | wc -l)
+            if [ "$PODS" -eq 0 ]; then
+              echo "✅ No monitoring pods (as expected)"
+            else
+              echo "⚠️ Warning: $PODS monitoring pods still exist"
+            fi
+          fi
 
   # ============================================
   # BLOC 5: MOBILE (iOS + Android en parallèle)
