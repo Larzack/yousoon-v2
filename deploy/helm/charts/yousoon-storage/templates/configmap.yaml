@@ -78,6 +78,27 @@ data:
     print('MongoDB initialization complete');
   {{- end }}
 
+  {{- if .Values.redis.enabled }}
+  # Redis Configuration
+  redis.conf: |
+    # Redis Configuration
+    bind 0.0.0.0
+    port 6379
+    protected-mode no
+    daemonize no
+    loglevel notice
+    databases 16
+    save 900 1
+    save 300 10
+    save 60 10000
+    rdbcompression yes
+    dbfilename dump.rdb
+    dir /data
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+  {{- end }}
+
   {{- if .Values.elasticsearch.enabled }}
   # Elasticsearch Configuration
   elasticsearch.yml: |
@@ -103,15 +124,15 @@ metadata:
 data:
   nats.conf: |
     # NATS Server Configuration
-    port: {{ .Values.nats.port }}
+    port: {{ .Values.nats.service.port }}
     
     # Cluster
     cluster {
-      port: {{ .Values.nats.clusterPort }}
+      port: {{ .Values.nats.service.clusterPort | default 6222 }}
     }
     
     # HTTP Monitoring
-    http_port: {{ .Values.nats.monitorPort }}
+    http_port: {{ .Values.nats.service.monitorPort }}
     
     {{- if .Values.nats.jetstream.enabled }}
     # JetStream

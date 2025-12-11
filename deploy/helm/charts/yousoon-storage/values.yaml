@@ -125,6 +125,7 @@ nats:
   service:
     type: ClusterIP
     port: 4222
+    clusterPort: 6222
     monitorPort: 8222
   
   # JetStream
