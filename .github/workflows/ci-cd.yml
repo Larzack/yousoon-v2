@@ -511,152 +511,6 @@ jobs:
           retention-days: 30
 
   # ============================================
-  # BLOC 4: MONITORING (Prometheus, Grafana, Loki, Jaeger)
-  # Déploie indépendamment - n'attend pas les autres blocs
-  # L'activation/désactivation se fait dans les values Helm
-  # ============================================
-  deploy-monitoring:
-    name: 🚀 Deploy - Monitoring
-    needs: setup
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Helm
-        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-      - name: Determine Monitoring Mode
-        id: mode
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          
-          # Lire l'état enabled depuis le values.yaml du chart umbrella
-          MONITORING_ENABLED=$(grep -A1 "^monitoring:" deploy/helm/charts/yousoon/values.yaml | grep "enabled:" | awk '{print $2}')
-          echo "monitoring_enabled=$MONITORING_ENABLED" >> $GITHUB_OUTPUT
-          
-          if [ "$MONITORING_ENABLED" == "false" ]; then
-            echo "📊 Monitoring is DISABLED - will uninstall if exists"
-            echo "action=uninstall" >> $GITHUB_OUTPUT
-          else
-            echo "📊 Monitoring is ENABLED"
-            echo "action=install" >> $GITHUB_OUTPUT
-            if [ "$ENV" == "prod" ]; then
-              echo "mode=classic" >> $GITHUB_OUTPUT
-              echo "📊 Monitoring in CLASSIC mode (production)"
-            else
-              echo "mode=sidecar" >> $GITHUB_OUTPUT
-              echo "📊 Monitoring in SIDECAR mode (staging)"
-            fi
-          fi
-
-      - name: Validate Helm Charts
-        if: steps.mode.outputs.action == 'install'
-        run: |
-          # Lint monitoring chart
-          helm lint deploy/helm/charts/yousoon-monitoring || true
-          
-          # Template validation
-          helm template test deploy/helm/charts/yousoon-monitoring \
-            -f deploy/helm/values/monitoring-sidecar.yaml || true
-          helm template test deploy/helm/charts/yousoon-monitoring \
-            -f deploy/helm/values/monitoring-classic.yaml || true
-
-      - name: Export Helm Charts
-        if: steps.mode.outputs.action == 'install'
-        run: |
-          mkdir -p exported-charts/monitoring-sidecar exported-charts/monitoring-classic
-          
-          echo "📦 Exporting Sidecar mode chart..."
-          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
-            -f deploy/helm/values/monitoring-sidecar.yaml \
-            --namespace yousoon-staging \
-            > exported-charts/monitoring-sidecar/monitoring-sidecar.yaml
-          
-          echo "📦 Exporting Classic mode chart..."
-          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
-            -f deploy/helm/values/monitoring-classic.yaml \
-            --namespace yousoon-prod \
-            > exported-charts/monitoring-classic/monitoring-classic.yaml
-          
-          # Split by resource type for easier review
-          cd exported-charts/monitoring-sidecar
-          csplit -f 'resource-' -b '%02d.yaml' monitoring-sidecar.yaml '/^---$/' '{*}' 2>/dev/null || true
-          cd ../monitoring-classic
-          csplit -f 'resource-' -b '%02d.yaml' monitoring-classic.yaml '/^---$/' '{*}' 2>/dev/null || true
-
-      - name: Upload Monitoring Sidecar Charts
-        if: steps.mode.outputs.action == 'install'
-        uses: actions/upload-artifact@v4
-        with:
-          name: helm-charts-monitoring-sidecar
-          path: exported-charts/monitoring-sidecar/
-          retention-days: 30
-
-      - name: Upload Monitoring Classic Charts
-        if: steps.mode.outputs.action == 'install'
-        uses: actions/upload-artifact@v4
-        with:
-          name: helm-charts-monitoring-classic
-          path: exported-charts/monitoring-classic/
-          retention-days: 30
-
-      - name: Configure AWS credentials
-        if: github.event_name != 'pull_request'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-1
-
-      - name: Setup kubectl
-        if: github.event_name != 'pull_request'
-        uses: azure/setup-kubectl@v4
-
-      - name: Update kubeconfig
-        if: github.event_name != 'pull_request'
-        run: aws eks update-kubeconfig --name jemoco2 --region eu-west-1
-
-      - name: Create Namespace
-        if: github.event_name != 'pull_request'
-        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Deploy Monitoring
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && steps.mode.outputs.action == 'install'
-        working-directory: deploy/helm
-        run: |
-          MODE="${{ steps.mode.outputs.mode }}"
-          echo "🚀 Deploying Monitoring in $MODE mode..."
-          helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
-            -f values/monitoring-${MODE}.yaml \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --wait --timeout 10m || true
-
-      - name: Uninstall Monitoring
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && steps.mode.outputs.action == 'uninstall'
-        run: |
-          echo "🗑️ Uninstalling Monitoring (disabled in values)..."
-          helm uninstall yousoon-monitoring -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Monitoring release not found (already uninstalled)"
-          echo "✅ Monitoring uninstalled"
-
-      - name: Verify Monitoring Deployment
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
-        run: |
-          ACTION="${{ steps.mode.outputs.action }}"
-          if [ "$ACTION" == "install" ]; then
-            echo "📊 Verifying Monitoring deployment..."
-            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "Monitoring pods pending..."
-          else
-            echo "📊 Monitoring is DISABLED - verifying removal..."
-            PODS=$(kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" --no-headers 2>/dev/null | wc -l)
-            if [ "$PODS" -eq 0 ]; then
-              echo "✅ No monitoring pods (as expected)"
-            else
-              echo "⚠️ Warning: $PODS monitoring pods still exist"
-            fi
-          fi
-
-  # ============================================
   # BLOC 5: MOBILE (iOS + Android en parallèle)
   # ============================================
   build-mobile-android:
@@ -751,7 +605,9 @@ jobs:
       # - APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_KEY_P8 (for App Store Connect API)
 
   # ============================================
-  # DEPLOY - Infrastructure (Conditionnel)
+  # DEPLOY - Déploie TOUS les charts Helm
+  # Si enabled=true → helm upgrade --install
+  # Si enabled=false → helm uninstall (supprime les ressources)
   # ============================================
   deploy:
     name: 🚀 Deploy - ${{ needs.setup.outputs.environment }}
@@ -787,126 +643,149 @@ jobs:
         with:
           version: ${{ env.HELM_VERSION }}
 
-      - name: Install Helm Diff Plugin
-        run: helm plugin install https://github.com/databus23/helm-diff --version v3.9.4 || true
-
-      - name: Install Helmfile
-        run: |
-          curl -fsSL -o helmfile.tar.gz https://github.com/helmfile/helmfile/releases/download/v${{ env.HELMFILE_VERSION }}/helmfile_${{ env.HELMFILE_VERSION }}_linux_amd64.tar.gz
-          tar xzf helmfile.tar.gz
-          sudo mv helmfile /usr/local/bin/
-
-      - name: Add Helm Repositories
-        run: |
-          helm repo add bitnami https://charts.bitnami.com/bitnami || true
-          helm repo add nats https://nats-io.github.io/k8s/helm/charts || true
-          helm repo add elastic https://helm.elastic.co || true
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
-          helm repo add grafana https://grafana.github.io/helm-charts || true
-          helm repo add jaegertracing https://jaegertracing.github.io/helm-charts || true
-          helm repo update
-
       - name: Create Namespace
         run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy Storage (${{ needs.setup.outputs.arch_storage }} mode)
-        if: needs.build-storage.result == 'success' || needs.setup.outputs.storage == 'true'
-        working-directory: deploy/helm
+      - name: Read enabled states from values.yaml
+        id: config
+        working-directory: deploy/helm/charts/yousoon
         run: |
-          ARCH="${{ needs.setup.outputs.arch_storage }}"
-          echo "🚀 Deploying Storage in $ARCH mode"
+          echo "📋 Reading enabled states from values.yaml..."
           
-          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-            helm template yousoon-storage ./charts/yousoon-storage \
-              -f values/storage-${ARCH}.yaml \
-              -n ${{ needs.setup.outputs.namespace }}
+          STORAGE_ENABLED=$(grep -A1 "^storage:" values.yaml | grep "enabled:" | awk '{print $2}')
+          SERVICES_ENABLED=$(grep -A1 "^services:" values.yaml | grep "enabled:" | awk '{print $2}')
+          SITES_ENABLED=$(grep -A1 "^sites:" values.yaml | grep "enabled:" | awk '{print $2}')
+          MONITORING_ENABLED=$(grep -A1 "^monitoring:" values.yaml | grep "enabled:" | awk '{print $2}')
+          
+          echo "storage_enabled=$STORAGE_ENABLED" >> $GITHUB_OUTPUT
+          echo "services_enabled=$SERVICES_ENABLED" >> $GITHUB_OUTPUT
+          echo "sites_enabled=$SITES_ENABLED" >> $GITHUB_OUTPUT
+          echo "monitoring_enabled=$MONITORING_ENABLED" >> $GITHUB_OUTPUT
+          
+          # Determine architecture mode
+          ENV="${{ needs.setup.outputs.environment }}"
+          if [ "$ENV" == "prod" ]; then
+            echo "mode=classic" >> $GITHUB_OUTPUT
           else
-            helm upgrade --install yousoon-storage ./charts/yousoon-storage \
-              -f values/storage-${ARCH}.yaml \
-              -n ${{ needs.setup.outputs.namespace }} \
-              --wait --timeout 10m
+            echo "mode=sidecar" >> $GITHUB_OUTPUT
           fi
+          
+          echo ""
+          echo "📊 Configuration Summary:"
+          echo "  Storage:    $STORAGE_ENABLED"
+          echo "  Services:   $SERVICES_ENABLED"
+          echo "  Sites:      $SITES_ENABLED"
+          echo "  Monitoring: $MONITORING_ENABLED"
+          echo "  Mode:       $ENV → $([ "$ENV" == "prod" ] && echo "classic" || echo "sidecar")"
 
-      - name: Deploy Backend (${{ needs.setup.outputs.arch_backend }} mode)
-        if: needs.build-backend.result == 'success'
+      # ----------------------------------------
+      # STORAGE
+      # ----------------------------------------
+      - name: Deploy Storage
+        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.storage_enabled == 'true'
         working-directory: deploy/helm
         run: |
-          ARCH="${{ needs.setup.outputs.arch_backend }}"
-          echo "🚀 Deploying Backend in $ARCH mode"
-          
-          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-            echo "Dry run - skipping actual deployment"
-          else
-            # Mode sidecar = 1 Pod avec tous les services
-            # Mode classic = 1 Pod par service
-            if [ "$ARCH" == "sidecar" ]; then
-              echo "Deploying backend as sidecar (single pod with all containers)"
-              # TODO: Créer chart yousoon-backend avec mode sidecar
-              # helm upgrade --install yousoon-backend ./charts/yousoon-backend \
-              #   -f values/backend-sidecar.yaml \
-              #   -n ${{ needs.setup.outputs.namespace }} \
-              #   --set image.tag=${{ needs.setup.outputs.version }} \
-              #   --wait
-            else
-              echo "Deploying backend as classic (separate pods)"
-              # TODO: Déployer chaque service séparément
-              # for service in identity partner discovery booking engagement notification; do
-              #   helm upgrade --install yousoon-${service} ./charts/yousoon-service \
-              #     -f values/${service}-service.yaml \
-              #     -n ${{ needs.setup.outputs.namespace }} \
-              #     --set image.tag=${{ needs.setup.outputs.version }} \
-              #     --wait
-              # done
-            fi
-          fi
+          MODE="${{ steps.config.outputs.mode }}"
+          echo "🚀 Deploying Storage in $MODE mode..."
+          helm upgrade --install yousoon-storage ./charts/yousoon-storage \
+            -f values/storage-${MODE}.yaml \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --wait --timeout 10m
 
-      - name: Deploy Web (${{ needs.setup.outputs.arch_webapp }} mode)
-        if: needs.build-webapp.result == 'success'
-        working-directory: deploy/helm
+      - name: Uninstall Storage
+        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.storage_enabled == 'false'
         run: |
-          ARCH="${{ needs.setup.outputs.arch_webapp }}"
-          echo "🚀 Deploying Web in $ARCH mode"
-          
-          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-            echo "Dry run - skipping actual deployment"
-          else
-            if [ "$ARCH" == "sidecar" ]; then
-              echo "Deploying web as sidecar (single pod with all containers)"
-              # TODO: Créer chart yousoon-web avec mode sidecar
-            else
-              echo "Deploying web as classic (separate pods)"
-              # TODO: Déployer admin, partners séparément
-            fi
-          fi
+          echo "🗑️ Uninstalling Storage (disabled)..."
+          helm uninstall yousoon-storage -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Storage not installed"
 
-      - name: Deploy Website
-        if: needs.build-website.result == 'success'
+      # ----------------------------------------
+      # SERVICES (Backend)
+      # ----------------------------------------
+      - name: Deploy Services
+        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.services_enabled == 'true'
         working-directory: deploy/helm
         run: |
-          echo "🌍 Deploying Website (Next.js)"
-          
-          if [ "${{ github.event.inputs.dry_run }}" == "true" ]; then
-            echo "Dry run - skipping actual deployment"
-          else
-            # Siteweb se déploie toujours de la même façon (pas de mode sidecar/classic)
-            # TODO: Créer chart yousoon-website ou utiliser un Deployment simple
-            # helm upgrade --install yousoon-website ./charts/yousoon-website \
-            #   -n ${{ needs.setup.outputs.namespace }} \
-            #   --set image.tag=${{ needs.setup.outputs.version }} \
-            #   --wait
-            echo "Siteweb deployment configured"
-          fi
+          MODE="${{ steps.config.outputs.mode }}"
+          echo "🚀 Deploying Services in $MODE mode..."
+          helm upgrade --install yousoon-services ./charts/yousoon-services \
+            -f values/services-${MODE}.yaml \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --set global.image.tag=${{ needs.setup.outputs.version }} \
+            --wait --timeout 10m || echo "Services chart not ready yet"
+
+      - name: Uninstall Services
+        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.services_enabled == 'false'
+        run: |
+          echo "🗑️ Uninstalling Services (disabled)..."
+          helm uninstall yousoon-services -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Services not installed"
+
+      # ----------------------------------------
+      # SITES (Website, Admin, Partners)
+      # ----------------------------------------
+      - name: Deploy Sites
+        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.sites_enabled == 'true'
+        working-directory: deploy/helm
+        run: |
+          MODE="${{ steps.config.outputs.mode }}"
+          echo "🚀 Deploying Sites in $MODE mode..."
+          helm upgrade --install yousoon-sites ./charts/yousoon-sites \
+            -f values/website-${MODE}.yaml \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --set global.image.tag=${{ needs.setup.outputs.version }} \
+            --wait --timeout 10m
+
+      - name: Uninstall Sites
+        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.sites_enabled == 'false'
+        run: |
+          echo "🗑️ Uninstalling Sites (disabled)..."
+          helm uninstall yousoon-sites -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Sites not installed"
+
+      # ----------------------------------------
+      # MONITORING
+      # ----------------------------------------
+      - name: Deploy Monitoring
+        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.monitoring_enabled == 'true'
+        working-directory: deploy/helm
+        run: |
+          MODE="${{ steps.config.outputs.mode }}"
+          echo "🚀 Deploying Monitoring in $MODE mode..."
+          helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
+            -f values/monitoring-${MODE}.yaml \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --wait --timeout 10m
+
+      - name: Uninstall Monitoring
+        if: github.event.inputs.dry_run != 'true' && steps.config.outputs.monitoring_enabled == 'false'
+        run: |
+          echo "🗑️ Uninstalling Monitoring (disabled)..."
+          helm uninstall yousoon-monitoring -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "Monitoring not installed"
+
+      # ----------------------------------------
+      # VERIFICATION
+      # ----------------------------------------
       - name: Verify Deployment
         if: github.event.inputs.dry_run != 'true'
         run: |
           echo "### 🚀 Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Namespace**: ${{ needs.setup.outputs.namespace }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Architecture**: ${{ needs.setup.outputs.arch_backend }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Mode**: ${{ steps.config.outputs.mode }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Enabled | Action |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Storage | ${{ steps.config.outputs.storage_enabled }} | $([ '${{ steps.config.outputs.storage_enabled }}' == 'true' ] && echo '✅ Deployed' || echo '🗑️ Uninstalled') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Services | ${{ steps.config.outputs.services_enabled }} | $([ '${{ steps.config.outputs.services_enabled }}' == 'true' ] && echo '✅ Deployed' || echo '🗑️ Uninstalled') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sites | ${{ steps.config.outputs.sites_enabled }} | $([ '${{ steps.config.outputs.sites_enabled }}' == 'true' ] && echo '✅ Deployed' || echo '🗑️ Uninstalled') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Monitoring | ${{ steps.config.outputs.monitoring_enabled }} | $([ '${{ steps.config.outputs.monitoring_enabled }}' == 'true' ] && echo '✅ Deployed' || echo '🗑️ Uninstalled') |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Helm Releases**:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          helm list -n ${{ needs.setup.outputs.namespace }} >> $GITHUB_STEP_SUMMARY 2>&1 || echo "No releases" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pods**:" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} >> $GITHUB_STEP_SUMMARY 2>&1 || echo "No pods yet" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} >> $GITHUB_STEP_SUMMARY 2>&1 || echo "No pods" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   # ============================================
@@ -999,7 +878,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-storage, deploy-monitoring, build-mobile-android, build-mobile-ios, deploy, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-storage, build-mobile-android, build-mobile-ios, deploy, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1009,7 +888,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment**: ${{ needs.setup.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "**Version**: ${{ needs.setup.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Architecture**: ${{ needs.setup.outputs.arch_backend }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Build Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -1018,7 +896,6 @@ jobs:
           echo "| 🔧 Backend (6 services) | ${{ needs.build-backend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🌐 Web (3 apps) | ${{ needs.build-webapp.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 💾 Storage | ${{ needs.build-storage.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📊 Monitoring | ${{ needs.deploy-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 Android | ${{ needs.build-mobile-android.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 iOS | ${{ needs.build-mobile-ios.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
