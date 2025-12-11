@@ -513,12 +513,11 @@ jobs:
   # ============================================
   # BLOC 4: MONITORING (Prometheus, Grafana, Loki, Jaeger)
   # Déploie indépendamment - n'attend pas les autres blocs
-  # Ne s'exécute QUE si monitoring=true
+  # L'activation/désactivation se fait dans les values Helm
   # ============================================
-  build-monitoring:
+  deploy-monitoring:
     name: 🚀 Deploy - Monitoring
     needs: setup
-    if: needs.setup.outputs.monitoring == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -967,7 +966,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-storage, build-monitoring, build-mobile-android, build-mobile-ios, deploy, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-storage, deploy-monitoring, build-mobile-android, build-mobile-ios, deploy, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -986,7 +985,7 @@ jobs:
           echo "| 🔧 Backend (6 services) | ${{ needs.build-backend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🌐 Web (3 apps) | ${{ needs.build-webapp.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 💾 Storage | ${{ needs.build-storage.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📊 Monitoring | ${{ needs.build-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Monitoring | ${{ needs.deploy-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 Android | ${{ needs.build-mobile-android.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 iOS | ${{ needs.build-mobile-ios.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
