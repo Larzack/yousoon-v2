@@ -511,7 +511,63 @@ jobs:
           retention-days: 30
 
   # ============================================
-  # BLOC 5: MOBILE (iOS + Android en parallèle)
+  # BLOC 5: MONITORING (Prometheus, Grafana, Loki, Jaeger)
+  # ============================================
+  build-monitoring:
+    name: 📊 Monitoring
+    needs: setup
+    if: needs.setup.outputs.monitoring == 'true'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Monitoring Charts
+        run: |
+          # Install helm
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          
+          # Lint monitoring chart
+          helm lint deploy/helm/charts/yousoon-monitoring || true
+          
+          # Template validation
+          helm template test deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-staging.yaml || true
+          helm template test deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-prod.yaml || true
+
+      - name: Export Monitoring Charts
+        run: |
+          mkdir -p exported-charts/staging exported-charts/prod
+          
+          echo "📦 Exporting Staging monitoring chart..."
+          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-staging.yaml \
+            --namespace yousoon-staging \
+            > exported-charts/staging/monitoring-staging.yaml
+          
+          echo "📦 Exporting Production monitoring chart..."
+          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-prod.yaml \
+            --namespace yousoon-prod \
+            > exported-charts/prod/monitoring-prod.yaml
+
+      - name: Upload Staging Monitoring Charts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-charts-staging
+          path: exported-charts/staging/
+          retention-days: 30
+
+      - name: Upload Production Monitoring Charts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-charts-prod
+          path: exported-charts/prod/
+          retention-days: 30
+
+  # ============================================
+  # BLOC 6: MOBILE (iOS + Android en parallèle)
   # ============================================
   build-mobile-android:
     name: 📱 Mobile - Android
@@ -612,7 +668,7 @@ jobs:
 
   deploy:
     name: 🚀 Deploy - ${{ needs.setup.outputs.environment }}
-    needs: [setup, build-backend, build-webapp, build-website, build-storage]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring]
     if: |
       always() &&
       github.event_name != 'pull_request' &&
@@ -620,7 +676,8 @@ jobs:
       (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
       (needs.build-webapp.result == 'success' || needs.build-webapp.result == 'skipped') &&
       (needs.build-website.result == 'success' || needs.build-website.result == 'skipped') &&
-      (needs.build-storage.result == 'success' || needs.build-storage.result == 'skipped')
+      (needs.build-storage.result == 'success' || needs.build-storage.result == 'skipped') &&
+      (needs.build-monitoring.result == 'success' || needs.build-monitoring.result == 'skipped')
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
     steps:
@@ -890,7 +947,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-storage, build-mobile-android, build-mobile-ios, deploy, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring, build-mobile-android, build-mobile-ios, deploy, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -906,8 +963,10 @@ jobs:
           echo "| Bloc | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🔧 Backend (6 services) | ${{ needs.build-backend.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌐 Web (3 apps) | ${{ needs.build-webapp.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌐 Webapp (2 apps) | ${{ needs.build-webapp.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌍 Website | ${{ needs.build-website.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 💾 Storage | ${{ needs.build-storage.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Monitoring | ${{ needs.build-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 Android | ${{ needs.build-mobile-android.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 iOS | ${{ needs.build-mobile-ios.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
