@@ -1,0 +1,84 @@
+# =============================================================================
+# Yousoon Sites - Sidecar Mode Values (Staging)
+# =============================================================================
+# Tous les sites web dans un seul pod (sidecar mode)
+# - Admin (backoffice interne)
+# - Partners (portail partenaires)
+# - Website (site vitrine Next.js)
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+  imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
+  imagePullPolicy: IfNotPresent
+
+common:
+  replicas: 1
+
+# =============================================================================
+# Admin Backoffice (React) - ENABLED
+# =============================================================================
+admin:
+  enabled: true
+  image:
+    repository: yousoon/admin
+    tag: staging
+  port: 80
+
+  resources: {}
+
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: VITE_API_URL
+      value: "https://api.yousoon.com/graphql"
+
+  ingress:
+    enabled: true
+    host: admin.yousoon.com
+
+# =============================================================================
+# Partners Portal (React) - ENABLED
+# =============================================================================
+partners:
+  enabled: true
+  image:
+    repository: yousoon/partners
+    tag: staging
+  port: 80
+
+  resources: {}
+
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: VITE_API_URL
+      value: "https://api.yousoon.com/graphql"
+
+  ingress:
+    enabled: true
+    host: business.yousoon.com
+
+# =============================================================================
+# Site Vitrine (Next.js) - ENABLED
+# =============================================================================
+website:
+  enabled: true
+  image:
+    repository: yousoon/website
+    tag: staging
+  port: 3000
+
+  resources: {}
+
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: NEXT_PUBLIC_API_URL
+      value: "https://api.yousoon.com/graphql"
+
+  ingress:
+    enabled: true
+    host: www.yousoon.com
+

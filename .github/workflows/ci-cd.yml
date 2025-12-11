@@ -428,17 +428,12 @@ jobs:
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
         working-directory: deploy/helm
         run: |
-          # Determine architecture based on environment
-          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
-            ARCH="classic"
-          else
-            ARCH="sidecar"
-          fi
+          ENV="${{ needs.setup.outputs.environment }}"
           
-          echo "🚀 Deploying Website in $ARCH mode..."
-          helm upgrade --install yousoon-website ./charts/yousoon-sites \
-            -f values/website-${ARCH}.yaml \
-            --set website.image.tag=${{ needs.setup.outputs.version }} \
+          echo "🚀 Deploying Sites (all 3) for $ENV..."
+          helm upgrade --install yousoon-sites ./charts/yousoon-sites \
+            -f values/sites-${ENV}.yaml \
+            --set global.image.tag=${{ needs.setup.outputs.version }} \
             -n ${{ needs.setup.outputs.namespace }} \
             --wait --timeout 5m || true
 
@@ -794,7 +789,7 @@ jobs:
         working-directory: deploy/helm
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
-          VALUES_FILE="website-${ENV}.yaml"
+          VALUES_FILE="sites-${ENV}.yaml"
           echo "🚀 Deploying Sites ($VALUES_FILE)..."
           helm upgrade --install yousoon-sites ./charts/yousoon-sites \
             -f values/${VALUES_FILE} \

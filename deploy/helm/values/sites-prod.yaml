@@ -1,8 +1,10 @@
 # =============================================================================
-# Yousoon Website - Classic Mode Values
+# Yousoon Sites - Classic Mode Values (Production)
 # =============================================================================
-# Déploiement autonome du site vitrine (Next.js)
-# Mode classic: production avec plus de ressources
+# Tous les sites web avec pods séparés (classic mode)
+# - Admin (backoffice interne)
+# - Partners (portail partenaires)
+# - Website (site vitrine Next.js)
 # =============================================================================
 
 global:
@@ -14,12 +16,55 @@ global:
 common:
   replicas: 2
 
-# Désactiver les autres sites (déploiement autonome)
+# =============================================================================
+# Admin Backoffice (React) - ENABLED
+# =============================================================================
 admin:
-  enabled: false
+  enabled: true
+  image:
+    repository: yousoon/admin
+    tag: prod
+  port: 80
 
+  resources: {}
+
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: VITE_API_URL
+      value: "https://api.yousoon.com/graphql"
+
+  ingress:
+    enabled: true
+    host: admin.yousoon.com
+
+  classic:
+    replicaCount: 2
+
+# =============================================================================
+# Partners Portal (React) - ENABLED
+# =============================================================================
 partners:
-  enabled: false
+  enabled: true
+  image:
+    repository: yousoon/partners
+    tag: prod
+  port: 80
+
+  resources: {}
+
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: VITE_API_URL
+      value: "https://api.yousoon.com/graphql"
+
+  ingress:
+    enabled: true
+    host: business.yousoon.com
+
+  classic:
+    replicaCount: 2
 
 # =============================================================================
 # Site Vitrine (Next.js) - ENABLED
@@ -30,7 +75,7 @@ website:
     repository: yousoon/website
     tag: prod
   port: 3000
-  
+
   resources: {}
 
   env:
@@ -42,9 +87,9 @@ website:
   ingress:
     enabled: true
     host: www.yousoon.com
-    annotations:
-      kubernetes.io/ingress.class: nginx
-      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+  classic:
+    replicaCount: 2
 
   # Production: anti-affinity pour distribuer sur plusieurs nodes
   affinity:
@@ -56,3 +101,4 @@ website:
               matchLabels:
                 app.kubernetes.io/name: siteweb
             topologyKey: kubernetes.io/hostname
+
