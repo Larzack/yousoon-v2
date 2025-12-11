@@ -100,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.changes.outputs.backend }}
-      web: ${{ steps.changes.outputs.webapp }}
+      webapp: ${{ steps.changes.outputs.webapp }}
       website: ${{ steps.changes.outputs.website }}
       storage: ${{ steps.changes.outputs.storage }}
       monitoring: ${{ steps.changes.outputs.monitoring }}
@@ -154,7 +154,7 @@ jobs:
             [[ "$COMPONENT" == "all" || "$COMPONENT" == "mobile" ]] && echo "mobile=true" >> $GITHUB_OUTPUT || echo "mobile=false" >> $GITHUB_OUTPUT
           else
             echo "backend=${{ steps.filter.outputs.backend }}" >> $GITHUB_OUTPUT
-            echo "web=${{ steps.filter.outputs.webappapp }}" >> $GITHUB_OUTPUT
+            echo "webapp=${{ steps.filter.outputs.webapp }}" >> $GITHUB_OUTPUT
             echo "website=${{ steps.filter.outputs.website }}" >> $GITHUB_OUTPUT
             echo "storage=${{ steps.filter.outputs.storage }}" >> $GITHUB_OUTPUT
             echo "monitoring=${{ steps.filter.outputs.monitoring }}" >> $GITHUB_OUTPUT
@@ -190,7 +190,7 @@ jobs:
           fi
           
           echo "backend=$ARCH" >> $GITHUB_OUTPUT
-          echo "web=$ARCH" >> $GITHUB_OUTPUT
+          echo "webapp=$ARCH" >> $GITHUB_OUTPUT
           echo "storage=$ARCH" >> $GITHUB_OUTPUT
           echo "Architecture: $ARCH (env: $ENV)"
 
@@ -609,6 +609,7 @@ jobs:
   # Si enabled=true → helm upgrade --install
   # Si enabled=false → helm uninstall (supprime les ressources)
   # ============================================
+
   deploy:
     name: 🚀 Deploy - ${{ needs.setup.outputs.environment }}
     needs: [setup, build-backend, build-webapp, build-website, build-storage]
