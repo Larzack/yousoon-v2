@@ -22,7 +22,7 @@ common:
 admin:
   enabled: true
   image:
-    repository: yousoon/admin
+    repository: yousoon/web-admin
     tag: staging
   port: 8081
 
@@ -46,7 +46,7 @@ admin:
 partners:
   enabled: true
   image:
-    repository: yousoon/partners
+    repository: yousoon/web-partners
     tag: staging
   port: 8082
 

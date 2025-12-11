@@ -22,7 +22,7 @@ common:
 admin:
   enabled: true
   image:
-    repository: yousoon/admin
+    repository: yousoon/web-admin
     tag: prod
   port: 80
 
@@ -47,7 +47,7 @@ admin:
 partners:
   enabled: true
   image:
-    repository: yousoon/partners
+    repository: yousoon/web-partners
     tag: prod
   port: 80
 
