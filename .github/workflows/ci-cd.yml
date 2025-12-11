@@ -348,7 +348,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=web-${{ matrix.app }}
 
   # ============================================
-  # BLOC 2b: SITEWEB (Next.js - déploiement indépendant)
+  # BLOC 2b: SITEWEB (Next.js - déploiement autonome)
   # ============================================
   build-siteweb:
     name: 🌍 Siteweb
@@ -401,6 +401,46 @@ jobs:
             ${{ env.ECR_REGISTRY }}/yousoon/siteweb:${{ needs.setup.outputs.environment }}
           cache-from: type=gha,scope=siteweb
           cache-to: type=gha,mode=max,scope=siteweb
+
+      - name: Setup Helm
+        if: github.event_name != 'pull_request'
+        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Setup kubectl
+        if: github.event_name != 'pull_request'
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        if: github.event_name != 'pull_request'
+        run: aws eks update-kubeconfig --name jemoco2 --region eu-west-1
+
+      - name: Create Namespace
+        if: github.event_name != 'pull_request'
+        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Siteweb
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        working-directory: deploy/helm
+        run: |
+          # Determine architecture based on environment
+          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
+            ARCH="classic"
+          else
+            ARCH="sidecar"
+          fi
+          
+          echo "🚀 Deploying Siteweb in $ARCH mode..."
+          helm upgrade --install yousoon-siteweb ./charts/yousoon-sites \
+            -f values/siteweb-${ARCH}.yaml \
+            --set siteweb.image.tag=${{ needs.setup.outputs.version }} \
+            -n ${{ needs.setup.outputs.namespace }} \
+            --wait --timeout 5m || true
+
+      - name: Verify Siteweb Deployment
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
+        run: |
+          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=siteweb" 2>/dev/null || echo "Siteweb pods pending..."
+          kubectl get ingress -n ${{ needs.setup.outputs.namespace }} 2>/dev/null || echo "No ingress yet"
 
   # ============================================
   # BLOC 3: STORAGE (MongoDB, Redis, ES, NATS)
@@ -467,11 +507,11 @@ jobs:
   # ============================================
   # BLOC 4: MONITORING (Prometheus, Grafana, Loki, Jaeger)
   # Déploie indépendamment - n'attend pas les autres blocs
+  # Si monitoring=false, déploie en mode "disabled" (replicas=0)
   # ============================================
   build-monitoring:
     name: 📊 Monitoring
     needs: setup
-    if: needs.setup.outputs.monitoring == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -480,7 +520,26 @@ jobs:
       - name: Setup Helm
         run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
+      - name: Determine Monitoring Mode
+        id: mode
+        run: |
+          MONITORING_ENABLED="${{ needs.setup.outputs.monitoring }}"
+          ENV="${{ needs.setup.outputs.environment }}"
+          
+          if [ "$MONITORING_ENABLED" == "false" ]; then
+            # Monitoring disabled => deploy with all components disabled
+            echo "mode=disabled" >> $GITHUB_OUTPUT
+            echo "📊 Monitoring DISABLED - will deploy empty resources"
+          elif [ "$ENV" == "prod" ]; then
+            echo "mode=classic" >> $GITHUB_OUTPUT
+            echo "📊 Monitoring in CLASSIC mode (production)"
+          else
+            echo "mode=sidecar" >> $GITHUB_OUTPUT
+            echo "📊 Monitoring in SIDECAR mode (staging)"
+          fi
+
       - name: Validate Helm Charts
+        if: needs.setup.outputs.monitoring == 'true'
         run: |
           # Lint monitoring chart
           helm lint deploy/helm/charts/yousoon-monitoring || true
@@ -492,6 +551,7 @@ jobs:
             -f deploy/helm/values/monitoring-classic.yaml || true
 
       - name: Export Helm Charts
+        if: needs.setup.outputs.monitoring == 'true'
         run: |
           mkdir -p exported-charts/monitoring-sidecar exported-charts/monitoring-classic
           
@@ -514,6 +574,7 @@ jobs:
           csplit -f 'resource-' -b '%02d.yaml' monitoring-classic.yaml '/^---$/' '{*}' 2>/dev/null || true
 
       - name: Upload Monitoring Sidecar Charts
+        if: needs.setup.outputs.monitoring == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: helm-charts-monitoring-sidecar
@@ -521,6 +582,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Monitoring Classic Charts
+        if: needs.setup.outputs.monitoring == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: helm-charts-monitoring-classic
@@ -551,23 +613,40 @@ jobs:
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
         working-directory: deploy/helm
         run: |
-          # Determine architecture based on environment
-          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
-            ARCH="classic"
-          else
-            ARCH="sidecar"
-          fi
+          MODE="${{ steps.mode.outputs.mode }}"
           
-          echo "🚀 Deploying Monitoring in $ARCH mode..."
-          helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
-            -f values/monitoring-${ARCH}.yaml \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --wait --timeout 10m || true
+          if [ "$MODE" == "disabled" ]; then
+            echo "🚀 Deploying Monitoring in DISABLED mode (empty resources)..."
+            # Use sidecar values but override to disabled + all components off
+            helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
+              -f values/monitoring-sidecar.yaml \
+              --set global.infra=disabled \
+              --set prometheus.enabled=false \
+              --set grafana.enabled=false \
+              --set loki.enabled=false \
+              --set promtail.enabled=false \
+              --set jaeger.enabled=false \
+              -n ${{ needs.setup.outputs.namespace }} \
+              --wait --timeout 10m || true
+          else
+            echo "🚀 Deploying Monitoring in $MODE mode..."
+            helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
+              -f values/monitoring-${MODE}.yaml \
+              -n ${{ needs.setup.outputs.namespace }} \
+              --wait --timeout 10m || true
+          fi
 
       - name: Verify Monitoring Deployment
         if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true'
         run: |
-          kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "Monitoring pods pending..."
+          MODE="${{ steps.mode.outputs.mode }}"
+          
+          if [ "$MODE" == "disabled" ]; then
+            echo "📊 Monitoring is DISABLED - no pods expected"
+            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "No monitoring pods (expected)"
+          else
+            kubectl get pods -n ${{ needs.setup.outputs.namespace }} -l "app.kubernetes.io/name=yousoon-monitoring" 2>/dev/null || echo "Monitoring pods pending..."
+          fi
 
   # ============================================
   # BLOC 5: MOBILE (iOS + Android en parallèle)
@@ -837,6 +916,20 @@ jobs:
       needs.build-mobile-ios.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Pre-publish Summary
+        run: |
+          echo "### 📲 Store Publishing - Starting" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ needs.setup.outputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ needs.setup.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Android Build | ${{ needs.build-mobile-android.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| iOS Build | ${{ needs.build-mobile-ios.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deploy Status | ${{ needs.deploy.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⏳ Publishing to stores..." >> $GITHUB_STEP_SUMMARY
+
       - uses: actions/checkout@v4
 
       - name: Download Android artifacts
@@ -882,14 +975,16 @@ jobs:
           # - APPLE_ISSUER_ID  
           # - APPLE_KEY_P8 (private key)
 
-      - name: Summary
+      - name: Post-publish Summary
         run: |
-          echo "### 📲 Store Publishing" >> $GITHUB_STEP_SUMMARY
+          echo "### 📲 Store Publishing - Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Platform | Track | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Android | ${{ needs.setup.outputs.environment == 'prod' && 'Production' || 'Internal' }} | ✅ Ready |" >> $GITHUB_STEP_SUMMARY
+          echo "| Android | ${{ needs.setup.outputs.environment == 'prod' && 'Production' || 'Internal' }} | ✅ Published |" >> $GITHUB_STEP_SUMMARY
           echo "| iOS | ${{ needs.setup.outputs.environment == 'prod' && 'App Store' || 'TestFlight' }} | ⚠️ Needs signing |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Store publishing completed!" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # SUMMARY

@@ -1,0 +1,58 @@
+# =============================================================================
+# Yousoon Siteweb - Classic Mode Values
+# =============================================================================
+# Déploiement autonome du site vitrine (Next.js)
+# Mode classic: production avec plus de ressources
+# =============================================================================
+
+global:
+  infra: "classic"
+  namespace: yousoon-prod
+  imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
+  imagePullPolicy: IfNotPresent
+
+common:
+  replicas: 2
+
+# Désactiver les autres sites (déploiement autonome)
+admin:
+  enabled: false
+
+partners:
+  enabled: false
+
+# =============================================================================
+# Site Vitrine (Next.js) - ENABLED
+# =============================================================================
+siteweb:
+  enabled: true
+  image:
+    repository: yousoon/siteweb
+    tag: prod
+  port: 3000
+  
+  resources: {}
+
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: NEXT_PUBLIC_API_URL
+      value: "https://api.yousoon.com/graphql"
+
+  ingress:
+    enabled: true
+    host: www.yousoon.com
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+  # Production: anti-affinity pour distribuer sur plusieurs nodes
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: siteweb
+            topologyKey: kubernetes.io/hostname

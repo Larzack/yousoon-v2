@@ -4,6 +4,8 @@
 # =============================================================================
 */}}
 
+{{- if ne .Values.global.infra "disabled" }}
+
 {{- if eq .Values.global.infra "sidecar" }}
 # =============================================================================
 # SIDECAR MODE: Single Service with multiple ports
@@ -150,3 +152,5 @@ spec:
 {{- end }}
 
 {{- end }}
+
+{{- end }} {{/* end if ne .Values.global.infra "disabled" */}}
