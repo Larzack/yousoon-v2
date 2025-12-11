@@ -712,11 +712,27 @@ jobs:
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
           VALUES_FILE="storage-${ENV}.yaml"
+          NAMESPACE="${{ needs.setup.outputs.namespace }}"
+          
           echo "🚀 Deploying Storage ($VALUES_FILE)..."
-          helm upgrade --install yousoon-storage ./charts/yousoon-storage \
+          
+          # Try to upgrade, if it fails due to StatefulSet immutable fields, delete and recreate
+          if ! helm upgrade --install yousoon-storage ./charts/yousoon-storage \
             -f values/${VALUES_FILE} \
-            -n ${{ needs.setup.outputs.namespace }} \
-            --wait --timeout 10m
+            -n $NAMESPACE \
+            --wait --timeout 10m 2>&1; then
+            
+            echo "⚠️ Upgrade failed, attempting to recreate StatefulSet..."
+            
+            # Delete StatefulSet with orphan cascade (keeps pods and PVCs)
+            kubectl delete statefulset yousoon-storage -n $NAMESPACE --cascade=orphan 2>/dev/null || true
+            
+            # Retry the deployment
+            helm upgrade --install yousoon-storage ./charts/yousoon-storage \
+              -f values/${VALUES_FILE} \
+              -n $NAMESPACE \
+              --wait --timeout 10m
+          fi
 
       - name: Uninstall Storage
         if: github.event.inputs.dry_run != 'true' && steps.config.outputs.storage_enabled == 'false'
