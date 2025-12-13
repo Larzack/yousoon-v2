@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
+import 'package:yousoon/core/theme/app_colors.dart';
+import 'package:yousoon/core/theme/app_spacing.dart';
 
 /// Bouton primaire Yousoon
 /// Fond Indian Gold (#E99B27), texte noir

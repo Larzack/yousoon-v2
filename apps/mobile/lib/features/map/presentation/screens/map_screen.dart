@@ -108,13 +108,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   : _defaultLocation,
               zoom: 14,
             ),
-            onMapCreated: (controller) => _mapController = controller,
+            onMapCreated: (controller) {
+              _mapController = controller;
+              _mapController?.setMapStyle(_mapStyle);
+            },
             markers: _markers,
             myLocationEnabled: true,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
-            style: _mapStyle,
             onTap: (_) => setState(() => _selectedMarkerId = null),
           ),
           

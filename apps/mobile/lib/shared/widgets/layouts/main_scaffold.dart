@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import 'package:yousoon/core/theme/app_colors.dart';
 import 'bottom_nav_bar.dart';
 
 /// Scaffold principal avec navigation bottom

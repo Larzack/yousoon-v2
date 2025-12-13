@@ -1,7 +1,10 @@
 /// Espacement standardisé Yousoon
 /// Basé sur le Design System Figma
 abstract class AppSpacing {
-  /// Extra small: 5px
+  /// Extra extra small: 2px
+  static const double xxs = 2.0;
+  
+  /// Extra small: 4px
   static const double xs = 5.0;
   
   /// Small: 10px
@@ -44,6 +47,7 @@ abstract class AppSpacing {
   static const double afterTitle = xxl;
   
   /// Border radius standard
+  static const double radiusXs = 4.0;
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
   static const double radiusLg = 16.0;

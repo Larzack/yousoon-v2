@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_colors.dart';
+import 'package:yousoon/core/theme/app_colors.dart';
 
 /// Barre de navigation inférieure
 /// 5 entrées selon le Design System Figma

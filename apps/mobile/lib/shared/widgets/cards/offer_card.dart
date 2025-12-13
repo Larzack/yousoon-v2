@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
+import 'package:yousoon/core/theme/app_colors.dart';
+import 'package:yousoon/core/theme/app_spacing.dart';
 
 /// Carte d'offre Yousoon
 /// Affiche une offre avec image, titre, badge réduction
