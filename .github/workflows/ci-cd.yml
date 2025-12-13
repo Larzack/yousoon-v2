@@ -278,18 +278,19 @@ jobs:
         run: |
           echo "🧪 Running unit tests for ${{ matrix.service }}..."
           
-          # Run tests with race detector and coverage
-          go test ./... -v -race -coverprofile=coverage.out
+          # Run tests with race detector (coverage disabled due to covdata tool issue)
+          go test ./... -v -race
           
           echo "✅ All unit tests passed!"
 
-      - name: Upload Coverage Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.service }}
-          path: apps/services/${{ matrix.service }}/coverage.out
-          retention-days: 7
+      # Coverage upload disabled temporarily due to Go covdata tool issue
+      # - name: Upload Coverage Report
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: coverage-${{ matrix.service }}
+      #     path: apps/services/${{ matrix.service }}/coverage.out
+      #     retention-days: 7
 
       - name: Setup Docker Buildx
         if: github.event_name != 'pull_request'
