@@ -429,87 +429,6 @@ jobs:
           cache-to: type=gha,mode=max,scope=website
 
   # ============================================
-  # DEPLOY WEBSITE (autonome, indépendant de la matrice)
-  # ============================================
-  deploy-website:
-    name: 🚀 Deploy Website
-    needs: [build-website]
-    if: |
-      always() &&
-      github.event_name != 'pull_request' &&
-      needs.build-website.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Determine environment
-        id: env
-        run: |
-          if [ "${{ github.ref }}" == "refs/heads/prod" ]; then
-            echo "environment=prod" >> $GITHUB_OUTPUT
-            echo "namespace=yousoon-prod" >> $GITHUB_OUTPUT
-          else
-            echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "namespace=yousoon-staging" >> $GITHUB_OUTPUT
-          fi
-          PATCH=$(git rev-list --count HEAD)
-          echo "version=${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}" >> $GITHUB_OUTPUT
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
-
-      - name: Setup Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: ${{ env.HELM_VERSION }}
-
-      - name: Create Namespace
-        run: kubectl create namespace ${{ steps.env.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Deploy Website
-        working-directory: deploy/helm
-        run: |
-          ENV="${{ steps.env.outputs.environment }}"
-          NAMESPACE="${{ steps.env.outputs.namespace }}"
-          VERSION="${{ steps.env.outputs.version }}"
-          RELEASE_NAME="yousoon-website"
-          
-          echo "🌍 Deploying Website..."
-          
-          # Force cleanup of stuck releases (pending-install, pending-upgrade, pending-rollback)
-          RELEASE_STATUS=$(helm status ${RELEASE_NAME} -n ${NAMESPACE} -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
-          if [[ "$RELEASE_STATUS" =~ ^pending ]]; then
-            echo "⚠️ Release ${RELEASE_NAME} is stuck in ${RELEASE_STATUS}, forcing cleanup..."
-            helm uninstall ${RELEASE_NAME} -n ${NAMESPACE} --no-hooks 2>/dev/null || true
-            sleep 2
-          fi
-          
-          # Website is part of yousoon-sites chart, deploy with website only enabled
-          helm upgrade --install ${RELEASE_NAME} ./charts/yousoon-sites \
-            -n ${NAMESPACE} \
-            --set global.imageRegistry=${{ env.ECR_REGISTRY }} \
-            --set admin.enabled=false \
-            --set partners.enabled=false \
-            --set website.enabled=true \
-            --set website.image.repository=yousoon/website \
-            --set website.image.tag=${VERSION} \
-            --wait --timeout 5m
-          
-          echo "✅ Website deployed successfully!"
-
-  # ============================================
   # BLOC 3: STORAGE (MongoDB, Redis, ES, NATS)
   # ============================================
   build-storage:
@@ -1234,7 +1153,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-website, build-storage, deploy-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-website, deploy-monitoring, deploy-verify, e2e-tests, load-tests, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage, deploy-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-monitoring, deploy-verify, e2e-tests, load-tests, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1261,7 +1180,6 @@ jobs:
           echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🚀 Deploy (matrix) | ${{ needs.deploy.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🌍 Deploy Website | ${{ needs.deploy-website.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📊 Deploy Monitoring | ${{ needs.deploy-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🔍 Deploy Verify | ${{ needs.deploy-verify.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
