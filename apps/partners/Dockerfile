@@ -39,8 +39,10 @@ RUN npm run build
 # ===========================================
 FROM nginx:alpine
 
-# Remove default nginx config
-RUN rm -f /etc/nginx/conf.d/default.conf
+# Remove default nginx config and templates directory
+# (prevents envsubst from processing .template files)
+RUN rm -f /etc/nginx/conf.d/default.conf && \
+    rm -rf /etc/nginx/templates
 
 # Copy nginx config (port 80 hardcoded)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
