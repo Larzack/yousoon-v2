@@ -286,6 +286,10 @@ spec:
               value: "http://localhost:{{ .Values.engagement.port }}/graphql"
             - name: NOTIFICATION_SERVICE_URL
               value: "http://localhost:{{ .Values.notification.port }}/graphql"
+          volumeMounts:
+            - name: supergraph-config
+              mountPath: /etc/apollo
+              readOnly: true
           resources:
             {{- toYaml .Values.router.resources | nindent 12 }}
           livenessProbe:
@@ -300,5 +304,13 @@ spec:
               port: {{ .Values.router.port }}
             initialDelaySeconds: 5
             periodSeconds: 5
+        {{- end }}
+
+      # Volumes
+      volumes:
+        {{- if .Values.router.enabled }}
+        - name: supergraph-config
+          configMap:
+            name: {{ include "yousoon-services.fullname" . }}-supergraph
         {{- end }}
 {{- end }}

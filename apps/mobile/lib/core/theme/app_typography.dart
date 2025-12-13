@@ -4,8 +4,9 @@ import 'app_colors.dart';
 
 /// Typographie Yousoon
 /// Basée sur le Design System Figma
+/// Note: Using Poppins instead of Futura (commercial font)
 abstract class AppTypography {
-  static const String fontFamilyPrimary = 'Futura';
+  static const String fontFamilyPrimary = 'Poppins';
   static const String fontFamilySecondary = 'Poppins';
 
   // Display styles
