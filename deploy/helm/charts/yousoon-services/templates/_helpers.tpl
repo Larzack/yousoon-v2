@@ -92,3 +92,4 @@ Common environment variables for all services
   value: {{ .value | quote }}
 {{- end }}
 {{- end }}
+

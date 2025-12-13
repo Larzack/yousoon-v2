@@ -2,6 +2,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -107,10 +108,29 @@ type MongoDBConfig struct {
 	ServerSelectionTimeout time.Duration
 }
 
+// buildMongoDBURI constructs a MongoDB URI from separate environment variables.
+func buildMongoDBURI() string {
+	// Check if MONGODB_URI is explicitly set
+	if uri := os.Getenv("MONGODB_URI"); uri != "" {
+		return uri
+	}
+
+	// Build URI from separate variables
+	host := GetEnv("MONGODB_HOST", "localhost")
+	port := GetEnv("MONGODB_PORT", "27017")
+	username := GetEnv("MONGODB_USERNAME", "")
+	password := GetEnv("MONGODB_PASSWORD", "")
+
+	if username != "" && password != "" {
+		return fmt.Sprintf("mongodb://%s:%s@%s:%s", username, password, host, port)
+	}
+	return fmt.Sprintf("mongodb://%s:%s", host, port)
+}
+
 // NewMongoDBConfig creates a MongoDB config from environment variables.
 func NewMongoDBConfig(database string) MongoDBConfig {
 	return MongoDBConfig{
-		URI:                    GetEnv("MONGODB_URI", "mongodb://localhost:27017"),
+		URI:                    buildMongoDBURI(),
 		Database:               GetEnv("MONGODB_DATABASE", database),
 		MaxPoolSize:            uint64(GetEnvInt("MONGODB_MAX_POOL_SIZE", 100)),
 		MinPoolSize:            uint64(GetEnvInt("MONGODB_MIN_POOL_SIZE", 10)),

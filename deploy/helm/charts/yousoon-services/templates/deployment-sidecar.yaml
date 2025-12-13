@@ -55,6 +55,10 @@ spec:
               containerPort: {{ .Values.identity.grpcPort }}
               protocol: TCP
           env:
+            - name: PORT
+              value: {{ .Values.identity.port | quote }}
+            - name: GRPC_PORT
+              value: {{ .Values.identity.grpcPort | quote }}
             {{- include "yousoon-services.commonEnv" . | nindent 12 }}
             {{- range .Values.identity.env }}
             - name: {{ .name }}
@@ -91,6 +95,10 @@ spec:
               containerPort: {{ .Values.partner.grpcPort }}
               protocol: TCP
           env:
+            - name: PORT
+              value: {{ .Values.partner.port | quote }}
+            - name: GRPC_PORT
+              value: {{ .Values.partner.grpcPort | quote }}
             {{- include "yousoon-services.commonEnv" . | nindent 12 }}
             {{- range .Values.partner.env }}
             - name: {{ .name }}
@@ -127,6 +135,10 @@ spec:
               containerPort: {{ .Values.discovery.grpcPort }}
               protocol: TCP
           env:
+            - name: PORT
+              value: {{ .Values.discovery.port | quote }}
+            - name: GRPC_PORT
+              value: {{ .Values.discovery.grpcPort | quote }}
             {{- include "yousoon-services.commonEnv" . | nindent 12 }}
             {{- range .Values.discovery.env }}
             - name: {{ .name }}
@@ -163,6 +175,10 @@ spec:
               containerPort: {{ .Values.booking.grpcPort }}
               protocol: TCP
           env:
+            - name: PORT
+              value: {{ .Values.booking.port | quote }}
+            - name: GRPC_PORT
+              value: {{ .Values.booking.grpcPort | quote }}
             {{- include "yousoon-services.commonEnv" . | nindent 12 }}
             {{- range .Values.booking.env }}
             - name: {{ .name }}
@@ -199,6 +215,10 @@ spec:
               containerPort: {{ .Values.engagement.grpcPort }}
               protocol: TCP
           env:
+            - name: PORT
+              value: {{ .Values.engagement.port | quote }}
+            - name: GRPC_PORT
+              value: {{ .Values.engagement.grpcPort | quote }}
             {{- include "yousoon-services.commonEnv" . | nindent 12 }}
             {{- range .Values.engagement.env }}
             - name: {{ .name }}
@@ -235,6 +255,10 @@ spec:
               containerPort: {{ .Values.notification.grpcPort }}
               protocol: TCP
           env:
+            - name: PORT
+              value: {{ .Values.notification.port | quote }}
+            - name: GRPC_PORT
+              value: {{ .Values.notification.grpcPort | quote }}
             {{- include "yousoon-services.commonEnv" . | nindent 12 }}
             {{- range .Values.notification.env }}
             - name: {{ .name }}
