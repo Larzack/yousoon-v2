@@ -1,13 +1,25 @@
-# Build stage
+# ===========================================
+# Stage 1: Dependencies (cached separately)
+# ===========================================
+FROM node:23-alpine AS deps
+
+WORKDIR /app
+
+# Copy only package files for dependency caching
+COPY package*.json ./
+
+# Install dependencies (cached if package*.json unchanged)
+RUN npm ci
+
+# ===========================================
+# Stage 2: Builder
+# ===========================================
 FROM node:23-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
+# Copy cached dependencies
+COPY --from=deps /app/node_modules ./node_modules
 
 # Copy source code
 COPY . .
@@ -22,7 +34,9 @@ ENV VITE_GRAPHQL_URL=$VITE_GRAPHQL_URL
 # Build the application
 RUN npm run build
 
-# Production stage
+# ===========================================
+# Stage 3: Production
+# ===========================================
 FROM nginx:alpine
 
 # Copy nginx configuration template

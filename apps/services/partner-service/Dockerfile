@@ -5,16 +5,29 @@ RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /app
 
-# Copy shared module first
-COPY shared/ ./shared/
+# ===========================================
+# STEP 1: Copy go.mod/go.sum for dependency caching
+# ===========================================
+# Copy shared module dependencies first
+COPY shared/go.mod shared/go.sum* ./shared/
 
-# Copy service module
-COPY partner-service/go.mod ./partner-service/
-COPY partner-service/go.sum* ./partner-service/
-COPY partner-service/ ./partner-service/
+# Copy service dependencies
+COPY partner-service/go.mod partner-service/go.sum* ./partner-service/
+
+# Download dependencies (cached if go.mod/go.sum unchanged)
 WORKDIR /app/partner-service
-RUN go mod tidy && go mod download
+RUN go mod download
 
+# ===========================================
+# STEP 2: Copy source code and build
+# ===========================================
+WORKDIR /app
+COPY shared/ ./shared/
+COPY partner-service/ ./partner-service/
+
+WORKDIR /app/partner-service
+
+# Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s" \
     -o /partner-service \

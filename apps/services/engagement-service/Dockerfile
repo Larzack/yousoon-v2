@@ -1,18 +1,37 @@
 # Build stage
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /app
 
-COPY shared/ ./shared/
-COPY engagement-service/go.mod ./engagement-service/
-COPY engagement-service/go.sum* ./engagement-service/
-COPY engagement-service/ ./engagement-service/
-WORKDIR /app/engagement-service
-RUN go mod tidy && go mod download
+# ===========================================
+# STEP 1: Copy go.mod/go.sum for dependency caching
+# ===========================================
+# Copy shared module dependencies first
+COPY shared/go.mod shared/go.sum* ./shared/
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /engagement-service ./cmd/main.go
+# Copy service dependencies
+COPY engagement-service/go.mod engagement-service/go.sum* ./engagement-service/
+
+# Download dependencies (cached if go.mod/go.sum unchanged)
+WORKDIR /app/engagement-service
+RUN go mod download
+
+# ===========================================
+# STEP 2: Copy source code and build
+# ===========================================
+WORKDIR /app
+COPY shared/ ./shared/
+COPY engagement-service/ ./engagement-service/
+
+WORKDIR /app/engagement-service
+
+# Build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o /engagement-service \
+    ./cmd/main.go
 
 # Runtime stage
 FROM alpine:3.19

@@ -1,22 +1,37 @@
 # Build stage
 FROM golang:1.25-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /app
 
-# Copy shared module first
-COPY shared/ ./shared/
+# ===========================================
+# STEP 1: Copy go.mod/go.sum for dependency caching
+# ===========================================
+# Copy shared module dependencies first
+COPY shared/go.mod shared/go.sum* ./shared/
 
-# Copy service module
-COPY booking-service/go.mod ./booking-service/
-COPY booking-service/go.sum* ./booking-service/
-COPY booking-service/ ./booking-service/
+# Copy service dependencies
+COPY booking-service/go.mod booking-service/go.sum* ./booking-service/
+
+# Download dependencies (cached if go.mod/go.sum unchanged)
 WORKDIR /app/booking-service
-RUN go mod tidy && go mod download
+RUN go mod download
+
+# ===========================================
+# STEP 2: Copy source code and build
+# ===========================================
+WORKDIR /app
+COPY shared/ ./shared/
+COPY booking-service/ ./booking-service/
+
+WORKDIR /app/booking-service
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /booking-service ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o /booking-service \
+    ./cmd/main.go
 
 # Runtime stage
 FROM alpine:3.19
