@@ -44,16 +44,6 @@ on:
         required: false
         default: true
         type: boolean
-      dry_run:
-        description: 'Dry run (no actual deploy)'
-        required: false
-        default: false
-        type: boolean
-      publish_stores:
-        description: 'Publish to App Stores'
-        required: false
-        default: false
-        type: boolean
   push:
     branches: [staging, prod]
     paths-ignore:
@@ -495,7 +485,6 @@ jobs:
         run: kubectl create namespace ${{ steps.env.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy Website
-        if: github.event.inputs.dry_run != 'true'
         working-directory: deploy/helm
         run: |
           ENV="${{ steps.env.outputs.environment }}"
@@ -665,7 +654,7 @@ jobs:
         run: kubectl create namespace ${{ steps.env.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy Monitoring
-        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && github.event.inputs.deploy != 'false'
+        if: github.event_name != 'pull_request' && github.event.inputs.deploy != 'false'
         working-directory: deploy/helm
         run: |
           ENV="${{ steps.env.outputs.environment }}"
@@ -879,7 +868,6 @@ jobs:
         run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy ${{ matrix.component }}
-        if: github.event.inputs.dry_run != 'true'
         working-directory: deploy/helm
         run: |
           ENV="${{ needs.setup.outputs.environment }}"
@@ -959,9 +947,17 @@ jobs:
   deploy-verify:
     name: 🔍 Verify Deployment
     needs: [setup, deploy]
-    if: always() && needs.deploy.result != 'cancelled'
+    if: |
+      always() &&
+      needs.deploy.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Check Deploy Status
+        if: needs.deploy.result != 'success'
+        run: |
+          echo "❌ Deploy failed with result: ${{ needs.deploy.result }}"
+          exit 1
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -1003,13 +999,14 @@ jobs:
 
   # ============================================
   # E2E TESTS - Tests end-to-end après déploiement
+  # S'exécute UNIQUEMENT si le déploiement a réussi
   # ============================================
   e2e-tests:
     name: 🧪 E2E Tests
-    needs: [setup, deploy-verify]
+    needs: [setup, deploy, deploy-verify]
     if: |
-      always() &&
       github.event_name != 'pull_request' &&
+      needs.deploy.result == 'success' &&
       needs.deploy-verify.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -1067,12 +1064,16 @@ jobs:
   # ============================================
   # LOAD TESTS - Tests de charge après déploiement
   # ============================================
+  # ============================================
+  # LOAD TESTS - Tests de charge après déploiement
+  # S'exécute UNIQUEMENT si le déploiement et les E2E ont réussi
+  # ============================================
   load-tests:
     name: 📊 Load Tests
-    needs: [setup, deploy-verify, e2e-tests]
+    needs: [setup, deploy, deploy-verify, e2e-tests]
     if: |
-      always() &&
       github.event_name != 'pull_request' &&
+      needs.deploy.result == 'success' &&
       needs.deploy-verify.result == 'success' &&
       needs.e2e-tests.result == 'success'
     runs-on: ubuntu-latest
@@ -1147,100 +1148,11 @@ jobs:
           echo "✅ Load tests executed" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
-  # PUBLISH - App Stores (après déploiement OK)
-  # ============================================
-  publish-stores:
-    name: 📲 Publish to Stores
-    needs: [setup, deploy-verify, e2e-tests, load-tests, build-mobile-android, build-mobile-ios]
-    if: |
-      always() &&
-      github.event_name != 'pull_request' &&
-      github.event.inputs.publish_stores == 'true' &&
-      needs.deploy-verify.result == 'success' &&
-      needs.e2e-tests.result == 'success' &&
-      needs.load-tests.result == 'success' &&
-      needs.build-mobile-android.result == 'success' &&
-      needs.build-mobile-ios.result == 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Pre-publish Summary
-        run: |
-          echo "### 📲 Store Publishing - Starting" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Environment | ${{ needs.setup.outputs.environment }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Version | ${{ needs.setup.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Android Build | ${{ needs.build-mobile-android.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| iOS Build | ${{ needs.build-mobile-ios.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Load Tests | ${{ needs.load-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Deploy Status | ${{ needs.deploy-verify.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⏳ Publishing to stores..." >> $GITHUB_STEP_SUMMARY
-
-      - uses: actions/checkout@v4
-
-      - name: Download Android artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: android-release
-          path: ./android-build
-
-      - name: Publish to Google Play
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          if [ "$ENV" == "staging" ]; then
-            TRACK="internal"
-          else
-            TRACK="production"
-          fi
-          
-          echo "📲 Publishing to Google Play ($TRACK)"
-          echo "AAB: ./android-build/app-release.aab"
-          
-          # TODO: Utiliser r0adkll/upload-google-play@v1
-          # uses: r0adkll/upload-google-play@v1
-          # with:
-          #   serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
-          #   packageName: com.yousoon.yousoon
-          #   releaseFiles: ./android-build/app-release.aab
-          #   track: $TRACK
-
-      - name: Publish to App Store
-        run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          if [ "$ENV" == "staging" ]; then
-            TARGET="TestFlight"
-          else
-            TARGET="App Store"
-          fi
-          
-          echo "📲 Publishing to $TARGET"
-          
-          # TODO: Télécharger l'artifact iOS et uploader via App Store Connect API
-          # Requires:
-          # - APPLE_KEY_ID
-          # - APPLE_ISSUER_ID  
-          # - APPLE_KEY_P8 (private key)
-
-      - name: Post-publish Summary
-        run: |
-          echo "### 📲 Store Publishing - Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Platform | Track | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Android | ${{ needs.setup.outputs.environment == 'prod' && 'Production' || 'Internal' }} | ✅ Published |" >> $GITHUB_STEP_SUMMARY
-          echo "| iOS | ${{ needs.setup.outputs.environment == 'prod' && 'App Store' || 'TestFlight' }} | ⚠️ Needs signing |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Store publishing completed!" >> $GITHUB_STEP_SUMMARY
-
-  # ============================================
   # SUMMARY
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-website, build-storage, deploy-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-website, deploy-monitoring, deploy-verify, e2e-tests, load-tests, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage, deploy-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-website, deploy-monitoring, deploy-verify, e2e-tests, load-tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1277,9 +1189,3 @@ jobs:
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🧪 E2E Tests | ${{ needs.e2e-tests.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📊 Load Tests | ${{ needs.load-tests.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Publishing" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| 📲 Stores | ${{ needs.publish-stores.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
