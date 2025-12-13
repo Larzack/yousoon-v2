@@ -21,40 +21,52 @@ common:
       value: debug
 
 # =============================================================================
-# Services (sidecar mode - all in one pod)
+# Services (sidecar mode - all in one pod with unique ports)
 # =============================================================================
 identity:
   enabled: true
+  port: 8081
+  grpcPort: 9091
   image:
     repository: yousoon/identity-service
     tag: staging
 
 partner:
   enabled: true
+  port: 8082
+  grpcPort: 9092
   image:
     repository: yousoon/partner-service
     tag: staging
 
 discovery:
   enabled: true
+  port: 8083
+  grpcPort: 9093
   image:
     repository: yousoon/discovery-service
     tag: staging
 
 booking:
   enabled: true
+  port: 8084
+  grpcPort: 9094
   image:
     repository: yousoon/booking-service
     tag: staging
 
 engagement:
   enabled: true
+  port: 8085
+  grpcPort: 9095
   image:
     repository: yousoon/engagement-service
     tag: staging
 
 notification:
   enabled: true
+  port: 8086
+  grpcPort: 9096
   image:
     repository: yousoon/notification-service
     tag: staging

@@ -21,10 +21,12 @@ common:
       value: info
 
 # =============================================================================
-# Services (classic mode - separate deployments)
+# Services (classic mode - separate deployments with explicit ports)
 # =============================================================================
 identity:
   enabled: true
+  port: 8081
+  grpcPort: 9091
   image:
     repository: yousoon/identity-service
     tag: prod
@@ -32,6 +34,8 @@ identity:
 
 partner:
   enabled: true
+  port: 8082
+  grpcPort: 9092
   image:
     repository: yousoon/partner-service
     tag: prod
@@ -39,6 +43,8 @@ partner:
 
 discovery:
   enabled: true
+  port: 8083
+  grpcPort: 9093
   image:
     repository: yousoon/discovery-service
     tag: prod
@@ -46,6 +52,8 @@ discovery:
 
 booking:
   enabled: true
+  port: 8084
+  grpcPort: 9094
   image:
     repository: yousoon/booking-service
     tag: prod
@@ -53,6 +61,8 @@ booking:
 
 engagement:
   enabled: true
+  port: 8085
+  grpcPort: 9095
   image:
     repository: yousoon/engagement-service
     tag: prod
@@ -60,6 +70,8 @@ engagement:
 
 notification:
   enabled: true
+  port: 8086
+  grpcPort: 9096
   image:
     repository: yousoon/notification-service
     tag: prod

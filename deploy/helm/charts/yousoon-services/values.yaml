@@ -29,8 +29,8 @@ identity:
   image:
     repository: yousoon/identity-service
     tag: latest
-  port: 8080
-  grpcPort: 9090
+  port: 8081
+  grpcPort: 9091
   
   resources: {}
 
@@ -48,8 +48,8 @@ partner:
   image:
     repository: yousoon/partner-service
     tag: latest
-  port: 8080
-  grpcPort: 9090
+  port: 8082
+  grpcPort: 9092
   
   resources: {}
 
@@ -67,8 +67,8 @@ discovery:
   image:
     repository: yousoon/discovery-service
     tag: latest
-  port: 8080
-  grpcPort: 9090
+  port: 8083
+  grpcPort: 9093
   
   resources: {}
 
@@ -86,8 +86,8 @@ booking:
   image:
     repository: yousoon/booking-service
     tag: latest
-  port: 8080
-  grpcPort: 9090
+  port: 8084
+  grpcPort: 9094
   
   resources: {}
 
@@ -105,8 +105,8 @@ engagement:
   image:
     repository: yousoon/engagement-service
     tag: latest
-  port: 8080
-  grpcPort: 9090
+  port: 8085
+  grpcPort: 9095
   
   resources: {}
 
@@ -124,8 +124,8 @@ notification:
   image:
     repository: yousoon/notification-service
     tag: latest
-  port: 8080
-  grpcPort: 9090
+  port: 8086
+  grpcPort: 9096
   
   resources: {}
 
