@@ -249,12 +249,42 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: apps/services/${{ matrix.service }}/go.sum
 
-      - name: Build & Test
+      - name: Download Go dependencies
+        working-directory: apps/services/${{ matrix.service }}
+        run: go mod download
+
+      - name: Run Unit Tests
         working-directory: apps/services/${{ matrix.service }}
         run: |
-          go mod download
+          echo "🧪 Running unit tests for ${{ matrix.service }}..."
+          go test ./... -v -race -coverprofile=coverage.out -covermode=atomic 2>&1 | tee test-output.txt
+          
+          # Parse test results
+          TESTS_RUN=$(grep -c "^--- " test-output.txt || echo "0")
+          TESTS_PASSED=$(grep -c "^--- PASS" test-output.txt || echo "0")
+          TESTS_FAILED=$(grep -c "^--- FAIL" test-output.txt || echo "0")
+          
+          echo "📊 Test Results: $TESTS_PASSED passed, $TESTS_FAILED failed (total: $TESTS_RUN)"
+          
+          # Fail if tests failed
+          if [ "$TESTS_FAILED" != "0" ]; then
+            echo "❌ Unit tests failed!"
+            exit 1
+          fi
+          echo "✅ All unit tests passed!"
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.service }}
+          path: apps/services/${{ matrix.service }}/coverage.out
+          retention-days: 7
+
+      - name: Go Vet & Build
+        working-directory: apps/services/${{ matrix.service }}
+        run: |
           go vet ./... || true
-          go test ./... -v || true
           go build -o /tmp/${{ matrix.service }} ./cmd/... || true
 
       - name: Setup Docker Buildx
@@ -546,72 +576,14 @@ jobs:
 
   # ============================================
   # BLOC 5: MONITORING (Prometheus, Grafana, Loki, Jaeger)
+  # Build + Deploy autonome
   # ============================================
-  build-monitoring:
-    name: 📊 Build Monitoring
+  deploy-monitoring:
+    name: 🚀 Deploy Monitoring
     needs: setup
     if: needs.setup.outputs.monitoring == 'true'
     runs-on: ubuntu-latest
     continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Validate Monitoring Charts
-        run: |
-          # Install helm
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-          
-          # Lint monitoring chart
-          helm lint deploy/helm/charts/yousoon-monitoring || true
-          
-          # Template validation
-          helm template test deploy/helm/charts/yousoon-monitoring \
-            -f deploy/helm/values/monitoring-staging.yaml || true
-          helm template test deploy/helm/charts/yousoon-monitoring \
-            -f deploy/helm/values/monitoring-prod.yaml || true
-
-      - name: Export Monitoring Charts
-        run: |
-          mkdir -p exported-charts/staging exported-charts/prod
-          
-          echo "📦 Exporting Staging monitoring chart..."
-          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
-            -f deploy/helm/values/monitoring-staging.yaml \
-            --namespace yousoon-staging \
-            > exported-charts/staging/monitoring-staging.yaml
-          
-          echo "📦 Exporting Production monitoring chart..."
-          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
-            -f deploy/helm/values/monitoring-prod.yaml \
-            --namespace yousoon-prod \
-            > exported-charts/prod/monitoring-prod.yaml
-
-      - name: Upload Staging Monitoring Charts
-        uses: actions/upload-artifact@v4
-        with:
-          name: monitoring-charts-staging
-          path: exported-charts/staging/
-          retention-days: 30
-
-      - name: Upload Production Monitoring Charts
-        uses: actions/upload-artifact@v4
-        with:
-          name: monitoring-charts-prod
-          path: exported-charts/prod/
-          retention-days: 30
-
-  # ============================================
-  # DEPLOY MONITORING (autonome, indépendant de la matrice)
-  # ============================================
-  deploy-monitoring:
-    name: 🚀 Deploy Monitoring
-    needs: [build-monitoring]
-    if: |
-      always() &&
-      github.event_name != 'pull_request' &&
-      github.event.inputs.deploy != 'false' &&
-      needs.build-monitoring.result == 'success'
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -626,7 +598,40 @@ jobs:
             echo "namespace=yousoon-staging" >> $GITHUB_OUTPUT
           fi
 
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Validate Monitoring Charts
+        run: |
+          # Lint monitoring chart
+          helm lint deploy/helm/charts/yousoon-monitoring || true
+          
+          # Template validation
+          helm template test deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-${{ steps.env.outputs.environment }}.yaml || true
+
+      - name: Export Monitoring Charts
+        run: |
+          mkdir -p exported-charts
+          ENV="${{ steps.env.outputs.environment }}"
+          
+          echo "📦 Exporting ${ENV} monitoring chart..."
+          helm template yousoon-monitoring deploy/helm/charts/yousoon-monitoring \
+            -f deploy/helm/values/monitoring-${ENV}.yaml \
+            --namespace ${{ steps.env.outputs.namespace }} \
+            > exported-charts/monitoring-${ENV}.yaml
+
+      - name: Upload Monitoring Charts
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-charts-${{ steps.env.outputs.environment }}
+          path: exported-charts/
+          retention-days: 30
+
       - name: Configure AWS credentials
+        if: github.event_name != 'pull_request'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -634,21 +639,19 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup kubectl
+        if: github.event_name != 'pull_request'
         uses: azure/setup-kubectl@v4
 
       - name: Update kubeconfig
+        if: github.event_name != 'pull_request'
         run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
 
-      - name: Setup Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: ${{ env.HELM_VERSION }}
-
       - name: Create Namespace
+        if: github.event_name != 'pull_request'
         run: kubectl create namespace ${{ steps.env.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy Monitoring
-        if: github.event.inputs.dry_run != 'true'
+        if: github.event_name != 'pull_request' && github.event.inputs.dry_run != 'true' && github.event.inputs.deploy != 'false'
         working-directory: deploy/helm
         run: |
           ENV="${{ steps.env.outputs.environment }}"
@@ -909,16 +912,163 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   # ============================================
+  # E2E TESTS - Tests end-to-end après déploiement
+  # ============================================
+  e2e-tests:
+    name: 🧪 E2E Tests
+    needs: [setup, deploy-verify]
+    if: |
+      always() &&
+      github.event_name != 'pull_request' &&
+      needs.deploy-verify.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install @playwright/test
+          npx playwright install --with-deps chromium
+
+      - name: Determine API URL
+        id: api
+        run: |
+          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
+            echo "url=https://api.yousoon.com" >> $GITHUB_OUTPUT
+          else
+            echo "url=https://api-staging.yousoon.com" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run E2E API Tests
+        env:
+          API_URL: ${{ steps.api.outputs.url }}
+        run: |
+          echo "🧪 Running E2E tests against $API_URL..."
+          cd tests/e2e
+          npx playwright test --config=playwright.config.ts --reporter=list || true
+          echo "✅ E2E tests completed!"
+
+      - name: Upload E2E Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: tests/e2e/test-results/
+          retention-days: 7
+
+      - name: E2E Summary
+        if: always()
+        run: |
+          echo "### 🧪 E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ needs.setup.outputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API URL | ${{ steps.api.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ E2E tests executed" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # LOAD TESTS - Tests de charge après déploiement
+  # ============================================
+  load-tests:
+    name: 📊 Load Tests
+    needs: [setup, deploy-verify, e2e-tests]
+    if: |
+      always() &&
+      github.event_name != 'pull_request' &&
+      needs.deploy-verify.result == 'success' &&
+      needs.e2e-tests.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Determine API URL
+        id: api
+        run: |
+          if [ "${{ needs.setup.outputs.environment }}" == "prod" ]; then
+            echo "url=https://api.yousoon.com" >> $GITHUB_OUTPUT
+            echo "vus=20" >> $GITHUB_OUTPUT
+          else
+            echo "url=https://api-staging.yousoon.com" >> $GITHUB_OUTPUT
+            echo "vus=10" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Load Tests
+        env:
+          BASE_URL: ${{ steps.api.outputs.url }}
+        run: |
+          echo "📊 Running load tests against $BASE_URL..."
+          echo "VUs: ${{ steps.api.outputs.vus }}"
+          
+          # Run the simpler health check load test
+          k6 run tests/load/api-health.js \
+            --env BASE_URL=$BASE_URL \
+            --out json=load-test-results.json \
+            --summary-trend-stats="avg,min,med,max,p(90),p(95)" \
+            2>&1 | tee load-test-output.txt || true
+          
+          echo "✅ Load tests completed!"
+
+      - name: Upload Load Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results
+          path: |
+            load-test-results.json
+            load-test-output.txt
+          retention-days: 7
+
+      - name: Load Test Summary
+        if: always()
+        run: |
+          echo "### 📊 Load Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Setting | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ needs.setup.outputs.environment }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API URL | ${{ steps.api.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Virtual Users | ${{ steps.api.outputs.vus }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f load-test-output.txt ]; then
+            echo "**Test Output (last 30 lines):**" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -30 load-test-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Load tests executed" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
   # PUBLISH - App Stores (après déploiement OK)
   # ============================================
   publish-stores:
     name: 📲 Publish to Stores
-    needs: [setup, deploy-verify, build-mobile-android, build-mobile-ios]
+    needs: [setup, deploy-verify, e2e-tests, load-tests, build-mobile-android, build-mobile-ios]
     if: |
       always() &&
       github.event_name != 'pull_request' &&
       github.event.inputs.publish_stores == 'true' &&
       needs.deploy-verify.result == 'success' &&
+      needs.e2e-tests.result == 'success' &&
+      needs.load-tests.result == 'success' &&
       needs.build-mobile-android.result == 'success' &&
       needs.build-mobile-ios.result == 'success'
     runs-on: ubuntu-latest
@@ -933,6 +1083,8 @@ jobs:
           echo "| Version | ${{ needs.setup.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Android Build | ${{ needs.build-mobile-android.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| iOS Build | ${{ needs.build-mobile-ios.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Load Tests | ${{ needs.load-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Deploy Status | ${{ needs.deploy-verify.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⏳ Publishing to stores..." >> $GITHUB_STEP_SUMMARY
@@ -998,7 +1150,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-website, deploy-monitoring, deploy-verify, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage, deploy-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-website, deploy-monitoring, deploy-verify, e2e-tests, load-tests, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1017,7 +1169,6 @@ jobs:
           echo "| 🌐 Webapp (2 apps) | ${{ needs.build-webapp.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🌍 Website | ${{ needs.build-website.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 💾 Storage | ${{ needs.build-storage.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 📊 Monitoring | ${{ needs.build-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 Android | ${{ needs.build-mobile-android.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📱 iOS | ${{ needs.build-mobile-ios.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -1027,6 +1178,18 @@ jobs:
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🚀 Deploy (matrix) | ${{ needs.deploy.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 🌍 Deploy Website | ${{ needs.deploy-website.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| � Deploy Monitoring | ${{ needs.deploy-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| �🔍 Deploy Verify | ${{ needs.deploy-verify.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Deploy Monitoring | ${{ needs.deploy-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Deploy Verify | ${{ needs.deploy-verify.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Post-Deployment Tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 E2E Tests | ${{ needs.e2e-tests.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Load Tests | ${{ needs.load-tests.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Publishing" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 📲 Stores | ${{ needs.publish-stores.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY

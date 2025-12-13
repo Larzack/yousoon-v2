@@ -52,6 +52,8 @@ spec:
               containerPort: {{ .Values.admin.port }}
               protocol: TCP
           env:
+            - name: PORT
+              value: {{ .Values.admin.port | quote }}
             {{- range .Values.admin.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}
@@ -84,6 +86,8 @@ spec:
               containerPort: {{ .Values.partners.port }}
               protocol: TCP
           env:
+            - name: PORT
+              value: {{ .Values.partners.port | quote }}
             {{- range .Values.partners.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}
