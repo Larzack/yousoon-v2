@@ -7,8 +7,6 @@ import {
   ArrowLeft,
   Calendar,
   MapPin,
-  Tag,
-  Users,
   CheckCircle,
   XCircle,
   Pause,
@@ -103,7 +101,7 @@ function getStatusBadge(status: string) {
 }
 
 export function OfferDetailPage() {
-  const { id } = useParams()
+  const { id: _id } = useParams()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('overview')
 

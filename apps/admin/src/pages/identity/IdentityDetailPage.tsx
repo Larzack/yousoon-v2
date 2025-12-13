@@ -11,7 +11,6 @@ import {
   Clock,
   User,
   FileText,
-  Calendar,
   AlertTriangle,
   Shield,
   Eye,
@@ -95,7 +94,7 @@ function DataComparison({ label, extracted, profile, match }: { label: string; e
 }
 
 export function IdentityDetailPage() {
-  const { id } = useParams()
+  const { id: _id } = useParams()
   const navigate = useNavigate()
   const [rejectReason, setRejectReason] = useState('')
   const [showRejectModal, setShowRejectModal] = useState(false)

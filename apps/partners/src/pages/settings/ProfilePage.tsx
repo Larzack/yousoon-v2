@@ -67,7 +67,7 @@ export function ProfilePage() {
         title: 'Profil mis à jour',
         description: 'Vos informations personnelles ont été enregistrées.',
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Erreur',
         description: 'Une erreur est survenue. Veuillez réessayer.',

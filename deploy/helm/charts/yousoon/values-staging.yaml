@@ -106,6 +106,7 @@ yousoon-services:
 # Sites - Staging Settings (Sidecar Mode)
 # =============================================================================
 yousoon-sites:
+  fullnameOverride: "yousoon-website"
   global:
     infra: "sidecar"
     namespace: yousoon-staging

@@ -90,7 +90,7 @@ export function SettingsPage() {
         title: 'Modifications enregistrées',
         description: 'Les informations de votre entreprise ont été mises à jour.',
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Erreur',
         description: 'Une erreur est survenue. Veuillez réessayer.',

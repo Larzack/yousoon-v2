@@ -106,7 +106,7 @@ export function EstablishmentDetailPage() {
       });
       
       navigate('/establishments');
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Erreur',
         description: 'Une erreur est survenue. Veuillez réessayer.',
