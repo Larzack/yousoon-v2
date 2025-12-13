@@ -55,9 +55,9 @@ on:
 # - Automatically cancels in-progress runs when a new one starts
 # - Allows the most recent code to deploy faster
 # =============================================================================
-concurrency:
-  group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+# concurrency:
+#   group: deploy-${{ github.ref }}
+#   cancel-in-progress: true
 
 env:
   # Versions
