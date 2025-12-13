@@ -1,0 +1,674 @@
+schema
+  @link(url: "https://specs.apollo.dev/link/v1.0")
+  @link(url: "https://specs.apollo.dev/join/v0.3", for: EXECUTION)
+{
+  query: Query
+  mutation: Mutation
+}
+
+directive @join__enumValue(graph: join__Graph!) repeatable on ENUM_VALUE
+directive @join__field(graph: join__Graph, requires: join__FieldSet, provides: join__FieldSet, type: String, external: Boolean, override: String, usedOverridden: Boolean) repeatable on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+directive @join__graph(name: String!, url: String!) on ENUM_VALUE
+directive @join__implements(graph: join__Graph!, interface: String!) repeatable on OBJECT | INTERFACE
+directive @join__type(graph: join__Graph!, key: join__FieldSet, extension: Boolean, resolvable: Boolean, isInterfaceObject: Boolean) repeatable on OBJECT | INTERFACE | UNION | ENUM | INPUT_OBJECT | SCALAR
+directive @join__unionMember(graph: join__Graph!, member: String!) repeatable on UNION
+directive @link(url: String, as: String, for: link__Purpose, import: [link__Import]) repeatable on SCHEMA
+
+scalar join__FieldSet
+scalar link__Import
+
+enum link__Purpose {
+  SECURITY
+  EXECUTION
+}
+
+enum join__Graph {
+  IDENTITY @join__graph(name: "identity", url: "http://localhost:8081/graphql")
+  PARTNER @join__graph(name: "partner", url: "http://localhost:8082/graphql")
+  BOOKING @join__graph(name: "booking", url: "http://localhost:8084/graphql")
+  ENGAGEMENT @join__graph(name: "engagement", url: "http://localhost:8085/graphql")
+  NOTIFICATION @join__graph(name: "notification", url: "http://localhost:8086/graphql")
+}
+
+scalar DateTime @join__type(graph: IDENTITY) @join__type(graph: PARTNER) @join__type(graph: BOOKING) @join__type(graph: ENGAGEMENT) @join__type(graph: NOTIFICATION)
+
+type Query @join__type(graph: IDENTITY) @join__type(graph: PARTNER) @join__type(graph: BOOKING) @join__type(graph: ENGAGEMENT) @join__type(graph: NOTIFICATION) {
+  # Identity
+  me: User @join__field(graph: IDENTITY)
+  user(id: ID!): User @join__field(graph: IDENTITY)
+  
+  # Partner
+  partner(id: ID!): Partner @join__field(graph: PARTNER)
+  partners(filter: PartnerFilterInput, pagination: PaginationInput): PartnerConnection! @join__field(graph: PARTNER)
+  establishment(id: ID!): Establishment @join__field(graph: PARTNER)
+  
+  # Booking
+  outing(id: ID!): Outing @join__field(graph: BOOKING)
+  myOutings(filter: OutingFilterInput, pagination: PaginationInput): OutingConnection! @join__field(graph: BOOKING)
+  
+  # Engagement
+  myFavorites(pagination: PaginationInput): FavoriteConnection! @join__field(graph: ENGAGEMENT)
+  reviews(offerId: ID!, pagination: PaginationInput): ReviewConnection! @join__field(graph: ENGAGEMENT)
+  
+  # Notification
+  myNotifications(pagination: PaginationInput): NotificationConnection! @join__field(graph: NOTIFICATION)
+  notificationSettings: NotificationSettings @join__field(graph: NOTIFICATION)
+}
+
+type Mutation @join__type(graph: IDENTITY) @join__type(graph: PARTNER) @join__type(graph: BOOKING) @join__type(graph: ENGAGEMENT) @join__type(graph: NOTIFICATION) {
+  # Identity
+  register(input: RegisterInput!): AuthPayload! @join__field(graph: IDENTITY)
+  login(input: LoginInput!): AuthPayload! @join__field(graph: IDENTITY)
+  refreshToken(refreshToken: String!): AuthPayload! @join__field(graph: IDENTITY)
+  updateProfile(input: UpdateProfileInput!): User! @join__field(graph: IDENTITY)
+  changePassword(input: ChangePasswordInput!): Boolean! @join__field(graph: IDENTITY)
+  requestPasswordReset(email: String!): Boolean! @join__field(graph: IDENTITY)
+  resetPassword(input: ResetPasswordInput!): Boolean! @join__field(graph: IDENTITY)
+  submitIdentityVerification(input: IdentityVerificationInput!): IdentityVerification! @join__field(graph: IDENTITY)
+  
+  # Partner
+  createPartner(input: CreatePartnerInput!): Partner! @join__field(graph: PARTNER)
+  updatePartner(id: ID!, input: UpdatePartnerInput!): Partner! @join__field(graph: PARTNER)
+  createEstablishment(input: CreateEstablishmentInput!): Establishment! @join__field(graph: PARTNER)
+  updateEstablishment(id: ID!, input: UpdateEstablishmentInput!): Establishment! @join__field(graph: PARTNER)
+  
+  # Booking
+  createOuting(input: CreateOutingInput!): Outing! @join__field(graph: BOOKING)
+  cancelOuting(id: ID!): Outing! @join__field(graph: BOOKING)
+  checkInOuting(id: ID!, qrCode: String!): Outing! @join__field(graph: BOOKING)
+  
+  # Engagement
+  addFavorite(offerId: ID!): Favorite! @join__field(graph: ENGAGEMENT)
+  removeFavorite(offerId: ID!): Boolean! @join__field(graph: ENGAGEMENT)
+  createReview(input: CreateReviewInput!): Review! @join__field(graph: ENGAGEMENT)
+  
+  # Notification
+  registerDevice(input: RegisterDeviceInput!): DeviceToken! @join__field(graph: NOTIFICATION)
+  updateNotificationSettings(input: UpdateNotificationSettingsInput!): NotificationSettings! @join__field(graph: NOTIFICATION)
+  markNotificationRead(id: ID!): Notification! @join__field(graph: NOTIFICATION)
+}
+
+# ============================================
+# IDENTITY TYPES
+# ============================================
+
+type User @join__type(graph: IDENTITY, key: "id") @join__type(graph: BOOKING, key: "id") @join__type(graph: ENGAGEMENT, key: "id") {
+  id: ID!
+  email: String! @join__field(graph: IDENTITY)
+  profile: Profile! @join__field(graph: IDENTITY)
+  identity: IdentityVerification @join__field(graph: IDENTITY)
+  subscription: UserSubscription @join__field(graph: IDENTITY)
+  preferences: Preferences @join__field(graph: IDENTITY)
+  status: UserStatus! @join__field(graph: IDENTITY)
+  grade: UserGrade! @join__field(graph: IDENTITY)
+  createdAt: DateTime! @join__field(graph: IDENTITY)
+  outings: [Outing!]! @join__field(graph: BOOKING)
+  favorites: [Favorite!]! @join__field(graph: ENGAGEMENT)
+  reviews: [Review!]! @join__field(graph: ENGAGEMENT)
+}
+
+type Profile @join__type(graph: IDENTITY) {
+  firstName: String!
+  lastName: String!
+  displayName: String
+  avatar: String
+  birthDate: DateTime
+  gender: Gender
+  phone: String
+}
+
+type IdentityVerification @join__type(graph: IDENTITY) {
+  id: ID!
+  status: VerificationStatus!
+  documentType: DocumentType
+  submittedAt: DateTime!
+  verifiedAt: DateTime
+  rejectionReason: String
+}
+
+type UserSubscription @join__type(graph: IDENTITY) {
+  id: ID!
+  plan: SubscriptionPlan!
+  status: SubscriptionStatus!
+  platform: Platform!
+  startDate: DateTime!
+  endDate: DateTime!
+  autoRenew: Boolean!
+  cancelledAt: DateTime
+}
+
+type SubscriptionPlan @join__type(graph: IDENTITY) {
+  id: ID!
+  code: String!
+  name: String!
+  description: String
+  price: Int!
+  currency: String!
+  interval: String!
+  features: [String!]!
+}
+
+type Preferences @join__type(graph: IDENTITY) {
+  language: String!
+  notifications: NotificationPreferences!
+  categories: [ID!]!
+  maxDistance: Int!
+}
+
+type NotificationPreferences @join__type(graph: IDENTITY) {
+  push: Boolean!
+  email: Boolean!
+  sms: Boolean!
+  marketing: Boolean!
+}
+
+type AuthPayload @join__type(graph: IDENTITY) {
+  accessToken: String!
+  refreshToken: String!
+  user: User!
+}
+
+enum UserStatus @join__type(graph: IDENTITY) {
+  ACTIVE @join__enumValue(graph: IDENTITY)
+  SUSPENDED @join__enumValue(graph: IDENTITY)
+  DELETED @join__enumValue(graph: IDENTITY)
+}
+
+enum UserGrade @join__type(graph: IDENTITY) {
+  EXPLORATEUR @join__enumValue(graph: IDENTITY)
+  AVENTURIER @join__enumValue(graph: IDENTITY)
+  GRAND_VOYAGEUR @join__enumValue(graph: IDENTITY)
+  CONQUERANT @join__enumValue(graph: IDENTITY)
+}
+
+enum Gender @join__type(graph: IDENTITY) {
+  MALE @join__enumValue(graph: IDENTITY)
+  FEMALE @join__enumValue(graph: IDENTITY)
+  OTHER @join__enumValue(graph: IDENTITY)
+}
+
+enum VerificationStatus @join__type(graph: IDENTITY) {
+  NOT_SUBMITTED @join__enumValue(graph: IDENTITY)
+  PENDING @join__enumValue(graph: IDENTITY)
+  VERIFIED @join__enumValue(graph: IDENTITY)
+  REJECTED @join__enumValue(graph: IDENTITY)
+}
+
+enum DocumentType @join__type(graph: IDENTITY) {
+  CNI @join__enumValue(graph: IDENTITY)
+  PASSPORT @join__enumValue(graph: IDENTITY)
+  DRIVING_LICENSE @join__enumValue(graph: IDENTITY)
+}
+
+enum SubscriptionStatus @join__type(graph: IDENTITY) {
+  TRIALING @join__enumValue(graph: IDENTITY)
+  ACTIVE @join__enumValue(graph: IDENTITY)
+  PAST_DUE @join__enumValue(graph: IDENTITY)
+  CANCELLED @join__enumValue(graph: IDENTITY)
+  EXPIRED @join__enumValue(graph: IDENTITY)
+}
+
+enum Platform @join__type(graph: IDENTITY) @join__type(graph: NOTIFICATION) {
+  IOS @join__enumValue(graph: IDENTITY) @join__enumValue(graph: NOTIFICATION)
+  ANDROID @join__enumValue(graph: IDENTITY) @join__enumValue(graph: NOTIFICATION)
+}
+
+# ============================================
+# PARTNER TYPES
+# ============================================
+
+type Partner @join__type(graph: PARTNER, key: "id") {
+  id: ID!
+  company: Company!
+  branding: Branding
+  contact: Contact!
+  category: String!
+  subcategories: [String!]!
+  establishments: [Establishment!]!
+  status: PartnerStatus!
+  createdAt: DateTime!
+}
+
+type Company @join__type(graph: PARTNER) {
+  name: String!
+  tradeName: String
+  siret: String!
+  vatNumber: String
+  legalForm: String
+}
+
+type Branding @join__type(graph: PARTNER) {
+  logo: String
+  coverImage: String
+  primaryColor: String
+  description: String
+}
+
+type Contact @join__type(graph: PARTNER) {
+  firstName: String!
+  lastName: String!
+  email: String!
+  phone: String
+  role: String
+}
+
+type Establishment @join__type(graph: PARTNER, key: "id") @join__type(graph: BOOKING, key: "id") {
+  id: ID!
+  partnerId: ID! @join__field(graph: PARTNER)
+  name: String! @join__field(graph: PARTNER)
+  description: String @join__field(graph: PARTNER)
+  address: Address! @join__field(graph: PARTNER)
+  location: GeoLocation! @join__field(graph: PARTNER)
+  contact: EstablishmentContact @join__field(graph: PARTNER)
+  openingHours: [OpeningHour!]! @join__field(graph: PARTNER)
+  images: [Image!]! @join__field(graph: PARTNER)
+  features: [String!]! @join__field(graph: PARTNER)
+  priceRange: Int @join__field(graph: PARTNER)
+  isActive: Boolean! @join__field(graph: PARTNER)
+}
+
+type Address @join__type(graph: PARTNER) {
+  street: String!
+  streetNumber: String
+  complement: String
+  postalCode: String!
+  city: String!
+  country: String!
+  formatted: String
+}
+
+type GeoLocation @join__type(graph: PARTNER) @join__type(graph: BOOKING) {
+  longitude: Float!
+  latitude: Float!
+}
+
+type EstablishmentContact @join__type(graph: PARTNER) {
+  phone: String
+  email: String
+  website: String
+}
+
+type OpeningHour @join__type(graph: PARTNER) {
+  dayOfWeek: Int!
+  open: String!
+  close: String!
+  isClosed: Boolean!
+}
+
+type Image @join__type(graph: PARTNER) {
+  url: String!
+  alt: String
+  isPrimary: Boolean!
+  order: Int!
+}
+
+type PartnerConnection @join__type(graph: PARTNER) {
+  edges: [PartnerEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PartnerEdge @join__type(graph: PARTNER) {
+  node: Partner!
+  cursor: String!
+}
+
+enum PartnerStatus @join__type(graph: PARTNER) {
+  PENDING @join__enumValue(graph: PARTNER)
+  ACTIVE @join__enumValue(graph: PARTNER)
+  SUSPENDED @join__enumValue(graph: PARTNER)
+}
+
+# ============================================
+# BOOKING TYPES
+# ============================================
+
+type Outing @join__type(graph: BOOKING, key: "id") {
+  id: ID!
+  userId: ID!
+  offerId: ID!
+  establishmentId: ID!
+  qrCode: QRCode!
+  status: OutingStatus!
+  bookedAt: DateTime!
+  expiresAt: DateTime!
+  checkedInAt: DateTime
+  cancelledAt: DateTime
+  offerSnapshot: OfferSnapshot!
+}
+
+type QRCode @join__type(graph: BOOKING) {
+  code: String!
+  expiresAt: DateTime!
+}
+
+type OfferSnapshot @join__type(graph: BOOKING) {
+  title: String!
+  description: String
+  discount: DiscountSnapshot!
+  establishmentName: String!
+  establishmentAddress: String!
+}
+
+type DiscountSnapshot @join__type(graph: BOOKING) {
+  type: String!
+  value: Int!
+  formula: String
+}
+
+type OutingConnection @join__type(graph: BOOKING) {
+  edges: [OutingEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OutingEdge @join__type(graph: BOOKING) {
+  node: Outing!
+  cursor: String!
+}
+
+enum OutingStatus @join__type(graph: BOOKING) {
+  PENDING @join__enumValue(graph: BOOKING)
+  CONFIRMED @join__enumValue(graph: BOOKING)
+  CHECKED_IN @join__enumValue(graph: BOOKING)
+  CANCELLED @join__enumValue(graph: BOOKING)
+  EXPIRED @join__enumValue(graph: BOOKING)
+  NO_SHOW @join__enumValue(graph: BOOKING)
+}
+
+# ============================================
+# ENGAGEMENT TYPES
+# ============================================
+
+type Favorite @join__type(graph: ENGAGEMENT, key: "id") {
+  id: ID!
+  userId: ID!
+  offerId: ID!
+  addedAt: DateTime!
+}
+
+type Review @join__type(graph: ENGAGEMENT, key: "id") {
+  id: ID!
+  userId: ID!
+  offerId: ID!
+  rating: Int!
+  title: String
+  content: String
+  images: [String!]
+  isVerifiedPurchase: Boolean!
+  helpfulCount: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+type FavoriteConnection @join__type(graph: ENGAGEMENT) {
+  edges: [FavoriteEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type FavoriteEdge @join__type(graph: ENGAGEMENT) {
+  node: Favorite!
+  cursor: String!
+}
+
+type ReviewConnection @join__type(graph: ENGAGEMENT) {
+  edges: [ReviewEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type ReviewEdge @join__type(graph: ENGAGEMENT) {
+  node: Review!
+  cursor: String!
+}
+
+# ============================================
+# NOTIFICATION TYPES
+# ============================================
+
+type Notification @join__type(graph: NOTIFICATION, key: "id") {
+  id: ID!
+  userId: ID!
+  type: NotificationType!
+  channel: NotificationChannel!
+  title: String!
+  body: String!
+  data: String
+  status: NotificationStatus!
+  sentAt: DateTime
+  readAt: DateTime
+  createdAt: DateTime!
+}
+
+type NotificationSettings @join__type(graph: NOTIFICATION) {
+  push: Boolean!
+  email: Boolean!
+  sms: Boolean!
+  marketing: Boolean!
+}
+
+type DeviceToken @join__type(graph: NOTIFICATION) {
+  id: ID!
+  token: String!
+  platform: Platform!
+  createdAt: DateTime!
+}
+
+type NotificationConnection @join__type(graph: NOTIFICATION) {
+  edges: [NotificationEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type NotificationEdge @join__type(graph: NOTIFICATION) {
+  node: Notification!
+  cursor: String!
+}
+
+enum NotificationType @join__type(graph: NOTIFICATION) {
+  BOOKING_CONFIRMED @join__enumValue(graph: NOTIFICATION)
+  BOOKING_REMINDER @join__enumValue(graph: NOTIFICATION)
+  OFFER_NEARBY @join__enumValue(graph: NOTIFICATION)
+  MARKETING @join__enumValue(graph: NOTIFICATION)
+  SYSTEM @join__enumValue(graph: NOTIFICATION)
+}
+
+enum NotificationChannel @join__type(graph: NOTIFICATION) {
+  PUSH @join__enumValue(graph: NOTIFICATION)
+  EMAIL @join__enumValue(graph: NOTIFICATION)
+  SMS @join__enumValue(graph: NOTIFICATION)
+}
+
+enum NotificationStatus @join__type(graph: NOTIFICATION) {
+  PENDING @join__enumValue(graph: NOTIFICATION)
+  SENT @join__enumValue(graph: NOTIFICATION)
+  DELIVERED @join__enumValue(graph: NOTIFICATION)
+  FAILED @join__enumValue(graph: NOTIFICATION)
+  READ @join__enumValue(graph: NOTIFICATION)
+}
+
+# ============================================
+# SHARED TYPES
+# ============================================
+
+type PageInfo @join__type(graph: IDENTITY) @join__type(graph: PARTNER) @join__type(graph: BOOKING) @join__type(graph: ENGAGEMENT) @join__type(graph: NOTIFICATION) {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# ============================================
+# INPUT TYPES
+# ============================================
+
+input PaginationInput @join__type(graph: IDENTITY) @join__type(graph: PARTNER) @join__type(graph: BOOKING) @join__type(graph: ENGAGEMENT) @join__type(graph: NOTIFICATION) {
+  first: Int
+  after: String
+  last: Int
+  before: String
+}
+
+input RegisterInput @join__type(graph: IDENTITY) {
+  email: String!
+  password: String!
+  firstName: String!
+  lastName: String!
+}
+
+input LoginInput @join__type(graph: IDENTITY) {
+  email: String!
+  password: String!
+}
+
+input UpdateProfileInput @join__type(graph: IDENTITY) {
+  firstName: String
+  lastName: String
+  displayName: String
+  avatar: String
+  birthDate: DateTime
+  gender: Gender
+  phone: String
+}
+
+input ChangePasswordInput @join__type(graph: IDENTITY) {
+  currentPassword: String!
+  newPassword: String!
+}
+
+input ResetPasswordInput @join__type(graph: IDENTITY) {
+  token: String!
+  newPassword: String!
+}
+
+input IdentityVerificationInput @join__type(graph: IDENTITY) {
+  documentType: DocumentType!
+  frontImage: String!
+  backImage: String
+  selfieImage: String
+}
+
+input PartnerFilterInput @join__type(graph: PARTNER) {
+  status: PartnerStatus
+  category: String
+  search: String
+}
+
+input CreatePartnerInput @join__type(graph: PARTNER) {
+  company: CompanyInput!
+  contact: ContactInput!
+  category: String!
+}
+
+input UpdatePartnerInput @join__type(graph: PARTNER) {
+  company: CompanyInput
+  branding: BrandingInput
+  contact: ContactInput
+  category: String
+  subcategories: [String!]
+}
+
+input CompanyInput @join__type(graph: PARTNER) {
+  name: String!
+  tradeName: String
+  siret: String!
+  vatNumber: String
+  legalForm: String
+}
+
+input BrandingInput @join__type(graph: PARTNER) {
+  logo: String
+  coverImage: String
+  primaryColor: String
+  description: String
+}
+
+input ContactInput @join__type(graph: PARTNER) {
+  firstName: String!
+  lastName: String!
+  email: String!
+  phone: String
+  role: String
+}
+
+input CreateEstablishmentInput @join__type(graph: PARTNER) {
+  partnerId: ID!
+  name: String!
+  description: String
+  address: AddressInput!
+  location: GeoLocationInput!
+  contact: EstablishmentContactInput
+  openingHours: [OpeningHourInput!]
+  features: [String!]
+  priceRange: Int
+}
+
+input UpdateEstablishmentInput @join__type(graph: PARTNER) {
+  name: String
+  description: String
+  address: AddressInput
+  location: GeoLocationInput
+  contact: EstablishmentContactInput
+  openingHours: [OpeningHourInput!]
+  features: [String!]
+  priceRange: Int
+  isActive: Boolean
+}
+
+input AddressInput @join__type(graph: PARTNER) {
+  street: String!
+  streetNumber: String
+  complement: String
+  postalCode: String!
+  city: String!
+  country: String!
+}
+
+input GeoLocationInput @join__type(graph: PARTNER) @join__type(graph: BOOKING) {
+  longitude: Float!
+  latitude: Float!
+}
+
+input EstablishmentContactInput @join__type(graph: PARTNER) {
+  phone: String
+  email: String
+  website: String
+}
+
+input OpeningHourInput @join__type(graph: PARTNER) {
+  dayOfWeek: Int!
+  open: String!
+  close: String!
+  isClosed: Boolean
+}
+
+input OutingFilterInput @join__type(graph: BOOKING) {
+  status: OutingStatus
+  fromDate: DateTime
+  toDate: DateTime
+}
+
+input CreateOutingInput @join__type(graph: BOOKING) {
+  offerId: ID!
+}
+
+input CreateReviewInput @join__type(graph: ENGAGEMENT) {
+  offerId: ID!
+  rating: Int!
+  title: String
+  content: String
+  images: [String!]
+}
+
+input RegisterDeviceInput @join__type(graph: NOTIFICATION) {
+  token: String!
+  platform: Platform!
+}
+
+input UpdateNotificationSettingsInput @join__type(graph: NOTIFICATION) {
+  push: Boolean
+  email: Boolean
+  sms: Boolean
+  marketing: Boolean
+}

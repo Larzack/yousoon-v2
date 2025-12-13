@@ -39,17 +39,23 @@ RUN npm run build
 # ===========================================
 FROM nginx:alpine
 
-# Copy nginx configuration directly (no template substitution needed)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Remove default nginx configs and templates
+RUN rm -rf /etc/nginx/templates /etc/nginx/conf.d/default.conf
+
+# Copy nginx template for envsubst
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 # Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# Default port (can be overridden by environment variable)
+ENV PORT=80
+
 # Expose port
 EXPOSE 80
 
-# Health check
+# Health check uses PORT env var
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget -q --spider http://localhost/ || exit 1
+  CMD wget -q --spider http://localhost:${PORT}/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
