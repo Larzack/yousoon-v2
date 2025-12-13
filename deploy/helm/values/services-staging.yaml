@@ -1,0 +1,89 @@
+# =============================================================================
+# Yousoon Services - Staging Configuration
+# =============================================================================
+
+global:
+  infra: "sidecar"
+  namespace: yousoon-staging
+  imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
+  imagePullPolicy: Always
+
+# =============================================================================
+# Common Service Configuration
+# =============================================================================
+common:
+  replicas: 1
+  
+  env:
+    - name: ENVIRONMENT
+      value: staging
+    - name: LOG_LEVEL
+      value: debug
+
+# =============================================================================
+# Services (sidecar mode - all in one pod)
+# =============================================================================
+identity:
+  enabled: true
+  image:
+    repository: yousoon/identity-service
+    tag: staging
+
+partner:
+  enabled: true
+  image:
+    repository: yousoon/partner-service
+    tag: staging
+
+discovery:
+  enabled: true
+  image:
+    repository: yousoon/discovery-service
+    tag: staging
+
+booking:
+  enabled: true
+  image:
+    repository: yousoon/booking-service
+    tag: staging
+
+engagement:
+  enabled: true
+  image:
+    repository: yousoon/engagement-service
+    tag: staging
+
+notification:
+  enabled: true
+  image:
+    repository: yousoon/notification-service
+    tag: staging
+
+# =============================================================================
+# Apollo Router (GraphQL Gateway)
+# =============================================================================
+router:
+  enabled: true
+  image:
+    repository: yousoon/router
+    tag: staging
+
+  # Ingress for staging API
+  ingress:
+    enabled: true
+    host: api-staging.yousoon.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production-cluster-issuer
+
+# =============================================================================
+# Storage Connection
+# =============================================================================
+storageConnection:
+  mongodbHost: yousoon-storage
+  mongodbPort: 27017
+  redisHost: yousoon-storage
+  redisPort: 6379
+  natsHost: yousoon-storage
+  natsPort: 4222
+  elasticsearchHost: yousoon-storage
+  elasticsearchPort: 9200

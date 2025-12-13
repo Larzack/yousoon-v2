@@ -24,6 +24,8 @@ export const options = {
     http_req_failed: ['rate<0.05'],     // Error rate under 5%
     errors: ['rate<0.05'],
   },
+  // Skip TLS verification for staging environments with self-signed certs
+  insecureSkipTLSVerify: true,
 };
 
 const BASE_URL = __ENV.BASE_URL || 'http://api.yousoon.com';

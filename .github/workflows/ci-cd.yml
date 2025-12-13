@@ -229,7 +229,6 @@ jobs:
     needs: setup
     if: needs.setup.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -793,7 +792,7 @@ jobs:
       always() &&
       github.event_name != 'pull_request' &&
       github.event.inputs.deploy != 'false' &&
-      (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
+      needs.build-backend.result == 'success' &&
       (needs.build-webapp.result == 'success' || needs.build-webapp.result == 'skipped') &&
       (needs.build-storage.result == 'success' || needs.build-storage.result == 'skipped')
     runs-on: ubuntu-latest
@@ -966,8 +965,8 @@ jobs:
         run: |
           echo "🧪 Running E2E tests against $API_URL..."
           cd tests/e2e
-          npx playwright test --config=playwright.config.ts --reporter=list || true
-          echo "✅ E2E tests completed!"
+          npx playwright test --config=playwright.config.ts --reporter=list
+          echo "✅ E2E tests passed!"
 
       - name: Upload E2E Test Results
         if: always()
@@ -999,7 +998,7 @@ jobs:
       always() &&
       github.event_name != 'pull_request' &&
       needs.deploy-verify.result == 'success' &&
-      needs.e2e-tests.result != 'cancelled'
+      needs.e2e-tests.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

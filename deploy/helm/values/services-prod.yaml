@@ -1,0 +1,96 @@
+# =============================================================================
+# Yousoon Services - Production Configuration
+# =============================================================================
+
+global:
+  infra: "classic"
+  namespace: yousoon-prod
+  imageRegistry: "499771322424.dkr.ecr.eu-west-1.amazonaws.com"
+  imagePullPolicy: IfNotPresent
+
+# =============================================================================
+# Common Service Configuration
+# =============================================================================
+common:
+  replicas: 2  # HA in production
+  
+  env:
+    - name: ENVIRONMENT
+      value: prod
+    - name: LOG_LEVEL
+      value: info
+
+# =============================================================================
+# Services (classic mode - separate deployments)
+# =============================================================================
+identity:
+  enabled: true
+  image:
+    repository: yousoon/identity-service
+    tag: prod
+  replicas: 2
+
+partner:
+  enabled: true
+  image:
+    repository: yousoon/partner-service
+    tag: prod
+  replicas: 2
+
+discovery:
+  enabled: true
+  image:
+    repository: yousoon/discovery-service
+    tag: prod
+  replicas: 2
+
+booking:
+  enabled: true
+  image:
+    repository: yousoon/booking-service
+    tag: prod
+  replicas: 2
+
+engagement:
+  enabled: true
+  image:
+    repository: yousoon/engagement-service
+    tag: prod
+  replicas: 2
+
+notification:
+  enabled: true
+  image:
+    repository: yousoon/notification-service
+    tag: prod
+  replicas: 2
+
+# =============================================================================
+# Apollo Router (GraphQL Gateway)
+# =============================================================================
+router:
+  enabled: true
+  image:
+    repository: yousoon/router
+    tag: prod
+  replicas: 2
+
+  # Ingress for production API
+  ingress:
+    enabled: true
+    host: api.yousoon.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production-cluster-issuer
+
+# =============================================================================
+# Storage Connection
+# =============================================================================
+storageConnection:
+  mongodbHost: mongodb-primary
+  mongodbPort: 27017
+  redisHost: redis-master
+  redisPort: 6379
+  natsHost: nats
+  natsPort: 4222
+  elasticsearchHost: elasticsearch
+  elasticsearchPort: 9200

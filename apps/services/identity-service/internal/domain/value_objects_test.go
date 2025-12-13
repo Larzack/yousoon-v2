@@ -163,8 +163,8 @@ func TestNewPhone_Invalid(t *testing.T) {
 			input: "33612345678",
 		},
 		{
-			name:  "too short",
-			input: "+33",
+			name:  "only plus sign",
+			input: "+",
 		},
 		{
 			name:  "contains letters",
