@@ -12,7 +12,7 @@ func TestNewPartner(t *testing.T) {
 	company := Company{
 		Name:      "Test Restaurant",
 		TradeName: "Test Restaurant",
-		Siret:     "12345678901234",
+		SIRET:     "12345678901234",
 		LegalForm: "SARL",
 	}
 	contact := Contact{
