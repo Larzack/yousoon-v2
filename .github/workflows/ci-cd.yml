@@ -420,9 +420,23 @@ jobs:
       github.event.inputs.deploy != 'false' &&
       needs.build-website.result == 'success'
     runs-on: ubuntu-latest
-    environment: ${{ needs.setup.outputs.environment }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/prod" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "namespace=yousoon-prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "namespace=yousoon-staging" >> $GITHUB_OUTPUT
+          fi
+          PATCH=$(git rev-list --count HEAD)
+          echo "version=${{ env.IMAGE_VERSION_MAJOR }}.${{ env.IMAGE_VERSION_MINOR }}.${PATCH}" >> $GITHUB_OUTPUT
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -443,15 +457,15 @@ jobs:
           version: ${{ env.HELM_VERSION }}
 
       - name: Create Namespace
-        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+        run: kubectl create namespace ${{ steps.env.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy Website
         if: github.event.inputs.dry_run != 'true'
         working-directory: deploy/helm
         run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          NAMESPACE="${{ needs.setup.outputs.namespace }}"
-          VERSION="${{ needs.setup.outputs.version }}"
+          ENV="${{ steps.env.outputs.environment }}"
+          NAMESPACE="${{ steps.env.outputs.namespace }}"
+          VERSION="${{ steps.env.outputs.version }}"
           
           echo "🌍 Deploying Website..."
           
@@ -598,9 +612,19 @@ jobs:
       github.event.inputs.deploy != 'false' &&
       needs.build-monitoring.result == 'success'
     runs-on: ubuntu-latest
-    environment: ${{ needs.setup.outputs.environment }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/prod" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "namespace=yousoon-prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "namespace=yousoon-staging" >> $GITHUB_OUTPUT
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -621,14 +645,14 @@ jobs:
           version: ${{ env.HELM_VERSION }}
 
       - name: Create Namespace
-        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+        run: kubectl create namespace ${{ steps.env.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy Monitoring
         if: github.event.inputs.dry_run != 'true'
         working-directory: deploy/helm
         run: |
-          ENV="${{ needs.setup.outputs.environment }}"
-          NAMESPACE="${{ needs.setup.outputs.namespace }}"
+          ENV="${{ steps.env.outputs.environment }}"
+          NAMESPACE="${{ steps.env.outputs.namespace }}"
           
           echo "📊 Deploying Monitoring..."
           
