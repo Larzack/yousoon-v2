@@ -46,7 +46,7 @@ partners:
   image:
     repository: yousoon/web-partners
     tag: staging
-  port: 8082
+  port: 80
 
   resources: {}
 
@@ -55,8 +55,6 @@ partners:
       value: production
     - name: VITE_API_URL
       value: "https://api.yousoon.com/graphql"
-    - name: PORT
-      value: "8082"
 
   ingress:
     enabled: true
