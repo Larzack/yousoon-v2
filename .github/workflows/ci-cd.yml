@@ -865,7 +865,21 @@ jobs:
             exit 0
           fi
           
-          # Force cleanup of stuck releases (pending-install, pending-upgrade, pending-rollback)
+          # Force cleanup of stuck Helm releases by deleting pending secrets
+          echo "🔍 Checking for stuck Helm releases..."
+          PENDING_SECRETS=$(kubectl get secrets -n ${NAMESPACE} -l "name=${RELEASE_NAME},status=pending-install" -o name 2>/dev/null || true)
+          PENDING_UPGRADE=$(kubectl get secrets -n ${NAMESPACE} -l "name=${RELEASE_NAME},status=pending-upgrade" -o name 2>/dev/null || true)
+          PENDING_ROLLBACK=$(kubectl get secrets -n ${NAMESPACE} -l "name=${RELEASE_NAME},status=pending-rollback" -o name 2>/dev/null || true)
+          
+          if [ -n "$PENDING_SECRETS" ] || [ -n "$PENDING_UPGRADE" ] || [ -n "$PENDING_ROLLBACK" ]; then
+            echo "⚠️ Found pending Helm secrets, cleaning up..."
+            kubectl delete secrets -n ${NAMESPACE} -l "name=${RELEASE_NAME},status=pending-install" 2>/dev/null || true
+            kubectl delete secrets -n ${NAMESPACE} -l "name=${RELEASE_NAME},status=pending-upgrade" 2>/dev/null || true
+            kubectl delete secrets -n ${NAMESPACE} -l "name=${RELEASE_NAME},status=pending-rollback" 2>/dev/null || true
+            sleep 2
+          fi
+          
+          # Check release status
           RELEASE_STATUS=$(helm status ${RELEASE_NAME} -n ${NAMESPACE} -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
           if [[ "$RELEASE_STATUS" =~ ^pending ]]; then
             echo "⚠️ Release ${RELEASE_NAME} is stuck in ${RELEASE_STATUS}, forcing cleanup..."
