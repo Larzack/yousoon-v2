@@ -1153,7 +1153,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-website, build-storage, deploy-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-monitoring, deploy-verify, e2e-tests, load-tests, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-mobile-android, build-mobile-ios, deploy, deploy-monitoring, deploy-verify, e2e-tests, load-tests, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
