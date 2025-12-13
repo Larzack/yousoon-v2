@@ -253,7 +253,28 @@ jobs:
         working-directory: apps/services/${{ matrix.service }}
         run: go mod download
 
-      - name: Run Unit Tests
+      # ========================================
+      # STEP 1: BUILD
+      # ========================================
+      - name: 🔨 Build
+        working-directory: apps/services/${{ matrix.service }}
+        run: |
+          echo "🔨 Building ${{ matrix.service }}..."
+          
+          # Go Vet - static analysis
+          echo "Running go vet..."
+          go vet ./...
+          
+          # Build the binary
+          echo "Building binary..."
+          go build -o /tmp/${{ matrix.service }} ./cmd/...
+          
+          echo "✅ Build successful!"
+
+      # ========================================
+      # STEP 2: UNIT TESTS
+      # ========================================
+      - name: 🧪 Unit Tests
         working-directory: apps/services/${{ matrix.service }}
         run: |
           echo "🧪 Running unit tests for ${{ matrix.service }}..."
@@ -280,12 +301,6 @@ jobs:
           name: coverage-${{ matrix.service }}
           path: apps/services/${{ matrix.service }}/coverage.out
           retention-days: 7
-
-      - name: Go Vet & Build
-        working-directory: apps/services/${{ matrix.service }}
-        run: |
-          go vet ./... || true
-          go build -o /tmp/${{ matrix.service }} ./cmd/... || true
 
       - name: Setup Docker Buildx
         if: github.event_name != 'pull_request'
