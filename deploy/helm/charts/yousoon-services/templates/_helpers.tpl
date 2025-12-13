@@ -72,8 +72,10 @@ Common environment variables for all services
 - name: MONGODB_PASSWORD
   valueFrom:
     secretKeyRef:
-      name: {{ include "yousoon-services.fullname" . }}-secrets
-      key: mongodb-password
+      name: {{ include "yousoon-storage.fullname" . }}-secrets
+      key: mongodb-root-password
+- name: MONGODB_URI
+  value: "mongodb://admin:$(MONGODB_PASSWORD)@{{ .Values.storageConnection.mongodbHost }}:{{ .Values.storageConnection.mongodbPort }}"
 - name: REDIS_HOST
   value: {{ .Values.storageConnection.redisHost | quote }}
 - name: REDIS_PORT
@@ -81,7 +83,7 @@ Common environment variables for all services
 - name: REDIS_PASSWORD
   valueFrom:
     secretKeyRef:
-      name: {{ include "yousoon-services.fullname" . }}-secrets
+      name: {{ include "yousoon-storage.fullname" . }}-secrets
       key: redis-password
 - name: NATS_URL
   value: "nats://{{ .Values.storageConnection.natsHost }}:{{ .Values.storageConnection.natsPort }}"
