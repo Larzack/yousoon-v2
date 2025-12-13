@@ -277,21 +277,19 @@ jobs:
         working-directory: apps/services/${{ matrix.service }}
         run: |
           echo "🧪 Running unit tests for ${{ matrix.service }}..."
-          go test ./... -v -race -coverprofile=coverage.out -covermode=atomic 2>&1 | tee test-output.txt
           
-          # Parse test results
-          TESTS_RUN=$(grep -c "^--- " test-output.txt || echo "0")
-          TESTS_PASSED=$(grep -c "^--- PASS" test-output.txt || echo "0")
-          TESTS_FAILED=$(grep -c "^--- FAIL" test-output.txt || echo "0")
+          # Run tests and capture exit code
+          set +e
+          go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
+          TEST_EXIT_CODE=$?
+          set -e
           
-          echo "📊 Test Results: $TESTS_PASSED passed, $TESTS_FAILED failed (total: $TESTS_RUN)"
-          
-          # Fail if tests failed
-          if [ "$TESTS_FAILED" != "0" ]; then
-            echo "❌ Unit tests failed!"
-            exit 1
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "✅ All unit tests passed!"
+          else
+            echo "❌ Unit tests failed with exit code $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
           fi
-          echo "✅ All unit tests passed!"
 
       - name: Upload Coverage Report
         if: always()
