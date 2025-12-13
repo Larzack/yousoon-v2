@@ -501,11 +501,20 @@ jobs:
           ENV="${{ steps.env.outputs.environment }}"
           NAMESPACE="${{ steps.env.outputs.namespace }}"
           VERSION="${{ steps.env.outputs.version }}"
+          RELEASE_NAME="yousoon-website"
           
           echo "🌍 Deploying Website..."
           
+          # Force cleanup of stuck releases (pending-install, pending-upgrade, pending-rollback)
+          RELEASE_STATUS=$(helm status ${RELEASE_NAME} -n ${NAMESPACE} -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
+          if [[ "$RELEASE_STATUS" =~ ^pending ]]; then
+            echo "⚠️ Release ${RELEASE_NAME} is stuck in ${RELEASE_STATUS}, forcing cleanup..."
+            helm uninstall ${RELEASE_NAME} -n ${NAMESPACE} --no-hooks 2>/dev/null || true
+            sleep 2
+          fi
+          
           # Website is part of yousoon-sites chart, deploy with website only enabled
-          helm upgrade --install yousoon-website ./charts/yousoon-sites \
+          helm upgrade --install ${RELEASE_NAME} ./charts/yousoon-sites \
             -n ${NAMESPACE} \
             --set global.imageRegistry=${{ env.ECR_REGISTRY }} \
             --set admin.enabled=false \
@@ -661,6 +670,7 @@ jobs:
         run: |
           ENV="${{ steps.env.outputs.environment }}"
           NAMESPACE="${{ steps.env.outputs.namespace }}"
+          RELEASE_NAME="yousoon-monitoring"
           
           echo "📊 Deploying Monitoring..."
           
@@ -670,7 +680,15 @@ jobs:
             exit 0
           fi
           
-          helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
+          # Force cleanup of stuck releases (pending-install, pending-upgrade, pending-rollback)
+          RELEASE_STATUS=$(helm status ${RELEASE_NAME} -n ${NAMESPACE} -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
+          if [[ "$RELEASE_STATUS" =~ ^pending ]]; then
+            echo "⚠️ Release ${RELEASE_NAME} is stuck in ${RELEASE_STATUS}, forcing cleanup..."
+            helm uninstall ${RELEASE_NAME} -n ${NAMESPACE} --no-hooks 2>/dev/null || true
+            sleep 2
+          fi
+          
+          helm upgrade --install ${RELEASE_NAME} ./charts/yousoon-monitoring \
             -f values/monitoring-${ENV}.yaml \
             -n ${NAMESPACE} \
             --wait --timeout 10m
@@ -837,6 +855,7 @@ jobs:
           VALUES_FILE="${COMPONENT}-${ENV}.yaml"
           VERSION="${{ needs.setup.outputs.version }}"
           HAS_STATEFULSET="${{ matrix.has_statefulset }}"
+          RELEASE_NAME="yousoon-${COMPONENT}"
           
           echo "🚀 Deploying $COMPONENT ($VALUES_FILE)..."
           
@@ -846,8 +865,26 @@ jobs:
             exit 0
           fi
           
-          # Build helm command
-          HELM_CMD="helm upgrade --install yousoon-${COMPONENT} ./charts/${CHART} -f values/${VALUES_FILE} -n ${NAMESPACE} --wait --timeout 10m"
+          # Force cleanup of stuck releases (pending-install, pending-upgrade, pending-rollback)
+          RELEASE_STATUS=$(helm status ${RELEASE_NAME} -n ${NAMESPACE} -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
+          if [[ "$RELEASE_STATUS" =~ ^pending ]]; then
+            echo "⚠️ Release ${RELEASE_NAME} is stuck in ${RELEASE_STATUS}, forcing cleanup..."
+            helm uninstall ${RELEASE_NAME} -n ${NAMESPACE} --no-hooks 2>/dev/null || true
+            sleep 2
+          fi
+          
+          # If release is in failed state, try rollback first
+          if [[ "$RELEASE_STATUS" == "failed" ]]; then
+            echo "⚠️ Release ${RELEASE_NAME} is in failed state, attempting rollback..."
+            LAST_GOOD=$(helm history ${RELEASE_NAME} -n ${NAMESPACE} -o json 2>/dev/null | jq -r '[.[] | select(.status=="deployed")] | last | .revision' || echo "")
+            if [ -n "$LAST_GOOD" ] && [ "$LAST_GOOD" != "null" ]; then
+              helm rollback ${RELEASE_NAME} ${LAST_GOOD} -n ${NAMESPACE} --force 2>/dev/null || true
+              sleep 2
+            fi
+          fi
+          
+          # Build helm command with --force flag
+          HELM_CMD="helm upgrade --install ${RELEASE_NAME} ./charts/${CHART} -f values/${VALUES_FILE} -n ${NAMESPACE} --force --wait --timeout 10m"
           
           # Add image tag for services and sites
           if [ "$COMPONENT" == "services" ] || [ "$COMPONENT" == "sites" ]; then
