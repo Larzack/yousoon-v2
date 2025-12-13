@@ -794,7 +794,8 @@ jobs:
         working-directory: apps/mobile
         run: |
           # Build for iOS Simulator (x86_64/arm64) - doesn't require code signing
-          flutter build ios --release --simulator
+          # Note: Simulator only supports debug mode, release mode requires real device
+          flutter build ios --debug --simulator
           echo "✅ iOS Simulator build successful!"
 
       - name: Build iOS (Device - archive only)
