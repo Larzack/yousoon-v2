@@ -278,18 +278,10 @@ jobs:
         run: |
           echo "🧪 Running unit tests for ${{ matrix.service }}..."
           
-          # Run tests and capture exit code
-          set +e
-          go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
-          TEST_EXIT_CODE=$?
-          set -e
+          # Run tests with race detector and coverage
+          go test ./... -v -race -coverprofile=coverage.out
           
-          if [ $TEST_EXIT_CODE -eq 0 ]; then
-            echo "✅ All unit tests passed!"
-          else
-            echo "❌ Unit tests failed with exit code $TEST_EXIT_CODE"
-            exit $TEST_EXIT_CODE
-          fi
+          echo "✅ All unit tests passed!"
 
       - name: Upload Coverage Report
         if: always()
