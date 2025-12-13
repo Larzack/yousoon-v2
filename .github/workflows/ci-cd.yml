@@ -351,7 +351,7 @@ jobs:
   # BLOC 2b: WEBSITE (Next.js - déploiement autonome)
   # ============================================
   build-website:
-    name: 🌍 Website
+    name: 🌍 Build Website
     needs: setup
     if: needs.setup.outputs.website == 'true'
     runs-on: ubuntu-latest
@@ -407,6 +407,66 @@ jobs:
             ${{ env.ECR_REGISTRY }}/yousoon/website:${{ needs.setup.outputs.environment }}
           cache-from: type=gha,scope=website
           cache-to: type=gha,mode=max,scope=website
+
+  # ============================================
+  # DEPLOY WEBSITE (autonome, indépendant de la matrice)
+  # ============================================
+  deploy-website:
+    name: 🚀 Deploy Website
+    needs: [setup, build-website]
+    if: |
+      always() &&
+      github.event_name != 'pull_request' &&
+      github.event.inputs.deploy != 'false' &&
+      needs.build-website.result == 'success'
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Create Namespace
+        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Website
+        if: github.event.inputs.dry_run != 'true'
+        working-directory: deploy/helm
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          NAMESPACE="${{ needs.setup.outputs.namespace }}"
+          VERSION="${{ needs.setup.outputs.version }}"
+          
+          echo "🌍 Deploying Website..."
+          
+          # Website is part of yousoon-sites chart, deploy with website only enabled
+          helm upgrade --install yousoon-website ./charts/yousoon-sites \
+            -n ${NAMESPACE} \
+            --set global.imageRegistry=${{ env.ECR_REGISTRY }} \
+            --set admin.enabled=false \
+            --set partners.enabled=false \
+            --set website.enabled=true \
+            --set website.image.repository=yousoon/website \
+            --set website.image.tag=${VERSION} \
+            --wait --timeout 5m
+          
+          echo "✅ Website deployed successfully!"
 
   # ============================================
   # BLOC 3: STORAGE (MongoDB, Redis, ES, NATS)
@@ -474,7 +534,7 @@ jobs:
   # BLOC 5: MONITORING (Prometheus, Grafana, Loki, Jaeger)
   # ============================================
   build-monitoring:
-    name: 📊 Monitoring
+    name: 📊 Build Monitoring
     needs: setup
     if: needs.setup.outputs.monitoring == 'true'
     runs-on: ubuntu-latest
@@ -525,6 +585,65 @@ jobs:
           name: monitoring-charts-prod
           path: exported-charts/prod/
           retention-days: 30
+
+  # ============================================
+  # DEPLOY MONITORING (autonome, indépendant de la matrice)
+  # ============================================
+  deploy-monitoring:
+    name: 🚀 Deploy Monitoring
+    needs: [setup, build-monitoring]
+    if: |
+      always() &&
+      github.event_name != 'pull_request' &&
+      github.event.inputs.deploy != 'false' &&
+      needs.build-monitoring.result == 'success'
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER }} --region ${{ env.AWS_REGION }}
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Create Namespace
+        run: kubectl create namespace ${{ needs.setup.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Monitoring
+        if: github.event.inputs.dry_run != 'true'
+        working-directory: deploy/helm
+        run: |
+          ENV="${{ needs.setup.outputs.environment }}"
+          NAMESPACE="${{ needs.setup.outputs.namespace }}"
+          
+          echo "📊 Deploying Monitoring..."
+          
+          # Check if values file exists
+          if [ ! -f "values/monitoring-${ENV}.yaml" ]; then
+            echo "⚠️ Values file values/monitoring-${ENV}.yaml not found, skipping..."
+            exit 0
+          fi
+          
+          helm upgrade --install yousoon-monitoring ./charts/yousoon-monitoring \
+            -f values/monitoring-${ENV}.yaml \
+            -n ${NAMESPACE} \
+            --wait --timeout 10m
+          
+          echo "✅ Monitoring deployed successfully!"
 
   # ============================================
   # BLOC 6: MOBILE (iOS + Android en parallèle)
@@ -627,22 +746,20 @@ jobs:
 
   deploy:
     name: 🚀 Deploy ${{ matrix.component }}
-    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring]
+    needs: [setup, build-backend, build-webapp, build-storage]
     if: |
       always() &&
       github.event_name != 'pull_request' &&
       github.event.inputs.deploy != 'false' &&
       (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
       (needs.build-webapp.result == 'success' || needs.build-webapp.result == 'skipped') &&
-      (needs.build-website.result == 'success' || needs.build-website.result == 'skipped') &&
-      (needs.build-storage.result == 'success' || needs.build-storage.result == 'skipped') &&
-      (needs.build-monitoring.result == 'success' || needs.build-monitoring.result == 'skipped')
+      (needs.build-storage.result == 'success' || needs.build-storage.result == 'skipped')
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
     strategy:
       fail-fast: false
       matrix:
-        component: [storage, services, sites, monitoring]
+        component: [storage, services, sites]
         include:
           - component: storage
             chart: yousoon-storage
@@ -652,9 +769,6 @@ jobs:
             has_statefulset: false
           - component: sites
             chart: yousoon-sites
-            has_statefulset: false
-          - component: monitoring
-            chart: yousoon-monitoring
             has_statefulset: false
     steps:
       - uses: actions/checkout@v4
@@ -860,7 +974,7 @@ jobs:
   # ============================================
   summary:
     name: 📊 Summary
-    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-verify, publish-stores]
+    needs: [setup, build-backend, build-webapp, build-website, build-storage, build-monitoring, build-mobile-android, build-mobile-ios, deploy, deploy-website, deploy-monitoring, deploy-verify, publish-stores]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -888,5 +1002,7 @@ jobs:
           echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| 🚀 Deploy (matrix) | ${{ needs.deploy.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| 🔍 Deploy Verify | ${{ needs.deploy-verify.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🌍 Deploy Website | ${{ needs.deploy-website.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| � Deploy Monitoring | ${{ needs.deploy-monitoring.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| �🔍 Deploy Verify | ${{ needs.deploy-verify.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| 📲 Stores | ${{ needs.publish-stores.result || 'skipped' }} |" >> $GITHUB_STEP_SUMMARY
